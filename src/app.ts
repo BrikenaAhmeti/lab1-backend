@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import { errorHandler } from './shared/middleware/error-handler';
 import { notFoundHandler } from './shared/middleware/not-found';
 import { departmentRoutes } from './modules/departments/presentation/department.routes';
+import { authRoutes } from './modules/auth/presentation/auth.routes';
 
 export function createApp() {
     const app = express();
@@ -19,6 +20,7 @@ export function createApp() {
     });
 
     app.use('/departments', departmentRoutes);
+    app.use('/auth', authRoutes);
 
     app.use(notFoundHandler);
     app.use(errorHandler);
