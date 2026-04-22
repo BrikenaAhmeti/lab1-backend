@@ -16,6 +16,7 @@ async function main() {
         firstName: env.adminFirstName,
         lastName: env.adminLastName,
         email: env.adminEmail,
+        username: env.adminUsername,
         password: env.adminPassword,
         phoneNumber: env.adminPhoneNumber,
     });

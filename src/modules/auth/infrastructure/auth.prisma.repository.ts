@@ -72,6 +72,21 @@ export class AuthPrismaRepository implements AuthRepository {
         });
     }
 
+    async findUserByNormalizedUsername(
+        normalizedUsername: string,
+    ): Promise<UserWithRoles | null> {
+        return prisma.user.findUnique({
+            where: { normalizedUsername },
+            include: {
+                userRoles: {
+                    include: {
+                        role: true,
+                    },
+                },
+            },
+        });
+    }
+
     async listUsers(): Promise<UserWithRoles[]> {
         return prisma.user.findMany({
             orderBy: {

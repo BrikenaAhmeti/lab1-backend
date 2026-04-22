@@ -11,6 +11,7 @@ export interface AuthUserResponse {
     firstName: string;
     lastName: string;
     email: string;
+    username: string;
     phoneNumber: string | null;
     emailConfirmed: boolean;
     isActive: boolean;
@@ -31,12 +32,13 @@ export interface RegisterInput {
     firstName: string;
     lastName: string;
     email: string;
+    username?: string;
     password: string;
     phoneNumber?: string;
 }
 
 export interface LoginInput {
-    email: string;
+    identifier: string;
     password: string;
 }
 
@@ -44,6 +46,7 @@ export interface CreateUserInput {
     firstName: string;
     lastName: string;
     email: string;
+    username?: string;
     password: string;
     phoneNumber?: string;
     emailConfirmed?: boolean;
@@ -56,6 +59,7 @@ export interface UpdateUserInput {
     firstName?: string;
     lastName?: string;
     email?: string;
+    username?: string;
     password?: string;
     phoneNumber?: string | null;
     emailConfirmed?: boolean;
@@ -80,6 +84,7 @@ export interface SeedAdminInput {
     firstName: string;
     lastName: string;
     email: string;
+    username?: string;
     password: string;
     phoneNumber?: string;
 }
@@ -102,12 +107,18 @@ export class AuthService {
         }
 
         const passwordHash = await bcrypt.hash(input.password, 10);
+        const usernameData = await this.resolveUsernameForCreate(
+            input.username,
+            input.email,
+        );
 
         const user = await this.repository.createUser({
             firstName: input.firstName.trim(),
             lastName: input.lastName.trim(),
             email: input.email.trim().toLowerCase(),
             normalizedEmail,
+            username: usernameData.username,
+            normalizedUsername: usernameData.normalizedUsername,
             passwordHash,
             phoneNumber: input.phoneNumber?.trim(),
             emailConfirmed: false,
@@ -130,8 +141,10 @@ export class AuthService {
     }
 
     async login(input: LoginInput): Promise<AuthResponse> {
-        const normalizedEmail = this.normalizeEmail(input.email);
-        const user = await this.repository.findUserByNormalizedEmail(normalizedEmail);
+        const normalizedIdentifier = input.identifier.trim().toUpperCase();
+        const user =
+            await this.repository.findUserByNormalizedEmail(normalizedIdentifier)
+            ?? await this.repository.findUserByNormalizedUsername(normalizedIdentifier);
 
         if (!user) {
             throw new AppError('Invalid email or password', 401);
@@ -259,12 +272,21 @@ export class AuthService {
         }
 
         const passwordHash = await bcrypt.hash(input.password, 10);
+        const usernameData = await this.resolveUsernameForCreate(
+            input.username,
+            input.email,
+        );
+        const roleIds = this.normalizeUniqueIds(input.roleIds);
+
+        await this.ensureCanAssignAdminRole(undefined, roleIds);
 
         const user = await this.repository.createUser({
             firstName: input.firstName.trim(),
             lastName: input.lastName.trim(),
             email: input.email.trim().toLowerCase(),
             normalizedEmail,
+            username: usernameData.username,
+            normalizedUsername: usernameData.normalizedUsername,
             passwordHash,
             phoneNumber: input.phoneNumber?.trim(),
             emailConfirmed: input.emailConfirmed ?? false,
@@ -272,8 +294,6 @@ export class AuthService {
             accessFailedCount: 0,
             isActive: input.isActive ?? true,
         });
-
-        const roleIds = this.normalizeUniqueIds(input.roleIds);
 
         if (roleIds.length > 0) {
             await this.validateRoleIds(roleIds);
@@ -301,6 +321,8 @@ export class AuthService {
             lastName?: string;
             email?: string;
             normalizedEmail?: string;
+            username?: string;
+            normalizedUsername?: string;
             passwordHash?: string;
             phoneNumber?: string | null;
             emailConfirmed?: boolean;
@@ -332,6 +354,23 @@ export class AuthService {
             dataToUpdate.normalizedEmail = normalizedEmail;
         }
 
+        if (input.username !== undefined) {
+            const usernameData = this.normalizeUsername(input.username);
+
+            if (usernameData.normalizedUsername !== existingUser.normalizedUsername) {
+                const userWithSameUsername = await this.repository.findUserByNormalizedUsername(
+                    usernameData.normalizedUsername,
+                );
+
+                if (userWithSameUsername) {
+                    throw new AppError('Username already exists', 409);
+                }
+            }
+
+            dataToUpdate.username = usernameData.username;
+            dataToUpdate.normalizedUsername = usernameData.normalizedUsername;
+        }
+
         if (input.password !== undefined) {
             dataToUpdate.passwordHash = await bcrypt.hash(input.password, 10);
         }
@@ -355,6 +394,7 @@ export class AuthService {
         await this.repository.updateUser(userId, dataToUpdate);
 
         if (input.roleIds !== undefined) {
+            await this.ensureCanAssignAdminRole(userId, input.roleIds);
             await this.replaceUserRoles(userId, input.roleIds);
         }
 
@@ -463,6 +503,7 @@ export class AuthService {
 
     async assignRoleToUser(userId: string, roleId: string): Promise<UserRoleWithRole[]> {
         await this.getExistingUserById(userId);
+        await this.ensureCanAssignAdminRole(userId, [roleId]);
 
         const role = await this.repository.findRoleById(roleId);
 
@@ -493,6 +534,7 @@ export class AuthService {
         await this.getExistingUserById(userId);
 
         const normalizedRoleIds = this.normalizeUniqueIds(roleIds);
+        await this.ensureCanAssignAdminRole(userId, normalizedRoleIds);
 
         await this.validateRoleIds(normalizedRoleIds);
         await this.repository.removeAllUserRoles(userId);
@@ -519,6 +561,7 @@ export class AuthService {
         await this.ensureBaseRoles();
 
         const normalizedEmail = this.normalizeEmail(input.email);
+        const usernameData = await this.resolveUsernameForSeed(input.username, input.email);
         const adminRole = await this.repository.findRoleByNormalizedName('ADMIN');
 
         if (!adminRole) {
@@ -526,7 +569,11 @@ export class AuthService {
         }
 
         const passwordHash = await bcrypt.hash(input.password, 10);
-        const existingUser = await this.repository.findUserByNormalizedEmail(normalizedEmail);
+        const userByEmail = await this.repository.findUserByNormalizedEmail(normalizedEmail);
+        const userByUsername = await this.repository.findUserByNormalizedUsername(
+            usernameData.normalizedUsername,
+        );
+        const existingUser = userByEmail ?? userByUsername;
 
         if (!existingUser) {
             const createdUser = await this.repository.createUser({
@@ -534,6 +581,8 @@ export class AuthService {
                 lastName: input.lastName.trim(),
                 email: input.email.trim().toLowerCase(),
                 normalizedEmail,
+                username: usernameData.username,
+                normalizedUsername: usernameData.normalizedUsername,
                 passwordHash,
                 phoneNumber: input.phoneNumber?.trim(),
                 emailConfirmed: true,
@@ -543,6 +592,7 @@ export class AuthService {
             });
 
             await this.repository.assignRoleToUser(createdUser.id, adminRole.id);
+            await this.removeAdminRoleFromOtherUsers(createdUser.id);
 
             const user = await this.getExistingUserById(createdUser.id);
 
@@ -554,6 +604,8 @@ export class AuthService {
             lastName: input.lastName.trim(),
             email: input.email.trim().toLowerCase(),
             normalizedEmail,
+            username: usernameData.username,
+            normalizedUsername: usernameData.normalizedUsername,
             passwordHash,
             phoneNumber: input.phoneNumber?.trim() ?? null,
             emailConfirmed: true,
@@ -568,6 +620,8 @@ export class AuthService {
         if (!hasAdminRole) {
             await this.repository.assignRoleToUser(existingUser.id, adminRole.id);
         }
+
+        await this.removeAdminRoleFromOtherUsers(existingUser.id);
 
         const user = await this.getExistingUserById(existingUser.id);
 
@@ -690,6 +744,7 @@ export class AuthService {
             firstName: user.firstName,
             lastName: user.lastName,
             email: user.email,
+            username: user.username,
             phoneNumber: user.phoneNumber,
             emailConfirmed: user.emailConfirmed,
             isActive: user.isActive,
@@ -705,6 +760,92 @@ export class AuthService {
         return email.trim().toUpperCase();
     }
 
+    private normalizeUsername(username: string): {
+        username: string;
+        normalizedUsername: string;
+    } {
+        const sanitized = username
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9._-]/g, '');
+
+        if (sanitized.length < 3 || sanitized.length > 30) {
+            throw new AppError('Username must be between 3 and 30 characters', 400);
+        }
+
+        return {
+            username: sanitized,
+            normalizedUsername: sanitized.toUpperCase(),
+        };
+    }
+
+    private async resolveUsernameForCreate(
+        username: string | undefined,
+        email: string,
+    ): Promise<{ username: string; normalizedUsername: string }> {
+        if (username) {
+            const usernameData = this.normalizeUsername(username);
+            const existingUser = await this.repository.findUserByNormalizedUsername(
+                usernameData.normalizedUsername,
+            );
+
+            if (existingUser) {
+                throw new AppError('Username already exists', 409);
+            }
+
+            return usernameData;
+        }
+
+        return this.generateUniqueUsernameFromEmail(email);
+    }
+
+    private async resolveUsernameForSeed(
+        username: string | undefined,
+        email: string,
+    ): Promise<{ username: string; normalizedUsername: string }> {
+        if (username) {
+            return this.normalizeUsername(username);
+        }
+
+        return this.generateUniqueUsernameFromEmail(email);
+    }
+
+    private async generateUniqueUsernameFromEmail(
+        email: string,
+    ): Promise<{ username: string; normalizedUsername: string }> {
+        const baseFromEmail = this.usernameBaseFromEmail(email);
+        let counter = 0;
+
+        while (counter < 10000) {
+            const candidate = counter === 0 ? baseFromEmail : `${baseFromEmail}${counter}`;
+            const normalizedCandidate = candidate.toUpperCase();
+            const existingUser =
+                await this.repository.findUserByNormalizedUsername(normalizedCandidate);
+
+            if (!existingUser) {
+                return {
+                    username: candidate,
+                    normalizedUsername: normalizedCandidate,
+                };
+            }
+
+            counter += 1;
+        }
+
+        throw new AppError('Unable to generate username', 500);
+    }
+
+    private usernameBaseFromEmail(email: string): string {
+        const localPart = email.trim().toLowerCase().split('@')[0] ?? '';
+        const sanitized = localPart.replace(/[^a-z0-9._-]/g, '');
+
+        if (sanitized.length >= 3) {
+            return sanitized.slice(0, 24);
+        }
+
+        return 'user';
+    }
+
     private normalizeRoleName(roleName: string): string {
         return roleName.trim().toUpperCase();
     }
@@ -715,6 +856,60 @@ export class AuthService {
         }
 
         return Array.from(new Set(ids.map((id) => id.trim()).filter(Boolean)));
+    }
+
+    private async ensureCanAssignAdminRole(
+        targetUserId: string | undefined,
+        roleIds: string[],
+    ): Promise<void> {
+        const normalizedRoleIds = this.normalizeUniqueIds(roleIds);
+
+        if (normalizedRoleIds.length === 0) {
+            return;
+        }
+
+        const adminRole = await this.repository.findRoleByNormalizedName('ADMIN');
+
+        if (!adminRole) {
+            return;
+        }
+
+        if (!normalizedRoleIds.includes(adminRole.id)) {
+            return;
+        }
+
+        const users = await this.repository.listUsers();
+        const existingAdmin = users.find(
+            (user) => user.id !== targetUserId && this.userHasRole(user, 'ADMIN'),
+        );
+
+        if (existingAdmin) {
+            throw new AppError('Only one admin user is allowed', 409);
+        }
+    }
+
+    private async removeAdminRoleFromOtherUsers(targetUserId: string): Promise<void> {
+        const users = await this.repository.listUsers();
+
+        for (const user of users) {
+            if (user.id === targetUserId) {
+                continue;
+            }
+
+            const adminAssignment = user.userRoles.find(
+                (userRole) => userRole.role.normalizedName === 'ADMIN',
+            );
+
+            if (adminAssignment) {
+                await this.repository.removeRoleFromUser(user.id, adminAssignment.roleId);
+            }
+        }
+    }
+
+    private userHasRole(user: UserWithRoles, normalizedRoleName: string): boolean {
+        return user.userRoles.some(
+            (userRole) => userRole.role.normalizedName === normalizedRoleName,
+        );
     }
 
     private isUserLocked(user: User): boolean {

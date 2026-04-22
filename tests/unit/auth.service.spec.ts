@@ -14,6 +14,7 @@ function createRepositoryMock(): jest.Mocked<AuthRepository> {
         findUserById: jest.fn(),
         findUserByEmail: jest.fn(),
         findUserByNormalizedEmail: jest.fn(),
+        findUserByNormalizedUsername: jest.fn(),
         listUsers: jest.fn(),
         setUserStatus: jest.fn(),
         incrementAccessFailedCount: jest.fn(),
@@ -66,6 +67,8 @@ function createUser(overrides: Partial<User> = {}): User {
         lastName: overrides.lastName ?? 'Doe',
         email: overrides.email ?? 'john@example.com',
         normalizedEmail: overrides.normalizedEmail ?? 'JOHN@EXAMPLE.COM',
+        username: overrides.username ?? 'john',
+        normalizedUsername: overrides.normalizedUsername ?? 'JOHN',
         passwordHash: overrides.passwordHash ?? '$2b$10$abcdefghijklmnopqrstuv',
         phoneNumber: overrides.phoneNumber ?? null,
         emailConfirmed: overrides.emailConfirmed ?? false,
@@ -215,6 +218,7 @@ describe('AuthService', () => {
 
             return null;
         });
+        repository.findUserByNormalizedUsername.mockResolvedValue(null);
     });
 
     it('should register user and return access and refresh tokens', async () => {
@@ -252,6 +256,8 @@ describe('AuthService', () => {
                 lastName: 'Krasniqi',
                 email: 'ana@example.com',
                 normalizedEmail: 'ANA@EXAMPLE.COM',
+                username: 'ana',
+                normalizedUsername: 'ANA',
             }),
         );
         expect(repository.assignRoleToUser).toHaveBeenCalledWith('new-user-id', userRole.id);
@@ -285,7 +291,7 @@ describe('AuthService', () => {
         );
 
         const result = await service.login({
-            email: 'staff@example.com',
+            identifier: 'staff@example.com',
             password: 'password123',
         });
 
@@ -293,6 +299,39 @@ describe('AuthService', () => {
         expect(result.user.roles).toEqual(['MANAGER']);
         expect(result.accessToken).toBeTruthy();
         expect(result.refreshToken).toBeTruthy();
+    });
+
+    it('should login with username when email is not provided', async () => {
+        const passwordHash = await bcrypt.hash('password123', 10);
+        const existingUser = createUser({
+            id: 'username-login-user-id',
+            email: 'doctor@example.com',
+            normalizedEmail: 'DOCTOR@EXAMPLE.COM',
+            username: 'doctor1',
+            normalizedUsername: 'DOCTOR1',
+            passwordHash,
+            accessFailedCount: 0,
+        });
+        const existingUserWithRoles = createUserWithRoles(existingUser, [
+            createUserRoleWithRole(existingUser.id, userRole),
+        ]);
+
+        repository.findUserByNormalizedEmail.mockResolvedValue(null);
+        repository.findUserByNormalizedUsername.mockResolvedValue(existingUserWithRoles);
+        repository.findUserById.mockResolvedValue(existingUserWithRoles);
+        repository.createRefreshToken.mockImplementation(async ({ userId, token, expires }) =>
+            createRefreshToken({ userId, token, expires }),
+        );
+
+        const result = await service.login({
+            identifier: 'doctor1',
+            password: 'password123',
+        });
+
+        expect(repository.findUserByNormalizedEmail).toHaveBeenCalledWith('DOCTOR1');
+        expect(repository.findUserByNormalizedUsername).toHaveBeenCalledWith('DOCTOR1');
+        expect(result.user.username).toBe('doctor1');
+        expect(result.accessToken).toBeTruthy();
     });
 
     it('should increase failed count when password is wrong', async () => {
@@ -316,7 +355,7 @@ describe('AuthService', () => {
 
         await expect(
             service.login({
-                email: 'wrong@example.com',
+                identifier: 'wrong@example.com',
                 password: 'not-correct',
             }),
         ).rejects.toBeInstanceOf(AppError);

@@ -14,6 +14,7 @@ export const env = {
     adminFirstName: process.env.ADMIN_FIRST_NAME || 'System',
     adminLastName: process.env.ADMIN_LAST_NAME || 'Admin',
     adminEmail: process.env.ADMIN_EMAIL || '',
+    adminUsername: process.env.ADMIN_USERNAME || 'admin',
     adminPassword: process.env.ADMIN_PASSWORD || '',
     adminPhoneNumber: process.env.ADMIN_PHONE_NUMBER || '',
 };

@@ -13,6 +13,8 @@ model User {
   lastName          String
   email             String         @unique
   normalizedEmail   String         @unique
+  username          String         @unique
+  normalizedUsername String        @unique
   passwordHash      String
   phoneNumber       String?
   emailConfirmed    Boolean        @default(false)

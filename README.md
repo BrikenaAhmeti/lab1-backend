@@ -1,240 +1,169 @@
-# Express + TypeScript + CQRS + Prisma
+# MedSphere Lab1 Backend
 
-## Overview
+Backend API for the Hospital Management System (Lab Course 1), built with Express, TypeScript, Prisma, PostgreSQL, and CQRS-style layering.
 
-This project is a **backend template** built with:
-
-- Node.js + Express
+## Tech Stack
+- Node.js
+- Express
 - TypeScript
-- PostgreSQL (via Prisma ORM)
-- CQRS (Command Query Responsibility Segregation)
-- Layered architecture (Controller → Handler → Service → Repository)
+- PostgreSQL
+- Prisma ORM
+- JWT + Refresh Tokens
+- Jest
 
-It is designed as a **scalable, production-ready foundation** for building APIs with clean separation of concerns and testability.
+## Implemented Modules
+- Auth / Identity
+- Departments
 
----
+## Identity Features
+- JWT access tokens
+- Refresh token rotation
+- Login with `identifier` (username or email)
+- Backward-compatible login with `email`
+- Role-based authorization (`ADMIN` routes)
+- Single-admin policy (only one user can hold `ADMIN` role)
+- Admin seed script
 
-## Architecture
+## Prerequisites
+- Node.js 20+
+- PostgreSQL running locally
 
-This template follows a **layered CQRS architecture**:
+## Environment Variables
+Create `.env` (or copy from `.env.example`) with:
 
-### Write flow (Commands)
-
-Controller → Command → CommandHandler → Service → Repository → Prisma → PostgreSQL
-
-### Read flow (Queries)
-
-Controller → Query → QueryHandler → Service → Repository → Prisma → PostgreSQL
-
----
-
-## Project Structure
-
-```
-src/
-  app.ts
-  server.ts
-
-  config/
-    env.ts
-
-  infrastructure/
-    db/
-      prisma.ts
-
-  shared/
-    core/
-      buses/
-        command-bus.ts
-        query-bus.ts
-      errors/
-        app-error.ts
-      types/
-        request-with-user.ts
-    middleware/
-      error-handler.ts
-      not-found.ts
-
-  modules/
-    departments/
-      application/
-        commands/
-        queries/
-        handlers/
-      services/
-      domain/
-      infrastructure/
-      presentation/
-
-tests/
-  unit/
-  integration/
-
-prisma/
-  schema.prisma
+```env
+PORT=3005
+NODE_ENV=development
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/medsphere?schema=public
+JWT_ACCESS_SECRET=your_access_secret
+JWT_REFRESH_SECRET=your_refresh_secret
+JWT_ACCESS_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
+MAX_ACCESS_FAILED_COUNT=5
+ADMIN_FIRST_NAME=System
+ADMIN_LAST_NAME=Admin
+ADMIN_EMAIL=admin@medsphere.local
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=Admin123!
+ADMIN_PHONE_NUMBER=
 ```
 
----
-
-## Key Concepts
-
-### CQRS
-
-- Commands → modify state
-- Queries → read data
-- Handlers execute business logic via services
-
-### Services
-
-Contain business logic and validation.
-
-### Repositories
-
-Abstract database access using Prisma.
-
-### Prisma
-
-Handles database schema, migrations, and queries.
-
----
-
-## Getting Started
-
-### 1. Install dependencies
-
+## Commands
+### 1) Install dependencies
 ```bash
 npm install
 ```
 
----
-
-### 2. Setup environment variables
-
-Create a `.env` file:
-
-```env
-PORT=4000
-NODE_ENV=development
-
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/app?schema=public"
-
-JWT_ACCESS_SECRET=your_access_secret
-JWT_REFRESH_SECRET=your_refresh_secret
-```
-
----
-
-### 3. Setup database
-
+### 2) Generate Prisma client
 ```bash
-npx prisma migrate dev --name init
-npx prisma generate
+npm run prisma:generate
 ```
 
----
+### 3) Run migrations
+```bash
+npm run prisma:migrate -- --name init
+```
 
-### 4. Run the project
+### 4) Seed default admin and base roles
+```bash
+npm run prisma:seed
+```
 
+### 5) Run development server
 ```bash
 npm run dev
 ```
 
-Server will start on:
-
-```
-http://localhost:4000
-```
-
----
-
-## Testing
-
-Run tests:
-
+### 6) Build
 ```bash
-npm run test
+npm run build
 ```
 
-Watch mode:
-
+### 7) Run tests
 ```bash
-npm run test:watch
+npm test
 ```
 
----
+## NPM Scripts
+- `npm run dev` start dev server with nodemon
+- `npm run build` compile TypeScript to `dist`
+- `npm start` run compiled build
+- `npm test` run jest tests
+- `npm run test:watch` run tests in watch mode
+- `npm run prisma:generate` generate Prisma client
+- `npm run prisma:migrate` run Prisma migrations
+- `npm run prisma:seed` seed admin and roles
+- `npm run prisma:studio` open Prisma Studio
 
-## Available Scripts
+## Default Admin Login
+After `npm run prisma:seed`, login with values from env:
+- Email: `admin@medsphere.local`
+- Username: `admin`
+- Password: `Admin123!`
 
-| Script                    | Description             |
-| ------------------------- | ----------------------- |
-| `npm run dev`             | Run in development mode |
-| `npm run build`           | Compile TypeScript      |
-| `npm start`               | Run compiled app        |
-| `npm run test`            | Run tests               |
-| `npm run prisma:migrate`  | Run database migrations |
-| `npm run prisma:generate` | Generate Prisma client  |
+If you changed env values, use your updated credentials.
 
----
+## API Base URL
+- Local: `http://localhost:3005`
 
-## Example Module (Departments)
+## Endpoints
+### Health
+- `GET /health`
 
-Each module follows:
+### Auth
+- `POST /auth/register`
+- `POST /auth/login`
+- `POST /auth/refresh`
+- `POST /auth/logout`
+- `GET /auth/me` (Bearer token)
 
-- `domain` → interfaces & entities
-- `repository` → database abstraction
-- `service` → business logic
-- `handlers` → CQRS layer
-- `controller` → HTTP layer
+### Users (Admin)
+- `GET /auth/users`
+- `GET /auth/users/:id`
+- `POST /auth/users`
+- `PATCH /auth/users/:id`
+- `DELETE /auth/users/:id`
+- `PATCH /auth/users/:id/status`
 
----
+### Roles (Admin)
+- `GET /auth/roles`
+- `POST /auth/roles`
+- `PATCH /auth/roles/:roleId`
+- `DELETE /auth/roles/:roleId`
 
-## Authentication (Planned)
+### User Role Assignment (Admin)
+- `GET /auth/users/:userId/roles`
+- `POST /auth/users/:userId/roles`
+- `PUT /auth/users/:userId/roles`
+- `DELETE /auth/users/:userId/roles/:roleId`
 
-This template is designed to support:
+### Refresh Token Management (Admin)
+- `GET /auth/users/:userId/refresh-tokens`
+- `DELETE /auth/users/:userId/refresh-tokens`
 
-- JWT authentication
-- Refresh token rotation
-- Role-based access control (RBAC)
-- Permission guards
+### Departments
+- `POST /departments`
+- `GET /departments/:id`
 
----
+## Login Payload Example
+Use either username or email:
 
-## Extending the Template
+```json
+{
+  "identifier": "admin",
+  "password": "Admin123!"
+}
+```
 
-To add a new module:
+or
 
-1. Create a folder in `modules/`
-2. Add:
-
-   - commands
-   - queries
-   - handlers
-   - service
-   - repository
-   - controller
-3. Register routes in `app.ts`
-
----
-
-## Tech Stack
-
-- Express
-- TypeScript
-- Prisma
-- PostgreSQL
-- Jest
-- Zod
-
----
+```json
+{
+  "email": "admin@medsphere.local",
+  "password": "Admin123!"
+}
+```
 
 ## Notes
-
-- Prisma is used as a **schema-first ORM**
-- Business logic remains **code-first in services**
-- Designed to scale into microservices if needed
-
----
-
-## Author
-
-Template created for scalable backend development and academic projects.
+- If Prisma reports migration drift on your local DB, use a clean local DB or reset dev schema before re-running migrations.
+- Seed enforces one active admin role owner.

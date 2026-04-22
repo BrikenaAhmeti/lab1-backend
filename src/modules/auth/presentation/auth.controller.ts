@@ -8,13 +8,17 @@ const registerSchema = z.object({
     firstName: z.string().min(2).max(100),
     lastName: z.string().min(2).max(100),
     email: z.string().email(),
+    username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9._-]+$/).optional(),
     password: z.string().min(6).max(255),
     phoneNumber: z.string().max(30).optional(),
 });
 
 const loginSchema = z.object({
-    email: z.string().email(),
+    identifier: z.string().min(1).max(100).optional(),
+    email: z.string().email().optional(),
     password: z.string().min(1).max(255),
+}).refine((data) => Boolean(data.identifier || data.email), {
+    message: 'identifier or email is required',
 });
 
 const refreshSchema = z.object({
@@ -25,6 +29,7 @@ const createUserSchema = z.object({
     firstName: z.string().min(2).max(100),
     lastName: z.string().min(2).max(100),
     email: z.string().email(),
+    username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9._-]+$/).optional(),
     password: z.string().min(6).max(255),
     phoneNumber: z.string().max(30).optional(),
     emailConfirmed: z.boolean().optional(),
@@ -37,6 +42,7 @@ const updateUserSchema = z.object({
     firstName: z.string().min(2).max(100).optional(),
     lastName: z.string().min(2).max(100).optional(),
     email: z.string().email().optional(),
+    username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9._-]+$/).optional(),
     password: z.string().min(6).max(255).optional(),
     phoneNumber: z.string().max(30).nullable().optional(),
     emailConfirmed: z.boolean().optional(),
@@ -99,7 +105,10 @@ export class AuthController {
 
     async login(req: Request, res: Response) {
         const body = loginSchema.parse(req.body);
-        const result = await this.service.login(body);
+        const result = await this.service.login({
+            identifier: body.identifier ?? body.email ?? '',
+            password: body.password,
+        });
 
         return res.status(200).json(result);
     }

@@ -20,6 +20,8 @@ export interface CreateUserData {
     lastName: string;
     email: string;
     normalizedEmail: string;
+    username: string;
+    normalizedUsername: string;
     passwordHash: string;
     phoneNumber?: string;
     emailConfirmed?: boolean;
@@ -33,6 +35,8 @@ export interface UpdateUserData {
     lastName?: string;
     email?: string;
     normalizedEmail?: string;
+    username?: string;
+    normalizedUsername?: string;
     passwordHash?: string;
     phoneNumber?: string | null;
     emailConfirmed?: boolean;
@@ -81,6 +85,7 @@ export interface AuthRepository {
     findUserById(id: string): Promise<UserWithRoles | null>;
     findUserByEmail(email: string): Promise<UserWithRoles | null>;
     findUserByNormalizedEmail(normalizedEmail: string): Promise<UserWithRoles | null>;
+    findUserByNormalizedUsername(normalizedUsername: string): Promise<UserWithRoles | null>;
     listUsers(): Promise<UserWithRoles[]>;
     setUserStatus(id: string, isActive: boolean): Promise<User>;
     incrementAccessFailedCount(id: string): Promise<User>;
