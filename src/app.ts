@@ -7,6 +7,7 @@ import { notFoundHandler } from './shared/middleware/not-found';
 import { departmentRoutes } from './modules/departments/presentation/department.routes';
 import { authRoutes } from './modules/auth/presentation/auth.routes';
 import { patientRoutes } from './modules/patients/patients.router';
+import { doctorRoutes } from './modules/doctors/presentation/doctor.routes';
 
 export function createApp() {
     const app = express();
@@ -24,6 +25,7 @@ export function createApp() {
     app.use('/departments', departmentRoutes);
     app.use('/auth', authRoutes);
     app.use('/api/patients', patientRoutes);
+    app.use('/api/doctors', doctorRoutes);
 
     app.use(notFoundHandler);
     app.use(errorHandler);
