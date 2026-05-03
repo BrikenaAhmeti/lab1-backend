@@ -11,6 +11,7 @@ export class CreateDepartmentHandler
         return this.departmentService.createDepartment({
             name: command.name,
             description: command.description,
+            location: command.location,
         });
     }
 }

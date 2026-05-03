@@ -20,6 +20,7 @@ export function createApp() {
         res.json({ status: 'ok' });
     });
 
+    app.use('/api/departments', departmentRoutes);
     app.use('/departments', departmentRoutes);
     app.use('/auth', authRoutes);
     app.use('/api/patients', patientRoutes);
