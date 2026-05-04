@@ -30,3 +30,13 @@ export interface DepartmentRoomEntity {
     createdAt: Date;
     updatedAt: Date;
 }
+
+export interface DepartmentNurseEntity {
+    id: string;
+    firstName: string;
+    lastName: string;
+    departmentId: string;
+    shift: string;
+    createdAt: Date;
+    updatedAt: Date;
+}

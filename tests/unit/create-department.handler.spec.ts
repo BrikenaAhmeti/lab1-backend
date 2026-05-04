@@ -5,17 +5,20 @@ import { CreateDepartmentHandler } from '../../src/modules/departments/applicati
 import { DeleteDepartmentHandler } from '../../src/modules/departments/application/handlers/delete-department.handler';
 import { GetDepartmentByIdHandler } from '../../src/modules/departments/application/handlers/get-department-by-id.handler';
 import { GetDepartmentDoctorsHandler } from '../../src/modules/departments/application/handlers/get-department-doctors.handler';
+import { GetDepartmentNursesHandler } from '../../src/modules/departments/application/handlers/get-department-nurses.handler';
 import { GetDepartmentRoomsHandler } from '../../src/modules/departments/application/handlers/get-department-rooms.handler';
 import { GetDepartmentsHandler } from '../../src/modules/departments/application/handlers/get-departments.handler';
 import { UpdateDepartmentHandler } from '../../src/modules/departments/application/handlers/update-department.handler';
 import {
     DepartmentDoctorEntity,
     DepartmentEntity,
+    DepartmentNurseEntity,
     DepartmentRoomEntity,
 } from '../../src/modules/departments/domain/department.entity';
 import { DepartmentRepository } from '../../src/modules/departments/domain/department.repository';
 import { GetDepartmentByIdQuery } from '../../src/modules/departments/application/queries/get-department-by-id.query';
 import { GetDepartmentDoctorsQuery } from '../../src/modules/departments/application/queries/get-department-doctors.query';
+import { GetDepartmentNursesQuery } from '../../src/modules/departments/application/queries/get-department-nurses.query';
 import { GetDepartmentRoomsQuery } from '../../src/modules/departments/application/queries/get-department-rooms.query';
 import { GetDepartmentsQuery } from '../../src/modules/departments/application/queries/get-departments.query';
 import { DepartmentService } from '../../src/modules/departments/services/department.service';
@@ -66,6 +69,20 @@ function createRoom(
     };
 }
 
+function createNurse(
+    overrides: Partial<DepartmentNurseEntity> = {},
+): DepartmentNurseEntity {
+    return {
+        id: overrides.id ?? 'nurse-1',
+        firstName: overrides.firstName ?? 'Sara',
+        lastName: overrides.lastName ?? 'Krasniqi',
+        departmentId: overrides.departmentId ?? 'department-1',
+        shift: overrides.shift ?? 'Morning',
+        createdAt: overrides.createdAt ?? new Date('2026-01-01T10:00:00.000Z'),
+        updatedAt: overrides.updatedAt ?? new Date('2026-01-01T10:00:00.000Z'),
+    };
+}
+
 describe('Department handlers', () => {
     const repository: jest.Mocked<DepartmentRepository> = {
         create: jest.fn(),
@@ -76,6 +93,7 @@ describe('Department handlers', () => {
         delete: jest.fn(),
         findDoctorsByDepartmentId: jest.fn(),
         findRoomsByDepartmentId: jest.fn(),
+        findNursesByDepartmentId: jest.fn(),
         countUsage: jest.fn(),
     };
 
@@ -255,5 +273,24 @@ describe('Department handlers', () => {
             'department-1',
         );
         expect(result).toEqual(rooms);
+    });
+
+    it('should return nurses for a department', async () => {
+        const department = createDepartment();
+        const nurses = [createNurse()];
+
+        repository.findById.mockResolvedValue(department);
+        repository.findNursesByDepartmentId.mockResolvedValue(nurses);
+
+        const service = new DepartmentService(repository);
+        const handler = new GetDepartmentNursesHandler(service);
+        const result = await handler.execute(
+            new GetDepartmentNursesQuery('department-1'),
+        );
+
+        expect(repository.findNursesByDepartmentId).toHaveBeenCalledWith(
+            'department-1',
+        );
+        expect(result).toEqual(nurses);
     });
 });

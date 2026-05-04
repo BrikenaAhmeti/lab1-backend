@@ -75,6 +75,18 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
         return [...items].sort((a, b) => a.roomNumber.localeCompare(b.roomNumber));
     }
 
+    function sortNurses(items: MockNurse[]) {
+        return [...items].sort((a, b) => {
+            const lastNameResult = a.lastName.localeCompare(b.lastName);
+
+            if (lastNameResult !== 0) {
+                return lastNameResult;
+            }
+
+            return a.firstName.localeCompare(b.firstName);
+        });
+    }
+
     return {
         prisma: {
             department: {
@@ -205,6 +217,17 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                 }),
             },
             nurse: {
+                findMany: jest.fn(async ({
+                    where,
+                }: {
+                    where: { departmentId: string };
+                }) => {
+                    const nurses = nurseStore.filter(
+                        (item) => item.departmentId === where.departmentId,
+                    );
+
+                    return sortNurses(nurses);
+                }),
                 count: jest.fn(async ({
                     where,
                 }: {
@@ -259,6 +282,21 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
 
             roomCount += 1;
         },
+        __seedNurse: (departmentId: string) => {
+            const now = new Date();
+
+            nurseStore.push({
+                id: `nurse-${nurseCount}`,
+                firstName: 'Sara',
+                lastName: 'Krasniqi',
+                departmentId,
+                shift: 'Morning',
+                createdAt: now,
+                updatedAt: now,
+            });
+
+            nurseCount += 1;
+        },
         __clearDepartmentUsage: (departmentId: string) => {
             for (let index = doctorStore.length - 1; index >= 0; index -= 1) {
                 if (doctorStore[index].departmentId === departmentId) {
@@ -287,6 +325,7 @@ const prismaMock = jest.requireMock('../../src/infrastructure/db/prisma') as {
     __resetDepartments: () => void;
     __seedDoctor: (departmentId: string) => void;
     __seedRoom: (departmentId: string) => void;
+    __seedNurse: (departmentId: string) => void;
     __clearDepartmentUsage: (departmentId: string) => void;
 };
 
@@ -379,6 +418,7 @@ describe('Department routes', () => {
 
         prismaMock.__seedDoctor(departmentId);
         prismaMock.__seedRoom(departmentId);
+        prismaMock.__seedNurse(departmentId);
 
         const doctorsResponse = await request(app)
             .get(`/api/departments/${departmentId}/doctors`)
@@ -395,6 +435,14 @@ describe('Department routes', () => {
         expect(roomsResponse.status).toBe(200);
         expect(roomsResponse.body).toHaveLength(1);
         expect(roomsResponse.body[0].departmentId).toBe(departmentId);
+
+        const nursesResponse = await request(app)
+            .get(`/api/departments/${departmentId}/nurses`)
+            .set('Authorization', `Bearer ${token}`);
+
+        expect(nursesResponse.status).toBe(200);
+        expect(nursesResponse.body).toHaveLength(1);
+        expect(nursesResponse.body[0].departmentId).toBe(departmentId);
 
         const deleteBlockedResponse = await request(app)
             .delete(`/api/departments/${departmentId}`)

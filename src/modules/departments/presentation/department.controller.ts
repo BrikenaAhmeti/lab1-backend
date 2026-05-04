@@ -22,6 +22,8 @@ import { GetDepartmentDoctorsHandler } from '../application/handlers/get-departm
 import { GetDepartmentDoctorsQuery } from '../application/queries/get-department-doctors.query';
 import { GetDepartmentRoomsHandler } from '../application/handlers/get-department-rooms.handler';
 import { GetDepartmentRoomsQuery } from '../application/queries/get-department-rooms.query';
+import { GetDepartmentNursesHandler } from '../application/handlers/get-department-nurses.handler';
+import { GetDepartmentNursesQuery } from '../application/queries/get-department-nurses.query';
 
 export class DepartmentController {
     private readonly commandBus = new CommandBus();
@@ -98,6 +100,16 @@ export class DepartmentController {
         const id = validateDepartmentId(req.params.id);
         const handler = new GetDepartmentRoomsHandler(this.service);
         const query = new GetDepartmentRoomsQuery(id);
+
+        const result = await this.queryBus.execute(handler, query);
+
+        return res.status(200).json(result);
+    }
+
+    async getNurses(req: Request, res: Response) {
+        const id = validateDepartmentId(req.params.id);
+        const handler = new GetDepartmentNursesHandler(this.service);
+        const query = new GetDepartmentNursesQuery(id);
 
         const result = await this.queryBus.execute(handler, query);
 

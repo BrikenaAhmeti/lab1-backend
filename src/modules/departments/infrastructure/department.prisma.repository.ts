@@ -8,6 +8,7 @@ import {
 import {
     DepartmentDoctorEntity,
     DepartmentEntity,
+    DepartmentNurseEntity,
     DepartmentRoomEntity,
 } from '../domain/department.entity';
 
@@ -90,6 +91,24 @@ export class DepartmentPrismaRepository implements DepartmentRepository {
             orderBy: {
                 roomNumber: 'asc',
             },
+        });
+    }
+
+    async findNursesByDepartmentId(
+        departmentId: string,
+    ): Promise<DepartmentNurseEntity[]> {
+        return prisma.nurse.findMany({
+            where: {
+                departmentId,
+            },
+            orderBy: [
+                {
+                    lastName: 'asc',
+                },
+                {
+                    firstName: 'asc',
+                },
+            ],
         });
     }
 

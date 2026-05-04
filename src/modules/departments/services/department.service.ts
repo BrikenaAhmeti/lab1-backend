@@ -2,6 +2,7 @@ import { AppError } from '../../../shared/core/errors/app-error';
 import {
     DepartmentDoctorEntity,
     DepartmentEntity,
+    DepartmentNurseEntity,
     DepartmentRoomEntity,
 } from '../domain/department.entity';
 import { DepartmentRepository } from '../domain/department.repository';
@@ -87,6 +88,12 @@ export class DepartmentService {
         await this.ensureDepartmentExists(id);
 
         return this.departmentRepository.findRoomsByDepartmentId(id);
+    }
+
+    async getDepartmentNurses(id: string): Promise<DepartmentNurseEntity[]> {
+        await this.ensureDepartmentExists(id);
+
+        return this.departmentRepository.findNursesByDepartmentId(id);
     }
 
     private async ensureDepartmentExists(id: string): Promise<DepartmentEntity> {

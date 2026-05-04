@@ -1,6 +1,7 @@
 import {
     DepartmentDoctorEntity,
     DepartmentEntity,
+    DepartmentNurseEntity,
     DepartmentRoomEntity,
 } from './department.entity';
 
@@ -35,5 +36,8 @@ export interface DepartmentRepository {
     findRoomsByDepartmentId(
         departmentId: string,
     ): Promise<DepartmentRoomEntity[]>;
+    findNursesByDepartmentId(
+        departmentId: string,
+    ): Promise<DepartmentNurseEntity[]>;
     countUsage(departmentId: string): Promise<DepartmentUsage>;
 }
