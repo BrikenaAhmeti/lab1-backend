@@ -112,6 +112,7 @@ model Doctor {
   user           User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
   department     Department @relation(fields: [departmentId], references: [id])
   appointments   Appointment[]
+  medicalRecords MedicalRecord[]
 
   @@index([departmentId])
   @@index([lastName, firstName])
@@ -157,7 +158,8 @@ model Patient {
   isDeleted   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  appointments Appointment[]
+  appointments  Appointment[]
+  medicalRecords MedicalRecord[]
 
   @@index([lastName, firstName])
   @@index([isDeleted])
@@ -181,4 +183,37 @@ model Appointment {
   @@index([appointmentDate])
   @@index([status])
   @@index([doctorId, appointmentDate, appointmentTime])
+}
+
+model MedicalRecord {
+  id                String         @id @default(uuid())
+  patientId         String
+  doctorId          String
+  diagnosis         String
+  treatment         String
+  prescriptionsText String?
+  recordDate        DateTime
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  patient           Patient        @relation(fields: [patientId], references: [id])
+  doctor            Doctor         @relation(fields: [doctorId], references: [id])
+  prescriptions     Prescription[]
+
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([recordDate])
+}
+
+model Prescription {
+  id              String        @id @default(uuid())
+  medicalRecordId String
+  medicine        String
+  dosage          String
+  duration        String
+  instructions    String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
+
+  @@index([medicalRecordId])
 }
