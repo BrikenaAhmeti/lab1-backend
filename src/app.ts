@@ -11,6 +11,7 @@ import { doctorRoutes } from './modules/doctors/presentation/doctor.routes';
 import { nurseRoutes } from './modules/nurses/presentation/nurse.routes';
 import { appointmentRoutes } from './modules/appointments/presentation/appointment.routes';
 import { medicalRecordRoutes } from './modules/medical-records/presentation/medical-record.routes';
+import { prescriptionRoutes } from './modules/prescriptions/presentation/prescription.routes';
 
 export function createApp() {
     const app = express();
@@ -32,6 +33,7 @@ export function createApp() {
     app.use('/api/nurses', nurseRoutes);
     app.use('/api/appointments', appointmentRoutes);
     app.use('/api/medical-records', medicalRecordRoutes);
+    app.use('/api/prescriptions', prescriptionRoutes);
 
     app.use(notFoundHandler);
     app.use(errorHandler);

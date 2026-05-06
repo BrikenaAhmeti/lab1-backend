@@ -1,0 +1,5 @@
+import { Query } from '../../../../shared/core/buses/query-bus';
+
+export class GetPrescriptionByIdQuery implements Query {
+    constructor(public readonly id: string) { }
+}
