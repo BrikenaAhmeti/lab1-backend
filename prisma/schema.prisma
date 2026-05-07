@@ -162,6 +162,7 @@ model Patient {
   appointments  Appointment[]
   medicalRecords MedicalRecord[]
   admissions     Admission[]
+  invoices       Invoice[]
 
   @@index([lastName, firstName])
   @@index([isDeleted])
@@ -235,6 +236,28 @@ model Admission {
   @@index([patientId])
   @@index([roomId])
   @@index([status])
+}
+
+model Invoice {
+  id          String        @id @default(uuid())
+  patientId   String
+  amount      Decimal       @db.Decimal(10, 2)
+  invoiceDate DateTime
+  status      InvoiceStatus @default(PENDING)
+  description String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  patient     Patient       @relation(fields: [patientId], references: [id])
+
+  @@index([patientId])
+  @@index([status])
+  @@index([invoiceDate])
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  CANCELLED
 }
 
 enum RoomType {

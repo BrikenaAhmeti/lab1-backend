@@ -14,6 +14,7 @@ import { medicalRecordRoutes } from './modules/medical-records/presentation/medi
 import { prescriptionRoutes } from './modules/prescriptions/presentation/prescription.routes';
 import { roomRoutes } from './modules/rooms/presentation/room.routes';
 import { admissionRoutes } from './modules/admissions/presentation/admission.routes';
+import { invoiceRoutes } from './modules/invoices/presentation/invoice.routes';
 
 export function createApp() {
     const app = express();
@@ -38,6 +39,7 @@ export function createApp() {
     app.use('/api/prescriptions', prescriptionRoutes);
     app.use('/api/rooms', roomRoutes);
     app.use('/api/admissions', admissionRoutes);
+    app.use('/api/invoices', invoiceRoutes);
 
     app.use(notFoundHandler);
     app.use(errorHandler);
