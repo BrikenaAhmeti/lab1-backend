@@ -24,6 +24,12 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
         updatedAt: Date;
     }
 
+    interface MockPatient {
+        id: string;
+        firstName: string;
+        lastName: string;
+    }
+
     interface MockAdmission {
         id: string;
         patientId: string;
@@ -38,9 +44,11 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
     const departmentStore: MockDepartment[] = [];
     const roomStore: MockRoom[] = [];
     const admissionStore: MockAdmission[] = [];
+    const patientStore: MockPatient[] = [];
     let departmentCount = 1;
     let roomCount = 1;
     let admissionCount = 1;
+    let patientCount = 1;
 
     function sortRooms(items: MockRoom[]) {
         return [...items].sort((left, right) => {
@@ -63,6 +71,25 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                 id: department.id,
                 name: department.name,
                 location: department.location,
+            },
+        };
+    }
+
+    function buildAdmissionEntity(admission: MockAdmission) {
+        const patient = patientStore.find(
+            (item) => item.id === admission.patientId,
+        );
+
+        if (!patient) {
+            throw new Error('Patient not found');
+        }
+
+        return {
+            ...admission,
+            patient: {
+                id: patient.id,
+                firstName: patient.firstName,
+                lastName: patient.lastName,
             },
         };
     }
@@ -205,15 +232,38 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                         })
                         .filter((item) => item._count._all > 0);
                 }),
+                findMany: jest.fn(async ({
+                    where,
+                }: {
+                    where: {
+                        roomId: string;
+                        status: string;
+                    };
+                }) => {
+                    return admissionStore
+                        .filter((item) => {
+                            return (
+                                item.roomId === where.roomId
+                                && item.status === where.status
+                            );
+                        })
+                        .sort((left, right) => {
+                            return right.admissionDate.getTime()
+                                - left.admissionDate.getTime();
+                        })
+                        .map(buildAdmissionEntity);
+                }),
             },
         },
         __resetRooms: () => {
             departmentStore.length = 0;
             roomStore.length = 0;
             admissionStore.length = 0;
+            patientStore.length = 0;
             departmentCount = 1;
             roomCount = 1;
             admissionCount = 1;
+            patientCount = 1;
         },
         __seedDepartment: (overrides?: Partial<MockDepartment>) => {
             const now = new Date();
@@ -256,17 +306,42 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
 
             return room.id;
         },
+        __seedPatient: (overrides?: Partial<MockPatient>) => {
+            const patient: MockPatient = {
+                id: overrides?.id ?? `patient-${patientCount}`,
+                firstName: overrides?.firstName ?? `Patient${patientCount}`,
+                lastName: overrides?.lastName ?? 'Test',
+            };
+
+            patientCount += 1;
+            patientStore.push(patient);
+
+            return patient.id;
+        },
         __seedAdmission: (data: {
+            patientId?: string;
             roomId: string;
             status?: string;
+            admissionDate?: Date;
         }) => {
             const now = new Date();
+            const patientId = data.patientId ?? `patient-${patientCount}`;
+
+            if (!patientStore.some((item) => item.id === patientId)) {
+                patientStore.push({
+                    id: patientId,
+                    firstName: `Patient${patientCount}`,
+                    lastName: 'Test',
+                });
+                patientCount += 1;
+            }
+
             const admission: MockAdmission = {
                 id: `admission-${admissionCount}`,
-                patientId: `patient-${admissionCount}`,
+                patientId,
                 roomId: data.roomId,
                 status: data.status ?? 'ACTIVE',
-                admissionDate: now,
+                admissionDate: data.admissionDate ?? now,
                 dischargeDate: null,
                 createdAt: now,
                 updatedAt: now,
@@ -291,6 +366,11 @@ const prismaMock = jest.requireMock('../../src/infrastructure/db/prisma') as {
         location?: string;
         isActive?: boolean;
     }) => string;
+    __seedPatient: (overrides?: {
+        id?: string;
+        firstName?: string;
+        lastName?: string;
+    }) => string;
     __seedRoom: (data: {
         roomNumber: string;
         departmentId: string;
@@ -299,8 +379,10 @@ const prismaMock = jest.requireMock('../../src/infrastructure/db/prisma') as {
         capacity?: number;
     }) => string;
     __seedAdmission: (data: {
+        patientId?: string;
         roomId: string;
         status?: string;
+        admissionDate?: Date;
     }) => string;
 };
 
@@ -364,7 +446,10 @@ describe('Room routes', () => {
             .set('Authorization', `Bearer ${adminToken}`);
 
         expect(getResponse.status).toBe(200);
-        expect(getResponse.body.id).toBe(roomId);
+        expect(getResponse.body).toMatchObject({
+            id: roomId,
+            currentAdmissions: [],
+        });
 
         const updateResponse = await request(app)
             .put(`/api/rooms/${roomId}`)
@@ -455,6 +540,48 @@ describe('Room routes', () => {
             status: 'OCCUPIED',
             activeAdmissionsCount: 1,
             availableCapacity: 0,
+        });
+    });
+
+    it('should return current admissions in the room detail response', async () => {
+        const departmentId = prismaMock.__seedDepartment({
+            name: 'General Ward',
+        });
+        const patientId = prismaMock.__seedPatient({
+            firstName: 'Lira',
+            lastName: 'Gashi',
+        });
+        const roomId = prismaMock.__seedRoom({
+            roomNumber: '401',
+            departmentId,
+            capacity: 2,
+        });
+
+        prismaMock.__seedAdmission({
+            patientId,
+            roomId,
+            admissionDate: new Date('2026-05-06T10:00:00.000Z'),
+        });
+
+        const response = await request(app)
+            .get(`/api/rooms/${roomId}`)
+            .set('Authorization', `Bearer ${adminToken}`);
+
+        expect(response.status).toBe(200);
+        expect(response.body).toMatchObject({
+            id: roomId,
+            activeAdmissionsCount: 1,
+            availableCapacity: 1,
+            currentAdmissions: [
+                {
+                    patientId,
+                    status: 'ACTIVE',
+                    patient: {
+                        firstName: 'Lira',
+                        lastName: 'Gashi',
+                    },
+                },
+            ],
         });
     });
 

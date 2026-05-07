@@ -5,14 +5,17 @@ import { UpdateRoomCommand } from '../../src/modules/rooms/application/commands/
 import { CreateRoomHandler } from '../../src/modules/rooms/application/handlers/create-room.handler';
 import { DeleteRoomHandler } from '../../src/modules/rooms/application/handlers/delete-room.handler';
 import { GetAvailableRoomsHandler } from '../../src/modules/rooms/application/handlers/get-available-rooms.handler';
+import { GetRoomByIdHandler } from '../../src/modules/rooms/application/handlers/get-room-by-id.handler';
 import { GetRoomsHandler } from '../../src/modules/rooms/application/handlers/get-rooms.handler';
 import { UpdateRoomHandler } from '../../src/modules/rooms/application/handlers/update-room.handler';
 import {
+    RoomCurrentAdmissionEntity,
     RoomDepartmentEntity,
     RoomStoredEntity,
 } from '../../src/modules/rooms/domain/room.entity';
 import { RoomRepository } from '../../src/modules/rooms/domain/room.repository';
 import { GetAvailableRoomsQuery } from '../../src/modules/rooms/application/queries/get-available-rooms.query';
+import { GetRoomByIdQuery } from '../../src/modules/rooms/application/queries/get-room-by-id.query';
 import { GetRoomsQuery } from '../../src/modules/rooms/application/queries/get-rooms.query';
 import { RoomService } from '../../src/modules/rooms/services/room.service';
 
@@ -42,6 +45,25 @@ function createRoom(
     };
 }
 
+function createCurrentAdmission(
+    overrides: Partial<RoomCurrentAdmissionEntity> = {},
+): RoomCurrentAdmissionEntity {
+    return {
+        id: overrides.id ?? 'admission-1',
+        patientId: overrides.patientId ?? 'patient-1',
+        roomId: overrides.roomId ?? 'room-1',
+        admissionDate:
+            overrides.admissionDate ?? new Date('2026-05-02T10:00:00.000Z'),
+        dischargeDate: overrides.dischargeDate ?? null,
+        status: overrides.status ?? 'ACTIVE',
+        patient: overrides.patient ?? {
+            id: 'patient-1',
+            firstName: 'Ana',
+            lastName: 'Berisha',
+        },
+    };
+}
+
 describe('Room handlers', () => {
     const repository: jest.Mocked<RoomRepository> = {
         create: jest.fn(),
@@ -49,6 +71,7 @@ describe('Room handlers', () => {
         findById: jest.fn(),
         findByRoomNumber: jest.fn(),
         findDepartmentById: jest.fn(),
+        findActiveAdmissionsByRoomId: jest.fn(),
         countActiveAdmissionsByRoomIds: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
@@ -180,6 +203,39 @@ describe('Room handlers', () => {
             status: 'AVAILABLE',
             activeAdmissionsCount: 1,
             availableCapacity: 1,
+        });
+    });
+
+    it('should return room details with current admissions', async () => {
+        repository.findById.mockResolvedValue(createRoom());
+        repository.countActiveAdmissionsByRoomIds.mockResolvedValue({
+            'room-1': 1,
+        });
+        repository.findActiveAdmissionsByRoomId.mockResolvedValue([
+            createCurrentAdmission(),
+        ]);
+
+        const service = new RoomService(repository);
+        const handler = new GetRoomByIdHandler(service);
+        const result = await handler.execute(new GetRoomByIdQuery('room-1'));
+
+        expect(repository.findActiveAdmissionsByRoomId).toHaveBeenCalledWith(
+            'room-1',
+        );
+        expect(result).toMatchObject({
+            id: 'room-1',
+            activeAdmissionsCount: 1,
+            availableCapacity: 1,
+            currentAdmissions: [
+                {
+                    id: 'admission-1',
+                    patientId: 'patient-1',
+                    patient: {
+                        firstName: 'Ana',
+                        lastName: 'Berisha',
+                    },
+                },
+            ],
         });
     });
 

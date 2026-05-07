@@ -6,6 +6,8 @@ import {
     UpdateRoomData,
 } from '../domain/room.repository';
 import {
+    RoomAdmissionPatientEntity,
+    RoomCurrentAdmissionEntity,
     RoomDepartmentEntity,
     RoomStatus,
     RoomStoredEntity,
@@ -28,6 +30,21 @@ type GroupedAdmissionCount = {
         _all: number;
     };
 };
+
+function toRoomCurrentAdmissionEntity(admission: {
+    id: string;
+    patientId: string;
+    roomId: string;
+    admissionDate: Date;
+    dischargeDate: Date | null;
+    status: string;
+    patient: RoomAdmissionPatientEntity;
+}): RoomCurrentAdmissionEntity {
+    return {
+        ...admission,
+        status: admission.status as RoomCurrentAdmissionEntity['status'],
+    };
+}
 
 function toRoomStoredEntity(room: {
     id: string;
@@ -105,6 +122,31 @@ export class RoomPrismaRepository implements RoomRepository {
                 location: true,
             },
         });
+    }
+
+    async findActiveAdmissionsByRoomId(
+        roomId: string,
+    ): Promise<RoomCurrentAdmissionEntity[]> {
+        const admissions = await prisma.admission.findMany({
+            where: {
+                roomId,
+                status: 'ACTIVE',
+            },
+            include: {
+                patient: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                    },
+                },
+            },
+            orderBy: {
+                admissionDate: 'desc',
+            },
+        });
+
+        return admissions.map(toRoomCurrentAdmissionEntity);
     }
 
     async countActiveAdmissionsByRoomIds(

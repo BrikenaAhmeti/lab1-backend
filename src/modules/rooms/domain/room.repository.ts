@@ -1,4 +1,5 @@
 import {
+    RoomCurrentAdmissionEntity,
     RoomDepartmentEntity,
     RoomStatus,
     RoomStoredEntity,
@@ -34,6 +35,9 @@ export interface RoomRepository {
     findDepartmentById(
         departmentId: string,
     ): Promise<RoomDepartmentEntity | null>;
+    findActiveAdmissionsByRoomId(
+        roomId: string,
+    ): Promise<RoomCurrentAdmissionEntity[]>;
     countActiveAdmissionsByRoomIds(
         roomIds: string[],
     ): Promise<Record<string, number>>;

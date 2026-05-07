@@ -1,13 +1,13 @@
 import { QueryHandler } from '../../../../shared/core/buses/query-bus';
-import { RoomEntity } from '../../domain/room.entity';
+import { RoomDetailEntity } from '../../domain/room.entity';
 import { RoomService } from '../../services/room.service';
 import { GetRoomByIdQuery } from '../queries/get-room-by-id.query';
 
 export class GetRoomByIdHandler
-    implements QueryHandler<GetRoomByIdQuery, RoomEntity> {
+    implements QueryHandler<GetRoomByIdQuery, RoomDetailEntity> {
     constructor(private readonly roomService: RoomService) { }
 
-    async execute(query: GetRoomByIdQuery): Promise<RoomEntity> {
+    async execute(query: GetRoomByIdQuery): Promise<RoomDetailEntity> {
         return this.roomService.getRoomById(query.id);
     }
 }

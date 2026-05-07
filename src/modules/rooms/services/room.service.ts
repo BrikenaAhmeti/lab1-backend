@@ -1,5 +1,10 @@
 import { AppError } from '../../../shared/core/errors/app-error';
-import { RoomEntity, RoomStatus, RoomStoredEntity } from '../domain/room.entity';
+import {
+    RoomDetailEntity,
+    RoomEntity,
+    RoomStatus,
+    RoomStoredEntity,
+} from '../domain/room.entity';
 import { RoomRepository, UpdateRoomData } from '../domain/room.repository';
 import {
     CreateRoomDto,
@@ -59,10 +64,17 @@ export class RoomService {
         });
     }
 
-    async getRoomById(id: string): Promise<RoomEntity> {
+    async getRoomById(id: string): Promise<RoomDetailEntity> {
         const room = await this.ensureRoomExists(id);
+        const [decoratedRoom, currentAdmissions] = await Promise.all([
+            this.decorateRoom(room),
+            this.roomRepository.findActiveAdmissionsByRoomId(id),
+        ]);
 
-        return this.decorateRoom(room);
+        return {
+            ...decoratedRoom,
+            currentAdmissions,
+        };
     }
 
     async updateRoom(id: string, data: UpdateRoomDto): Promise<RoomEntity> {
