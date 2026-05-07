@@ -216,6 +216,11 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                     ).length;
                 }),
             },
+            admission: {
+                groupBy: jest.fn(async () => {
+                    return [];
+                }),
+            },
             nurse: {
                 findMany: jest.fn(async ({
                     where,
@@ -273,7 +278,7 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                 id: `room-${roomCount}`,
                 roomNumber: `${100 + roomCount}`,
                 departmentId,
-                type: 'STANDARD',
+                type: 'GENERAL',
                 status: 'AVAILABLE',
                 capacity: 2,
                 createdAt: now,

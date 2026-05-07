@@ -12,6 +12,29 @@ import {
     DepartmentRoomEntity,
 } from '../domain/department.entity';
 
+function resolveRoomStatus(
+    status: string,
+    capacity: number,
+    activeAdmissionsCount: number,
+) {
+    if (status === 'UNDER_MAINTENANCE') {
+        return status;
+    }
+
+    if (Math.max(capacity - activeAdmissionsCount, 0) === 0) {
+        return 'OCCUPIED';
+    }
+
+    return 'AVAILABLE';
+}
+
+type GroupedAdmissionCount = {
+    roomId: string;
+    _count: {
+        _all: number;
+    };
+};
+
 export class DepartmentPrismaRepository implements DepartmentRepository {
     async create(data: CreateDepartmentData): Promise<DepartmentEntity> {
         return prisma.department.create({
@@ -84,7 +107,7 @@ export class DepartmentPrismaRepository implements DepartmentRepository {
     async findRoomsByDepartmentId(
         departmentId: string,
     ): Promise<DepartmentRoomEntity[]> {
-        return prisma.room.findMany({
+        const rooms = await prisma.room.findMany({
             where: {
                 departmentId,
             },
@@ -92,6 +115,41 @@ export class DepartmentPrismaRepository implements DepartmentRepository {
                 roomNumber: 'asc',
             },
         });
+
+        if (rooms.length === 0) {
+            return rooms;
+        }
+
+        const groupedAdmissions = await prisma.admission.groupBy({
+            by: ['roomId'],
+            where: {
+                roomId: {
+                    in: rooms.map((room) => room.id),
+                },
+                status: 'ACTIVE',
+            },
+            _count: {
+                _all: true,
+            },
+        });
+
+        const counts = groupedAdmissions.reduce<Record<string, number>>(
+            (result, item: GroupedAdmissionCount) => {
+                result[item.roomId] = item._count._all;
+
+                return result;
+            },
+            {},
+        );
+
+        return rooms.map((room) => ({
+            ...room,
+            status: resolveRoomStatus(
+                room.status,
+                room.capacity,
+                counts[room.id] ?? 0,
+            ),
+        }));
     }
 
     async findNursesByDepartmentId(

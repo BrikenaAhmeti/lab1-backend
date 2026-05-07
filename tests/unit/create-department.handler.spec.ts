@@ -61,7 +61,7 @@ function createRoom(
         id: overrides.id ?? 'room-1',
         roomNumber: overrides.roomNumber ?? '101',
         departmentId: overrides.departmentId ?? 'department-1',
-        type: overrides.type ?? 'STANDARD',
+        type: overrides.type ?? 'GENERAL',
         status: overrides.status ?? 'AVAILABLE',
         capacity: overrides.capacity ?? 2,
         createdAt: overrides.createdAt ?? new Date('2026-01-01T10:00:00.000Z'),
