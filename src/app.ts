@@ -15,6 +15,7 @@ import { prescriptionRoutes } from './modules/prescriptions/presentation/prescri
 import { roomRoutes } from './modules/rooms/presentation/room.routes';
 import { admissionRoutes } from './modules/admissions/presentation/admission.routes';
 import { invoiceRoutes } from './modules/invoices/presentation/invoice.routes';
+import { dashboardRoutes } from './modules/dashboard/presentation/dashboard.routes';
 
 export function createApp() {
     const app = express();
@@ -40,6 +41,7 @@ export function createApp() {
     app.use('/api/rooms', roomRoutes);
     app.use('/api/admissions', admissionRoutes);
     app.use('/api/invoices', invoiceRoutes);
+    app.use('/api/dashboard', dashboardRoutes);
 
     app.use(notFoundHandler);
     app.use(errorHandler);
