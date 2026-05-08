@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../../../shared/middleware/authenticate';
+import { asyncHandler } from '../../../shared/utils/async-handler';
 import { DepartmentController } from './department.controller';
 
 const controller = new DepartmentController();
@@ -8,11 +9,20 @@ export const departmentRoutes = Router();
 
 departmentRoutes.use(authenticate);
 
-departmentRoutes.get('/', (req, res) => controller.getAll(req, res));
-departmentRoutes.post('/', (req, res) => controller.create(req, res));
-departmentRoutes.get('/:id/doctors', (req, res) => controller.getDoctors(req, res));
-departmentRoutes.get('/:id/rooms', (req, res) => controller.getRooms(req, res));
-departmentRoutes.get('/:id/nurses', (req, res) => controller.getNurses(req, res));
-departmentRoutes.get('/:id', (req, res) => controller.getById(req, res));
-departmentRoutes.put('/:id', (req, res) => controller.update(req, res));
-departmentRoutes.delete('/:id', (req, res) => controller.delete(req, res));
+departmentRoutes.get('/', asyncHandler(controller.getAll.bind(controller)));
+departmentRoutes.post('/', asyncHandler(controller.create.bind(controller)));
+departmentRoutes.get(
+    '/:id/doctors',
+    asyncHandler(controller.getDoctors.bind(controller)),
+);
+departmentRoutes.get(
+    '/:id/rooms',
+    asyncHandler(controller.getRooms.bind(controller)),
+);
+departmentRoutes.get(
+    '/:id/nurses',
+    asyncHandler(controller.getNurses.bind(controller)),
+);
+departmentRoutes.get('/:id', asyncHandler(controller.getById.bind(controller)));
+departmentRoutes.put('/:id', asyncHandler(controller.update.bind(controller)));
+departmentRoutes.delete('/:id', asyncHandler(controller.delete.bind(controller)));

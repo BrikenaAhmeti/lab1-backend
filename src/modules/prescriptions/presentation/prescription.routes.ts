@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../../../shared/middleware/authenticate';
 import { authorizeRoles } from '../../../shared/middleware/authorize-roles';
+import { asyncHandler } from '../../../shared/utils/async-handler';
 import { PrescriptionController } from './prescription.controller';
 
 const controller = new PrescriptionController();
@@ -9,20 +10,23 @@ export const prescriptionRoutes = Router();
 
 prescriptionRoutes.use(authenticate);
 
-prescriptionRoutes.get('/', (req, res) => controller.getAll(req, res));
-prescriptionRoutes.get('/:id', (req, res) => controller.getById(req, res));
+prescriptionRoutes.get('/', asyncHandler(controller.getAll.bind(controller)));
+prescriptionRoutes.get(
+    '/:id',
+    asyncHandler(controller.getById.bind(controller)),
+);
 prescriptionRoutes.post(
     '/',
     authorizeRoles('DOCTOR', 'ADMIN'),
-    (req, res) => controller.create(req, res),
+    asyncHandler(controller.create.bind(controller)),
 );
 prescriptionRoutes.put(
     '/:id',
     authorizeRoles('DOCTOR', 'ADMIN'),
-    (req, res) => controller.update(req, res),
+    asyncHandler(controller.update.bind(controller)),
 );
 prescriptionRoutes.delete(
     '/:id',
     authorizeRoles('DOCTOR', 'ADMIN'),
-    (req, res) => controller.delete(req, res),
+    asyncHandler(controller.delete.bind(controller)),
 );

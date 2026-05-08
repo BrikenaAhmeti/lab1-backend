@@ -12,9 +12,9 @@ export interface CreateDepartmentData {
 }
 
 export interface UpdateDepartmentData {
-    name: string;
+    name?: string;
     description?: string | null;
-    location: string;
+    location?: string;
 }
 
 export interface DepartmentUsage {

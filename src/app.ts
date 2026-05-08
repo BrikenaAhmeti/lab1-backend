@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -16,13 +17,15 @@ import { roomRoutes } from './modules/rooms/presentation/room.routes';
 import { admissionRoutes } from './modules/admissions/presentation/admission.routes';
 import { invoiceRoutes } from './modules/invoices/presentation/invoice.routes';
 import { dashboardRoutes } from './modules/dashboard/presentation/dashboard.routes';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './docs/swagger.config';
 
 export function createApp() {
     const app = express();
 
     app.use(helmet());
     app.use(cors());
-    app.use(morgan('dev'));
+    app.use(morgan(envLogFormat()));
     app.use(express.json());
 
     app.get('/health', (_req, res) => {
@@ -32,6 +35,7 @@ export function createApp() {
     app.use('/api/departments', departmentRoutes);
     app.use('/departments', departmentRoutes);
     app.use('/auth', authRoutes);
+    app.use('/api/auth', authRoutes);
     app.use('/api/patients', patientRoutes);
     app.use('/api/doctors', doctorRoutes);
     app.use('/api/nurses', nurseRoutes);
@@ -42,9 +46,17 @@ export function createApp() {
     app.use('/api/admissions', admissionRoutes);
     app.use('/api/invoices', invoiceRoutes);
     app.use('/api/dashboard', dashboardRoutes);
+    app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+    app.get('/api/docs.json', (_req, res) => {
+        res.status(200).json(swaggerSpec);
+    });
 
     app.use(notFoundHandler);
     app.use(errorHandler);
 
     return app;
+}
+
+function envLogFormat() {
+    return process.env.NODE_ENV === 'production' ? 'combined' : 'dev';
 }

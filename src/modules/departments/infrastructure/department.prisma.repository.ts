@@ -73,9 +73,13 @@ export class DepartmentPrismaRepository implements DepartmentRepository {
         return prisma.department.update({
             where: { id },
             data: {
-                name: data.name,
-                description: data.description,
-                location: data.location,
+                ...(data.name !== undefined ? { name: data.name } : {}),
+                ...(data.description !== undefined
+                    ? { description: data.description }
+                    : {}),
+                ...(data.location !== undefined
+                    ? { location: data.location }
+                    : {}),
             },
         });
     }

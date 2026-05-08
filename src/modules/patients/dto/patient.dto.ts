@@ -1,9 +1,28 @@
 import { z } from 'zod';
+import {
+    IsDefined,
+    IsIn,
+    IsNotEmpty,
+    IsString,
+    Matches,
+    MaxLength,
+    MinLength,
+} from 'class-validator';
 import { AppError } from '../../../shared/core/errors/app-error';
 import {
     createPaginationQuerySchema,
     normalizeOptionalString,
 } from '../../../shared/core/pagination';
+import {
+    IsDateOnlyString,
+    NormalizeString,
+    NormalizeUppercaseString,
+    OptionalField,
+} from '../../../shared/validation/decorators';
+import {
+    assertAtLeastOneField,
+    validateDto,
+} from '../../../shared/validation/validate-dto';
 
 const phoneNumberRegex = /^\+?[0-9]{7,15}$/;
 const dateOfBirthRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -28,26 +47,153 @@ function getValidationMessage(error: z.ZodError) {
     return error.issues[0]?.message ?? 'Validation failed';
 }
 
-const createPatientSchema = z.object({
-    firstName: z.string().min(2).max(100),
-    lastName: z.string().min(2).max(100),
-    dateOfBirth: z.string().refine(isValidDateOfBirth, {
-        message: 'dateOfBirth must be in YYYY-MM-DD format',
-    }),
-    gender: z.enum(genderValues),
-    phoneNumber: z.string().regex(phoneNumberRegex, {
-        message: 'phoneNumber format is invalid',
-    }),
-    address: z.string().min(2).max(255),
-    bloodType: z.enum(bloodTypeValues),
-});
+export class CreatePatientDto {
+    @IsDefined({ message: 'First name is required' })
+    @IsString({ message: 'First name is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'First name is required' })
+    @MinLength(2, {
+        message: 'First name must be at least 2 characters',
+    })
+    @MaxLength(100, {
+        message: 'First name must not exceed 100 characters',
+    })
+    firstName!: string;
 
-const updatePatientSchema = createPatientSchema.partial().refine(
-    (value) => Object.values(value).some((item) => item !== undefined),
-    {
-        message: 'At least one field is required',
-    },
-);
+    @IsDefined({ message: 'Last name is required' })
+    @IsString({ message: 'Last name is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Last name is required' })
+    @MinLength(2, {
+        message: 'Last name must be at least 2 characters',
+    })
+    @MaxLength(100, {
+        message: 'Last name must not exceed 100 characters',
+    })
+    lastName!: string;
+
+    @IsDefined({ message: 'Date of birth is required' })
+    @IsString({ message: 'Date of birth is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Date of birth is required' })
+    @IsDateOnlyString({
+        message: 'dateOfBirth must be in YYYY-MM-DD format',
+    })
+    dateOfBirth!: string;
+
+    @IsDefined({ message: 'Gender is required' })
+    @IsString({ message: 'Gender is required' })
+    @NormalizeUppercaseString()
+    @IsNotEmpty({ message: 'Gender is required' })
+    @IsIn(genderValues, {
+        message: 'Gender must be MALE, FEMALE, or OTHER',
+    })
+    gender!: (typeof genderValues)[number];
+
+    @IsDefined({ message: 'Phone number is required' })
+    @IsString({ message: 'Phone number is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Phone number is required' })
+    @Matches(phoneNumberRegex, {
+        message: 'phoneNumber format is invalid',
+    })
+    phoneNumber!: string;
+
+    @IsDefined({ message: 'Address is required' })
+    @IsString({ message: 'Address is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Address is required' })
+    @MinLength(2, {
+        message: 'Address must be at least 2 characters',
+    })
+    @MaxLength(255, {
+        message: 'Address must not exceed 255 characters',
+    })
+    address!: string;
+
+    @IsDefined({ message: 'Blood type is required' })
+    @IsString({ message: 'Blood type is required' })
+    @NormalizeUppercaseString()
+    @IsNotEmpty({ message: 'Blood type is required' })
+    @IsIn(bloodTypeValues, {
+        message: 'Blood type must be one of A+, A-, B+, B-, AB+, AB-, O+, O-',
+    })
+    bloodType!: (typeof bloodTypeValues)[number];
+}
+
+export class UpdatePatientDto {
+    @OptionalField()
+    @IsString({ message: 'First name is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'First name is required' })
+    @MinLength(2, {
+        message: 'First name must be at least 2 characters',
+    })
+    @MaxLength(100, {
+        message: 'First name must not exceed 100 characters',
+    })
+    firstName?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Last name is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Last name is required' })
+    @MinLength(2, {
+        message: 'Last name must be at least 2 characters',
+    })
+    @MaxLength(100, {
+        message: 'Last name must not exceed 100 characters',
+    })
+    lastName?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Date of birth is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Date of birth is required' })
+    @IsDateOnlyString({
+        message: 'dateOfBirth must be in YYYY-MM-DD format',
+    })
+    dateOfBirth?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Gender is required' })
+    @NormalizeUppercaseString()
+    @IsNotEmpty({ message: 'Gender is required' })
+    @IsIn(genderValues, {
+        message: 'Gender must be MALE, FEMALE, or OTHER',
+    })
+    gender?: (typeof genderValues)[number];
+
+    @OptionalField()
+    @IsString({ message: 'Phone number is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Phone number is required' })
+    @Matches(phoneNumberRegex, {
+        message: 'phoneNumber format is invalid',
+    })
+    phoneNumber?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Address is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Address is required' })
+    @MinLength(2, {
+        message: 'Address must be at least 2 characters',
+    })
+    @MaxLength(255, {
+        message: 'Address must not exceed 255 characters',
+    })
+    address?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Blood type is required' })
+    @NormalizeUppercaseString()
+    @IsNotEmpty({ message: 'Blood type is required' })
+    @IsIn(bloodTypeValues, {
+        message: 'Blood type must be one of A+, A-, B+, B-, AB+, AB-, O+, O-',
+    })
+    bloodType?: (typeof bloodTypeValues)[number];
+}
 
 const getPatientsQuerySchema = createPaginationQuerySchema(
     patientSortByValues,
@@ -82,28 +228,29 @@ const getPatientsQuerySchema = createPaginationQuerySchema(
     ),
 });
 
-export type CreatePatientDto = z.infer<typeof createPatientSchema>;
-export type UpdatePatientDto = z.infer<typeof updatePatientSchema>;
 export type GetPatientsQueryDto = z.infer<typeof getPatientsQuerySchema>;
 
 export function validateCreatePatientDto(input: unknown): CreatePatientDto {
-    const result = createPatientSchema.safeParse(input);
-
-    if (!result.success) {
-        throw new AppError(getValidationMessage(result.error), 400);
-    }
-
-    return result.data;
+    return validateDto(CreatePatientDto, input);
 }
 
 export function validateUpdatePatientDto(input: unknown): UpdatePatientDto {
-    const result = updatePatientSchema.safeParse(input);
+    const dto = validateDto(UpdatePatientDto, input);
 
-    if (!result.success) {
-        throw new AppError(getValidationMessage(result.error), 400);
-    }
+    assertAtLeastOneField(
+        dto,
+        [
+            'firstName',
+            'lastName',
+            'dateOfBirth',
+            'gender',
+            'phoneNumber',
+            'address',
+            'bloodType',
+        ],
+    );
 
-    return result.data;
+    return dto;
 }
 
 export function validateGetPatientsQueryDto(

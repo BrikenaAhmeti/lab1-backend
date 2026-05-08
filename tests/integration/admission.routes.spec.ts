@@ -523,9 +523,9 @@ describe('Admission routes', () => {
             });
 
         expect(secondResponse.status).toBe(409);
-        expect(secondResponse.body).toEqual({
-            message: 'Patient is already admitted',
-        });
+        expect(secondResponse.body.message).toBe('Patient is already admitted');
+        expect(secondResponse.body.success).toBe(false);
+        expect(secondResponse.body.statusCode).toBe(409);
     });
 
     it('should reject admission when the room is full', async () => {
@@ -560,9 +560,9 @@ describe('Admission routes', () => {
             });
 
         expect(response.status).toBe(409);
-        expect(response.body).toEqual({
-            message: 'Room has no available capacity',
-        });
+        expect(response.body.message).toBe('Room has no available capacity');
+        expect(response.body.success).toBe(false);
+        expect(response.body.statusCode).toBe(409);
     });
 
     it('should reject admission creation for unauthorized roles', async () => {
@@ -584,8 +584,8 @@ describe('Admission routes', () => {
             });
 
         expect(response.status).toBe(403);
-        expect(response.body).toEqual({
-            message: 'Forbidden',
-        });
+        expect(response.body.message).toBe('Forbidden');
+        expect(response.body.success).toBe(false);
+        expect(response.body.statusCode).toBe(403);
     });
 });

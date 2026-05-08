@@ -1,9 +1,29 @@
 import { z } from 'zod';
+import {
+    IsDefined,
+    IsNotEmpty,
+    IsString,
+    IsPositive,
+    MaxLength,
+} from 'class-validator';
 import { AppError } from '../../../shared/core/errors/app-error';
 import {
     createPaginationQuerySchema,
     normalizeOptionalString,
 } from '../../../shared/core/pagination';
+import {
+    HasMaxTwoDecimalPlaces,
+    IsDateOnlyString,
+    NormalizeNullableString,
+    NormalizeNumber,
+    NormalizeString,
+    OptionalField,
+    OptionalNullableField,
+} from '../../../shared/validation/decorators';
+import {
+    assertAtLeastOneField,
+    validateDto,
+} from '../../../shared/validation/validate-dto';
 import { InvoiceStatus } from '../domain/invoice.entity';
 
 const invoiceDateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -119,30 +139,89 @@ const invoiceStatusSchema = z.preprocess(
         .transform((value) => value as InvoiceStatus),
 );
 
-const createInvoiceSchema = z.preprocess(
-    normalizeInvoiceInput,
-    z.object({
-        patientId: requiredString('Patient id', 255),
-        amount: amountSchema,
-        date: invoiceDateSchema,
-        description: descriptionSchema,
-    }),
-);
+export class CreateInvoiceDto {
+    static normalize(input: unknown) {
+        return normalizeInvoiceInput(input);
+    }
 
-const updateInvoiceSchema = z.preprocess(
-    normalizeInvoiceInput,
-    z.object({
-        patientId: requiredString('Patient id', 255).optional(),
-        amount: amountSchema.optional(),
-        date: invoiceDateSchema.optional(),
-        description: descriptionSchema,
-    }).refine(
-        (value) => Object.values(value).some((item) => item !== undefined),
-        {
-            message: 'At least one field is required',
-        },
-    ),
-);
+    @IsDefined({ message: 'Patient id is required' })
+    @IsString({ message: 'Patient id is required' })
+    @NormalizeString('patient_id')
+    @IsNotEmpty({ message: 'Patient id is required' })
+    @MaxLength(255, {
+        message: 'Patient id must not exceed 255 characters',
+    })
+    patientId!: string;
+
+    @IsDefined({ message: 'Amount is required' })
+    @NormalizeNumber('shuma')
+    @IsPositive({
+        message: 'Amount must be greater than 0',
+    })
+    @HasMaxTwoDecimalPlaces({
+        message: 'Amount can have up to 2 decimal places',
+    })
+    amount!: number;
+
+    @IsDefined({ message: 'Date is required' })
+    @IsString({ message: 'Date is required' })
+    @NormalizeString('data')
+    @IsNotEmpty({ message: 'Date is required' })
+    @IsDateOnlyString({
+        message: 'Date must be in YYYY-MM-DD format',
+    })
+    date!: string;
+
+    @OptionalNullableField()
+    @IsString({ message: 'Description must be a string' })
+    @NormalizeNullableString('pershkrimi')
+    @MaxLength(4000, {
+        message: 'Description must not exceed 4000 characters',
+    })
+    description?: string | null;
+}
+
+export class UpdateInvoiceDto {
+    static normalize(input: unknown) {
+        return normalizeInvoiceInput(input);
+    }
+
+    @OptionalField()
+    @IsString({ message: 'Patient id is required' })
+    @NormalizeString('patient_id')
+    @IsNotEmpty({ message: 'Patient id is required' })
+    @MaxLength(255, {
+        message: 'Patient id must not exceed 255 characters',
+    })
+    patientId?: string;
+
+    @OptionalField()
+    @NormalizeNumber('shuma')
+    @IsPositive({
+        message: 'Amount must be greater than 0',
+    })
+    @HasMaxTwoDecimalPlaces({
+        message: 'Amount can have up to 2 decimal places',
+    })
+    amount?: number;
+
+    @OptionalField()
+    @IsString({ message: 'Date is required' })
+    @NormalizeString('data')
+    @IsNotEmpty({ message: 'Date is required' })
+    @IsDateOnlyString({
+        message: 'Date must be in YYYY-MM-DD format',
+    })
+    date?: string;
+
+    @OptionalNullableField()
+    @IsString({ message: 'Description must be a string' })
+    @NormalizeNullableString('pershkrimi')
+    @MaxLength(4000, {
+        message: 'Description must not exceed 4000 characters',
+    })
+    description?: string | null;
+}
 
 const getInvoicesQuerySchema = z.preprocess(
     normalizeInvoiceQuery,
@@ -158,28 +237,18 @@ const getInvoicesQuerySchema = z.preprocess(
     }),
 );
 
-export type CreateInvoiceDto = z.infer<typeof createInvoiceSchema>;
-export type UpdateInvoiceDto = z.infer<typeof updateInvoiceSchema>;
 export type GetInvoicesQueryDto = z.infer<typeof getInvoicesQuerySchema>;
 
 export function validateCreateInvoiceDto(input: unknown): CreateInvoiceDto {
-    const result = createInvoiceSchema.safeParse(input);
-
-    if (!result.success) {
-        throw new AppError(getValidationMessage(result.error), 400);
-    }
-
-    return result.data;
+    return validateDto(CreateInvoiceDto, input);
 }
 
 export function validateUpdateInvoiceDto(input: unknown): UpdateInvoiceDto {
-    const result = updateInvoiceSchema.safeParse(input);
+    const dto = validateDto(UpdateInvoiceDto, input);
 
-    if (!result.success) {
-        throw new AppError(getValidationMessage(result.error), 400);
-    }
+    assertAtLeastOneField(dto, ['patientId', 'amount', 'date', 'description']);
 
-    return result.data;
+    return dto;
 }
 
 export function validateGetInvoicesQueryDto(input: unknown): GetInvoicesQueryDto {

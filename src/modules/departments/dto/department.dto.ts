@@ -1,6 +1,20 @@
 import { z } from 'zod';
+import {
+    IsDefined,
+    IsNotEmpty,
+    IsString,
+    MaxLength,
+} from 'class-validator';
 import { AppError } from '../../../shared/core/errors/app-error';
 import { createPaginationQuerySchema } from '../../../shared/core/pagination';
+import {
+    NormalizeString,
+    OptionalField,
+} from '../../../shared/validation/decorators';
+import {
+    assertAtLeastOneField,
+    validateDto,
+} from '../../../shared/validation/validate-dto';
 
 const departmentSortByValues = ['created_at', 'name', 'location'] as const;
 
@@ -8,45 +22,77 @@ function getValidationMessage(error: z.ZodError) {
     return error.issues[0]?.message ?? 'Validation failed';
 }
 
-const createDepartmentSchema = z.object({
-    name: z.preprocess(
-        (value) => (typeof value === 'string' ? value : ''),
-        z.string().trim().min(1, 'Name is required').max(100),
-    ),
-    location: z.preprocess(
-        (value) => (typeof value === 'string' ? value : ''),
-        z.string().trim().min(1, 'Location is required').max(255),
-    ),
-    description: z.string().max(255).optional(),
-});
+export class CreateDepartmentDto {
+    @IsDefined({ message: 'Name is required' })
+    @IsString({ message: 'Name is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Name is required' })
+    @MaxLength(100, {
+        message: 'Name must not exceed 100 characters',
+    })
+    name!: string;
 
-const updateDepartmentSchema = createDepartmentSchema;
+    @IsDefined({ message: 'Location is required' })
+    @IsString({ message: 'Location is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Location is required' })
+    @MaxLength(255, {
+        message: 'Location must not exceed 255 characters',
+    })
+    location!: string;
+
+    @OptionalField()
+    @IsString({ message: 'Description must be a string' })
+    @NormalizeString()
+    @MaxLength(255, {
+        message: 'Description must not exceed 255 characters',
+    })
+    description?: string;
+}
+
+export class UpdateDepartmentDto {
+    @OptionalField()
+    @IsString({ message: 'Name is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Name is required' })
+    @MaxLength(100, {
+        message: 'Name must not exceed 100 characters',
+    })
+    name?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Location is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Location is required' })
+    @MaxLength(255, {
+        message: 'Location must not exceed 255 characters',
+    })
+    location?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Description must be a string' })
+    @NormalizeString()
+    @MaxLength(255, {
+        message: 'Description must not exceed 255 characters',
+    })
+    description?: string;
+}
 const getDepartmentsQuerySchema = createPaginationQuerySchema(
     departmentSortByValues,
 );
 
-export type CreateDepartmentDto = z.infer<typeof createDepartmentSchema>;
-export type UpdateDepartmentDto = z.infer<typeof updateDepartmentSchema>;
 export type GetDepartmentsQueryDto = z.infer<typeof getDepartmentsQuerySchema>;
 
 export function validateCreateDepartmentDto(input: unknown): CreateDepartmentDto {
-    const result = createDepartmentSchema.safeParse(input);
-
-    if (!result.success) {
-        throw new AppError(getValidationMessage(result.error), 400);
-    }
-
-    return result.data;
+    return validateDto(CreateDepartmentDto, input);
 }
 
 export function validateUpdateDepartmentDto(input: unknown): UpdateDepartmentDto {
-    const result = updateDepartmentSchema.safeParse(input);
+    const dto = validateDto(UpdateDepartmentDto, input);
 
-    if (!result.success) {
-        throw new AppError(getValidationMessage(result.error), 400);
-    }
+    assertAtLeastOneField(dto, ['name', 'location', 'description']);
 
-    return result.data;
+    return dto;
 }
 
 export function validateGetDepartmentsQueryDto(

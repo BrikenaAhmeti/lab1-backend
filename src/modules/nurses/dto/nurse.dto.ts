@@ -1,9 +1,24 @@
 import { z } from 'zod';
+import {
+    IsDefined,
+    IsIn,
+    IsNotEmpty,
+    IsString,
+    MaxLength,
+} from 'class-validator';
 import { AppError } from '../../../shared/core/errors/app-error';
 import {
     createPaginationQuerySchema,
     normalizeOptionalString,
 } from '../../../shared/core/pagination';
+import {
+    NormalizeString,
+    OptionalField,
+} from '../../../shared/validation/decorators';
+import {
+    assertAtLeastOneField,
+    validateDto,
+} from '../../../shared/validation/validate-dto';
 
 const nurseShiftValues = ['Morning', 'Evening', 'Night'] as const;
 const nurseSortByValues = [
@@ -40,19 +55,81 @@ const nurseShiftSchema = z.preprocess(
         .transform((value) => value as (typeof nurseShiftValues)[number]),
 );
 
-const createNurseSchema = z.object({
-    firstName: requiredString('First name', 100),
-    lastName: requiredString('Last name', 100),
-    departmentId: requiredString('Department id', 255),
-    shift: nurseShiftSchema,
-});
+export class CreateNurseDto {
+    @IsDefined({ message: 'First name is required' })
+    @IsString({ message: 'First name is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'First name is required' })
+    @MaxLength(100, {
+        message: 'First name must not exceed 100 characters',
+    })
+    firstName!: string;
 
-const updateNurseSchema = createNurseSchema.partial().refine(
-    (value) => Object.values(value).some((item) => item !== undefined),
-    {
-        message: 'At least one field is required',
-    },
-);
+    @IsDefined({ message: 'Last name is required' })
+    @IsString({ message: 'Last name is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Last name is required' })
+    @MaxLength(100, {
+        message: 'Last name must not exceed 100 characters',
+    })
+    lastName!: string;
+
+    @IsDefined({ message: 'Department id is required' })
+    @IsString({ message: 'Department id is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Department id is required' })
+    @MaxLength(255, {
+        message: 'Department id must not exceed 255 characters',
+    })
+    departmentId!: string;
+
+    @IsDefined({ message: 'Shift is required' })
+    @IsString({ message: 'Shift is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Shift is required' })
+    @IsIn(nurseShiftValues, {
+        message: 'Shift must be Morning, Evening, or Night',
+    })
+    shift!: (typeof nurseShiftValues)[number];
+}
+
+export class UpdateNurseDto {
+    @OptionalField()
+    @IsString({ message: 'First name is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'First name is required' })
+    @MaxLength(100, {
+        message: 'First name must not exceed 100 characters',
+    })
+    firstName?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Last name is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Last name is required' })
+    @MaxLength(100, {
+        message: 'Last name must not exceed 100 characters',
+    })
+    lastName?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Department id is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Department id is required' })
+    @MaxLength(255, {
+        message: 'Department id must not exceed 255 characters',
+    })
+    departmentId?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Shift is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Shift is required' })
+    @IsIn(nurseShiftValues, {
+        message: 'Shift must be Morning, Evening, or Night',
+    })
+    shift?: (typeof nurseShiftValues)[number];
+}
 
 const getNursesQuerySchema = createPaginationQuerySchema(
     nurseSortByValues,
@@ -63,28 +140,21 @@ const getNursesQuerySchema = createPaginationQuerySchema(
     ),
 });
 
-export type CreateNurseDto = z.infer<typeof createNurseSchema>;
-export type UpdateNurseDto = z.infer<typeof updateNurseSchema>;
 export type GetNursesQueryDto = z.infer<typeof getNursesQuerySchema>;
 
 export function validateCreateNurseDto(input: unknown): CreateNurseDto {
-    const result = createNurseSchema.safeParse(input);
-
-    if (!result.success) {
-        throw new AppError(getValidationMessage(result.error), 400);
-    }
-
-    return result.data;
+    return validateDto(CreateNurseDto, input);
 }
 
 export function validateUpdateNurseDto(input: unknown): UpdateNurseDto {
-    const result = updateNurseSchema.safeParse(input);
+    const dto = validateDto(UpdateNurseDto, input);
 
-    if (!result.success) {
-        throw new AppError(getValidationMessage(result.error), 400);
-    }
+    assertAtLeastOneField(
+        dto,
+        ['firstName', 'lastName', 'departmentId', 'shift'],
+    );
 
-    return result.data;
+    return dto;
 }
 
 export function validateGetNursesQueryDto(input: unknown): GetNursesQueryDto {

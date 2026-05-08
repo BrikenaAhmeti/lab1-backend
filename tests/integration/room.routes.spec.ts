@@ -599,8 +599,8 @@ describe('Room routes', () => {
             });
 
         expect(response.status).toBe(403);
-        expect(response.body).toEqual({
-            message: 'Forbidden',
-        });
+        expect(response.body.message).toBe('Forbidden');
+        expect(response.body.success).toBe(false);
+        expect(response.body.statusCode).toBe(403);
     });
 });

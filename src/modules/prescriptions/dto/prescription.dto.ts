@@ -1,6 +1,22 @@
 import { z } from 'zod';
+import {
+    IsDefined,
+    IsNotEmpty,
+    IsString,
+    MaxLength,
+} from 'class-validator';
 import { AppError } from '../../../shared/core/errors/app-error';
 import { createPaginationQuerySchema } from '../../../shared/core/pagination';
+import {
+    NormalizeNullableString,
+    NormalizeString,
+    OptionalField,
+    OptionalNullableField,
+} from '../../../shared/validation/decorators';
+import {
+    assertAtLeastOneField,
+    validateDto,
+} from '../../../shared/validation/validate-dto';
 
 const prescriptionSortByValues = ['created_at', 'medicine'] as const;
 
@@ -59,32 +75,105 @@ const instructionsSchema = z.preprocess(
     z.union([z.string().trim().max(2000), z.null()]).optional(),
 );
 
-const createPrescriptionSchema = z.preprocess(
-    normalizePrescriptionInput,
-    z.object({
-        medicalRecordId: requiredString('Medical record id', 255),
-        medicine: requiredString('Medicine', 255),
-        dosage: requiredString('Dosage', 255),
-        duration: requiredString('Duration', 255),
-        instructions: instructionsSchema,
-    }),
-);
+export class CreatePrescriptionDto {
+    static normalize(input: unknown) {
+        return normalizePrescriptionInput(input);
+    }
 
-const updatePrescriptionSchema = z.preprocess(
-    normalizePrescriptionInput,
-    z.object({
-        medicalRecordId: requiredString('Medical record id', 255).optional(),
-        medicine: requiredString('Medicine', 255).optional(),
-        dosage: requiredString('Dosage', 255).optional(),
-        duration: requiredString('Duration', 255).optional(),
-        instructions: instructionsSchema,
-    }).refine(
-        (value) => Object.values(value).some((item) => item !== undefined),
-        {
-            message: 'At least one field is required',
-        },
-    ),
-);
+    @IsDefined({ message: 'Medical record id is required' })
+    @IsString({ message: 'Medical record id is required' })
+    @NormalizeString('medical_record_id')
+    @IsNotEmpty({ message: 'Medical record id is required' })
+    @MaxLength(255, {
+        message: 'Medical record id must not exceed 255 characters',
+    })
+    medicalRecordId!: string;
+
+    @IsDefined({ message: 'Medicine is required' })
+    @IsString({ message: 'Medicine is required' })
+    @NormalizeString('bari')
+    @IsNotEmpty({ message: 'Medicine is required' })
+    @MaxLength(255, {
+        message: 'Medicine must not exceed 255 characters',
+    })
+    medicine!: string;
+
+    @IsDefined({ message: 'Dosage is required' })
+    @IsString({ message: 'Dosage is required' })
+    @NormalizeString('dozimi')
+    @IsNotEmpty({ message: 'Dosage is required' })
+    @MaxLength(255, {
+        message: 'Dosage must not exceed 255 characters',
+    })
+    dosage!: string;
+
+    @IsDefined({ message: 'Duration is required' })
+    @IsString({ message: 'Duration is required' })
+    @NormalizeString('kohezgjatja')
+    @IsNotEmpty({ message: 'Duration is required' })
+    @MaxLength(255, {
+        message: 'Duration must not exceed 255 characters',
+    })
+    duration!: string;
+
+    @OptionalNullableField()
+    @IsString({ message: 'Instructions must be a string' })
+    @NormalizeNullableString('udhezime')
+    @MaxLength(2000, {
+        message: 'Instructions must not exceed 2000 characters',
+    })
+    instructions?: string | null;
+}
+
+export class UpdatePrescriptionDto {
+    static normalize(input: unknown) {
+        return normalizePrescriptionInput(input);
+    }
+
+    @OptionalField()
+    @IsString({ message: 'Medical record id is required' })
+    @NormalizeString('medical_record_id')
+    @IsNotEmpty({ message: 'Medical record id is required' })
+    @MaxLength(255, {
+        message: 'Medical record id must not exceed 255 characters',
+    })
+    medicalRecordId?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Medicine is required' })
+    @NormalizeString('bari')
+    @IsNotEmpty({ message: 'Medicine is required' })
+    @MaxLength(255, {
+        message: 'Medicine must not exceed 255 characters',
+    })
+    medicine?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Dosage is required' })
+    @NormalizeString('dozimi')
+    @IsNotEmpty({ message: 'Dosage is required' })
+    @MaxLength(255, {
+        message: 'Dosage must not exceed 255 characters',
+    })
+    dosage?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Duration is required' })
+    @NormalizeString('kohezgjatja')
+    @IsNotEmpty({ message: 'Duration is required' })
+    @MaxLength(255, {
+        message: 'Duration must not exceed 255 characters',
+    })
+    duration?: string;
+
+    @OptionalNullableField()
+    @IsString({ message: 'Instructions must be a string' })
+    @NormalizeNullableString('udhezime')
+    @MaxLength(2000, {
+        message: 'Instructions must not exceed 2000 characters',
+    })
+    instructions?: string | null;
+}
 
 const getPrescriptionsQuerySchema = z.preprocess(
     normalizePrescriptionQuery,
@@ -93,8 +182,6 @@ const getPrescriptionsQuerySchema = z.preprocess(
     }),
 );
 
-export type CreatePrescriptionDto = z.infer<typeof createPrescriptionSchema>;
-export type UpdatePrescriptionDto = z.infer<typeof updatePrescriptionSchema>;
 export type GetPrescriptionsQueryDto = z.infer<
     typeof getPrescriptionsQuerySchema
 >;
@@ -102,25 +189,26 @@ export type GetPrescriptionsQueryDto = z.infer<
 export function validateCreatePrescriptionDto(
     input: unknown,
 ): CreatePrescriptionDto {
-    const result = createPrescriptionSchema.safeParse(input);
-
-    if (!result.success) {
-        throw new AppError(getValidationMessage(result.error), 400);
-    }
-
-    return result.data;
+    return validateDto(CreatePrescriptionDto, input);
 }
 
 export function validateUpdatePrescriptionDto(
     input: unknown,
 ): UpdatePrescriptionDto {
-    const result = updatePrescriptionSchema.safeParse(input);
+    const dto = validateDto(UpdatePrescriptionDto, input);
 
-    if (!result.success) {
-        throw new AppError(getValidationMessage(result.error), 400);
-    }
+    assertAtLeastOneField(
+        dto,
+        [
+            'medicalRecordId',
+            'medicine',
+            'dosage',
+            'duration',
+            'instructions',
+        ],
+    );
 
-    return result.data;
+    return dto;
 }
 
 export function validateGetPrescriptionsQueryDto(

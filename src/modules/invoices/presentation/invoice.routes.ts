@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../../../shared/middleware/authenticate';
 import { authorizeRoles } from '../../../shared/middleware/authorize-roles';
+import { asyncHandler } from '../../../shared/utils/async-handler';
 import { InvoiceController } from './invoice.controller';
 
 const controller = new InvoiceController();
@@ -9,26 +10,26 @@ export const invoiceRoutes = Router();
 
 invoiceRoutes.use(authenticate);
 
-invoiceRoutes.get('/', (req, res) => controller.getAll(req, res));
-invoiceRoutes.get('/stats', (req, res) => controller.getStats(req, res));
-invoiceRoutes.get('/:id', (req, res) => controller.getById(req, res));
+invoiceRoutes.get('/', asyncHandler(controller.getAll.bind(controller)));
+invoiceRoutes.get('/stats', asyncHandler(controller.getStats.bind(controller)));
+invoiceRoutes.get('/:id', asyncHandler(controller.getById.bind(controller)));
 invoiceRoutes.post(
     '/',
     authorizeRoles('ADMIN', 'RECEPTIONIST'),
-    (req, res) => controller.create(req, res),
+    asyncHandler(controller.create.bind(controller)),
 );
 invoiceRoutes.put(
     '/:id/pay',
     authorizeRoles('ADMIN', 'RECEPTIONIST'),
-    (req, res) => controller.pay(req, res),
+    asyncHandler(controller.pay.bind(controller)),
 );
 invoiceRoutes.put(
     '/:id',
     authorizeRoles('ADMIN', 'RECEPTIONIST'),
-    (req, res) => controller.update(req, res),
+    asyncHandler(controller.update.bind(controller)),
 );
 invoiceRoutes.delete(
     '/:id',
     authorizeRoles('ADMIN', 'RECEPTIONIST'),
-    (req, res) => controller.delete(req, res),
+    asyncHandler(controller.delete.bind(controller)),
 );

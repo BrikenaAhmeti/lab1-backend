@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../../../shared/middleware/authenticate';
 import { authorizeRoles } from '../../../shared/middleware/authorize-roles';
+import { asyncHandler } from '../../../shared/utils/async-handler';
 import { MedicalRecordController } from './medical-record.controller';
 
 const controller = new MedicalRecordController();
@@ -9,24 +10,27 @@ export const medicalRecordRoutes = Router();
 
 medicalRecordRoutes.use(authenticate);
 
-medicalRecordRoutes.get('/', (req, res) => controller.getAll(req, res));
+medicalRecordRoutes.get('/', asyncHandler(controller.getAll.bind(controller)));
 medicalRecordRoutes.get(
     '/:id/prescriptions',
-    (req, res) => controller.getPrescriptions(req, res),
+    asyncHandler(controller.getPrescriptions.bind(controller)),
 );
-medicalRecordRoutes.get('/:id', (req, res) => controller.getById(req, res));
+medicalRecordRoutes.get(
+    '/:id',
+    asyncHandler(controller.getById.bind(controller)),
+);
 medicalRecordRoutes.post(
     '/',
     authorizeRoles('DOCTOR', 'ADMIN'),
-    (req, res) => controller.create(req, res),
+    asyncHandler(controller.create.bind(controller)),
 );
 medicalRecordRoutes.put(
     '/:id',
     authorizeRoles('DOCTOR', 'ADMIN'),
-    (req, res) => controller.update(req, res),
+    asyncHandler(controller.update.bind(controller)),
 );
 medicalRecordRoutes.delete(
     '/:id',
     authorizeRoles('DOCTOR', 'ADMIN'),
-    (req, res) => controller.delete(req, res),
+    asyncHandler(controller.delete.bind(controller)),
 );

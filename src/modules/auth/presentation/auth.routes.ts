@@ -2,114 +2,115 @@ import { Router } from 'express';
 import { AuthController } from './auth.controller';
 import { authenticate } from '../../../shared/middleware/authenticate';
 import { authorizeRoles } from '../../../shared/middleware/authorize-roles';
+import { asyncHandler } from '../../../shared/utils/async-handler';
 
 const controller = new AuthController();
 
 export const authRoutes = Router();
 
-authRoutes.post('/register', (req, res) => controller.register(req, res));
-authRoutes.post('/login', (req, res) => controller.login(req, res));
-authRoutes.post('/refresh', (req, res) => controller.refresh(req, res));
-authRoutes.post('/logout', (req, res) => controller.logout(req, res));
+authRoutes.post('/register', asyncHandler(controller.register.bind(controller)));
+authRoutes.post('/login', asyncHandler(controller.login.bind(controller)));
+authRoutes.post('/refresh', asyncHandler(controller.refresh.bind(controller)));
+authRoutes.post('/logout', asyncHandler(controller.logout.bind(controller)));
 
-authRoutes.get('/me', authenticate, (req, res) => controller.me(req, res));
+authRoutes.get('/me', authenticate, asyncHandler(controller.me.bind(controller)));
 
 authRoutes.get(
     '/users',
     authenticate,
     authorizeRoles('ADMIN'),
-    (req, res) => controller.listUsers(req, res),
+    asyncHandler(controller.listUsers.bind(controller)),
 );
 authRoutes.get(
     '/users/:id',
     authenticate,
     authorizeRoles('ADMIN'),
-    (req, res) => controller.getUserById(req, res),
+    asyncHandler(controller.getUserById.bind(controller)),
 );
 authRoutes.post(
     '/users',
     authenticate,
     authorizeRoles('ADMIN'),
-    (req, res) => controller.createUser(req, res),
+    asyncHandler(controller.createUser.bind(controller)),
 );
 authRoutes.patch(
     '/users/:id',
     authenticate,
     authorizeRoles('ADMIN'),
-    (req, res) => controller.updateUser(req, res),
+    asyncHandler(controller.updateUser.bind(controller)),
 );
 authRoutes.delete(
     '/users/:id',
     authenticate,
     authorizeRoles('ADMIN'),
-    (req, res) => controller.deleteUser(req, res),
+    asyncHandler(controller.deleteUser.bind(controller)),
 );
 authRoutes.patch(
     '/users/:id/status',
     authenticate,
     authorizeRoles('ADMIN'),
-    (req, res) => controller.setUserStatus(req, res),
+    asyncHandler(controller.setUserStatus.bind(controller)),
 );
 
 authRoutes.get(
     '/roles',
     authenticate,
     authorizeRoles('ADMIN'),
-    (req, res) => controller.listRoles(req, res),
+    asyncHandler(controller.listRoles.bind(controller)),
 );
 authRoutes.post(
     '/roles',
     authenticate,
     authorizeRoles('ADMIN'),
-    (req, res) => controller.createRole(req, res),
+    asyncHandler(controller.createRole.bind(controller)),
 );
 authRoutes.patch(
     '/roles/:roleId',
     authenticate,
     authorizeRoles('ADMIN'),
-    (req, res) => controller.updateRole(req, res),
+    asyncHandler(controller.updateRole.bind(controller)),
 );
 authRoutes.delete(
     '/roles/:roleId',
     authenticate,
     authorizeRoles('ADMIN'),
-    (req, res) => controller.deleteRole(req, res),
+    asyncHandler(controller.deleteRole.bind(controller)),
 );
 
 authRoutes.get(
     '/users/:userId/roles',
     authenticate,
     authorizeRoles('ADMIN'),
-    (req, res) => controller.listUserRoles(req, res),
+    asyncHandler(controller.listUserRoles.bind(controller)),
 );
 authRoutes.post(
     '/users/:userId/roles',
     authenticate,
     authorizeRoles('ADMIN'),
-    (req, res) => controller.assignRoleToUser(req, res),
+    asyncHandler(controller.assignRoleToUser.bind(controller)),
 );
 authRoutes.put(
     '/users/:userId/roles',
     authenticate,
     authorizeRoles('ADMIN'),
-    (req, res) => controller.replaceUserRoles(req, res),
+    asyncHandler(controller.replaceUserRoles.bind(controller)),
 );
 authRoutes.delete(
     '/users/:userId/roles/:roleId',
     authenticate,
     authorizeRoles('ADMIN'),
-    (req, res) => controller.removeRoleFromUser(req, res),
+    asyncHandler(controller.removeRoleFromUser.bind(controller)),
 );
 
 authRoutes.get(
     '/users/:userId/refresh-tokens',
     authenticate,
     authorizeRoles('ADMIN'),
-    (req, res) => controller.listUserRefreshTokens(req, res),
+    asyncHandler(controller.listUserRefreshTokens.bind(controller)),
 );
 authRoutes.delete(
     '/users/:userId/refresh-tokens',
     authenticate,
     authorizeRoles('ADMIN'),
-    (req, res) => controller.revokeUserRefreshTokens(req, res),
+    asyncHandler(controller.revokeUserRefreshTokens.bind(controller)),
 );

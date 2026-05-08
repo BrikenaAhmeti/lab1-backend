@@ -1,9 +1,26 @@
 import { z } from 'zod';
+import {
+    IsDefined,
+    IsNotEmpty,
+    IsString,
+    MaxLength,
+} from 'class-validator';
 import { AppError } from '../../../shared/core/errors/app-error';
 import {
     createPaginationQuerySchema,
     normalizeOptionalString,
 } from '../../../shared/core/pagination';
+import {
+    IsDateOnlyString,
+    NormalizeNullableString,
+    NormalizeString,
+    OptionalField,
+    OptionalNullableField,
+} from '../../../shared/validation/decorators';
+import {
+    assertAtLeastOneField,
+    validateDto,
+} from '../../../shared/validation/validate-dto';
 
 const medicalRecordDateRegex = /^\d{4}-\d{2}-\d{2}$/;
 const medicalRecordSortByValues = ['created_at', 'date'] as const;
@@ -84,34 +101,123 @@ const prescriptionsTextSchema = z.preprocess(
     z.union([z.string().trim().max(4000), z.null()]).optional(),
 );
 
-const createMedicalRecordSchema = z.preprocess(
-    normalizeMedicalRecordInput,
-    z.object({
-        patientId: requiredString('Patient id', 255),
-        doctorId: requiredString('Doctor id', 255),
-        diagnosis: requiredString('Diagnosis', 2000),
-        treatment: requiredString('Treatment', 4000),
-        prescriptionsText: prescriptionsTextSchema,
-        date: medicalRecordDateSchema,
-    }),
-);
+export class CreateMedicalRecordDto {
+    static normalize(input: unknown) {
+        return normalizeMedicalRecordInput(input);
+    }
 
-const updateMedicalRecordSchema = z.preprocess(
-    normalizeMedicalRecordInput,
-    z.object({
-        patientId: requiredString('Patient id', 255).optional(),
-        doctorId: requiredString('Doctor id', 255).optional(),
-        diagnosis: requiredString('Diagnosis', 2000).optional(),
-        treatment: requiredString('Treatment', 4000).optional(),
-        prescriptionsText: prescriptionsTextSchema,
-        date: medicalRecordDateSchema.optional(),
-    }).refine(
-        (value) => Object.values(value).some((item) => item !== undefined),
-        {
-            message: 'At least one field is required',
-        },
-    ),
-);
+    @IsDefined({ message: 'Patient id is required' })
+    @IsString({ message: 'Patient id is required' })
+    @NormalizeString('patient_id')
+    @IsNotEmpty({ message: 'Patient id is required' })
+    @MaxLength(255, {
+        message: 'Patient id must not exceed 255 characters',
+    })
+    patientId!: string;
+
+    @IsDefined({ message: 'Doctor id is required' })
+    @IsString({ message: 'Doctor id is required' })
+    @NormalizeString('doctor_id')
+    @IsNotEmpty({ message: 'Doctor id is required' })
+    @MaxLength(255, {
+        message: 'Doctor id must not exceed 255 characters',
+    })
+    doctorId!: string;
+
+    @IsDefined({ message: 'Diagnosis is required' })
+    @IsString({ message: 'Diagnosis is required' })
+    @NormalizeString('diagnoza')
+    @IsNotEmpty({ message: 'Diagnosis is required' })
+    @MaxLength(2000, {
+        message: 'Diagnosis must not exceed 2000 characters',
+    })
+    diagnosis!: string;
+
+    @IsDefined({ message: 'Treatment is required' })
+    @IsString({ message: 'Treatment is required' })
+    @NormalizeString('trajtimi')
+    @IsNotEmpty({ message: 'Treatment is required' })
+    @MaxLength(4000, {
+        message: 'Treatment must not exceed 4000 characters',
+    })
+    treatment!: string;
+
+    @OptionalNullableField()
+    @IsString({ message: 'Prescriptions text must be a string' })
+    @NormalizeNullableString('prescriptions_text', 'recetat')
+    @MaxLength(4000, {
+        message: 'Prescriptions text must not exceed 4000 characters',
+    })
+    prescriptionsText?: string | null;
+
+    @IsDefined({ message: 'Date is required' })
+    @IsString({ message: 'Date is required' })
+    @NormalizeString('data')
+    @IsNotEmpty({ message: 'Date is required' })
+    @IsDateOnlyString({
+        message: 'Date must be in YYYY-MM-DD format',
+    })
+    date!: string;
+}
+
+export class UpdateMedicalRecordDto {
+    static normalize(input: unknown) {
+        return normalizeMedicalRecordInput(input);
+    }
+
+    @OptionalField()
+    @IsString({ message: 'Patient id is required' })
+    @NormalizeString('patient_id')
+    @IsNotEmpty({ message: 'Patient id is required' })
+    @MaxLength(255, {
+        message: 'Patient id must not exceed 255 characters',
+    })
+    patientId?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Doctor id is required' })
+    @NormalizeString('doctor_id')
+    @IsNotEmpty({ message: 'Doctor id is required' })
+    @MaxLength(255, {
+        message: 'Doctor id must not exceed 255 characters',
+    })
+    doctorId?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Diagnosis is required' })
+    @NormalizeString('diagnoza')
+    @IsNotEmpty({ message: 'Diagnosis is required' })
+    @MaxLength(2000, {
+        message: 'Diagnosis must not exceed 2000 characters',
+    })
+    diagnosis?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Treatment is required' })
+    @NormalizeString('trajtimi')
+    @IsNotEmpty({ message: 'Treatment is required' })
+    @MaxLength(4000, {
+        message: 'Treatment must not exceed 4000 characters',
+    })
+    treatment?: string;
+
+    @OptionalNullableField()
+    @IsString({ message: 'Prescriptions text must be a string' })
+    @NormalizeNullableString('prescriptions_text', 'recetat')
+    @MaxLength(4000, {
+        message: 'Prescriptions text must not exceed 4000 characters',
+    })
+    prescriptionsText?: string | null;
+
+    @OptionalField()
+    @IsString({ message: 'Date is required' })
+    @NormalizeString('data')
+    @IsNotEmpty({ message: 'Date is required' })
+    @IsDateOnlyString({
+        message: 'Date must be in YYYY-MM-DD format',
+    })
+    date?: string;
+}
 
 const getMedicalRecordsQuerySchema = z.preprocess(
     normalizeMedicalRecordQuery,
@@ -120,8 +226,6 @@ const getMedicalRecordsQuerySchema = z.preprocess(
     }),
 );
 
-export type CreateMedicalRecordDto = z.infer<typeof createMedicalRecordSchema>;
-export type UpdateMedicalRecordDto = z.infer<typeof updateMedicalRecordSchema>;
 export type GetMedicalRecordsQueryDto = z.infer<
     typeof getMedicalRecordsQuerySchema
 >;
@@ -129,25 +233,27 @@ export type GetMedicalRecordsQueryDto = z.infer<
 export function validateCreateMedicalRecordDto(
     input: unknown,
 ): CreateMedicalRecordDto {
-    const result = createMedicalRecordSchema.safeParse(input);
-
-    if (!result.success) {
-        throw new AppError(getValidationMessage(result.error), 400);
-    }
-
-    return result.data;
+    return validateDto(CreateMedicalRecordDto, input);
 }
 
 export function validateUpdateMedicalRecordDto(
     input: unknown,
 ): UpdateMedicalRecordDto {
-    const result = updateMedicalRecordSchema.safeParse(input);
+    const dto = validateDto(UpdateMedicalRecordDto, input);
 
-    if (!result.success) {
-        throw new AppError(getValidationMessage(result.error), 400);
-    }
+    assertAtLeastOneField(
+        dto,
+        [
+            'patientId',
+            'doctorId',
+            'diagnosis',
+            'treatment',
+            'prescriptionsText',
+            'date',
+        ],
+    );
 
-    return result.data;
+    return dto;
 }
 
 export function validateGetMedicalRecordsQueryDto(

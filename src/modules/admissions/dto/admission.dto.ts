@@ -1,9 +1,21 @@
 import { z } from 'zod';
+import {
+    IsDefined,
+    IsNotEmpty,
+    IsString,
+    MaxLength,
+} from 'class-validator';
 import { AppError } from '../../../shared/core/errors/app-error';
 import {
     createPaginationQuerySchema,
     normalizeOptionalString,
 } from '../../../shared/core/pagination';
+import {
+    IsDateOnlyString,
+    NormalizeString,
+    OptionalField,
+} from '../../../shared/validation/decorators';
+import { validateDto } from '../../../shared/validation/validate-dto';
 import { AdmissionStatus } from '../domain/admission.entity';
 
 const admissionStatusValues = ['ACTIVE', 'DISCHARGED'] as const;
@@ -52,15 +64,45 @@ const admissionStatusSchema = z.preprocess(
         .transform((value) => value as AdmissionStatus),
 );
 
-const createAdmissionSchema = z.object({
-    patientId: requiredString('Patient id', 255),
-    roomId: requiredString('Room id', 255),
-    admissionDate: optionalDateString('Admission date'),
-});
+export class CreateAdmissionDto {
+    @IsDefined({ message: 'Patient id is required' })
+    @IsString({ message: 'Patient id is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Patient id is required' })
+    @MaxLength(255, {
+        message: 'Patient id must not exceed 255 characters',
+    })
+    patientId!: string;
 
-const dischargeAdmissionSchema = z.object({
-    dischargeDate: optionalDateString('Discharge date'),
-});
+    @IsDefined({ message: 'Room id is required' })
+    @IsString({ message: 'Room id is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Room id is required' })
+    @MaxLength(255, {
+        message: 'Room id must not exceed 255 characters',
+    })
+    roomId!: string;
+
+    @OptionalField()
+    @IsString({ message: 'Admission date is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Admission date is required' })
+    @IsDateOnlyString({
+        message: 'Admission date is invalid',
+    })
+    admissionDate?: string;
+}
+
+export class DischargeAdmissionDto {
+    @OptionalField()
+    @IsString({ message: 'Discharge date is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Discharge date is required' })
+    @IsDateOnlyString({
+        message: 'Discharge date is invalid',
+    })
+    dischargeDate?: string;
+}
 
 const getAdmissionsQuerySchema = createPaginationQuerySchema(
     admissionSortByValues,
@@ -79,30 +121,16 @@ const getAdmissionsQuerySchema = createPaginationQuerySchema(
     ),
 });
 
-export type CreateAdmissionDto = z.infer<typeof createAdmissionSchema>;
-export type DischargeAdmissionDto = z.infer<typeof dischargeAdmissionSchema>;
 export type GetAdmissionsQueryDto = z.infer<typeof getAdmissionsQuerySchema>;
 
 export function validateCreateAdmissionDto(input: unknown): CreateAdmissionDto {
-    const result = createAdmissionSchema.safeParse(input);
-
-    if (!result.success) {
-        throw new AppError(getValidationMessage(result.error), 400);
-    }
-
-    return result.data;
+    return validateDto(CreateAdmissionDto, input);
 }
 
 export function validateDischargeAdmissionDto(
     input: unknown,
 ): DischargeAdmissionDto {
-    const result = dischargeAdmissionSchema.safeParse(input);
-
-    if (!result.success) {
-        throw new AppError(getValidationMessage(result.error), 400);
-    }
-
-    return result.data;
+    return validateDto(DischargeAdmissionDto, input);
 }
 
 export function validateGetAdmissionsQueryDto(

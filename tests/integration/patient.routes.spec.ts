@@ -192,7 +192,17 @@ describe('Patient routes', () => {
             });
 
         expect(response.status).toBe(400);
+        expect(response.body.success).toBe(false);
         expect(response.body.message).toBe('phoneNumber format is invalid');
+        expect(response.body.statusCode).toBe(400);
+        expect(response.body.errors).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    field: 'phoneNumber',
+                    message: 'phoneNumber format is invalid',
+                }),
+            ]),
+        );
     });
 
     it('should complete the patient CRUD flow', async () => {

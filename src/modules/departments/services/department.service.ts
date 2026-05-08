@@ -11,7 +11,11 @@ import {
     DepartmentRoomEntity,
 } from '../domain/department.entity';
 import { DepartmentRepository } from '../domain/department.repository';
-import { GetDepartmentsQueryDto } from '../dto/department.dto';
+import {
+    CreateDepartmentDto,
+    GetDepartmentsQueryDto,
+    UpdateDepartmentDto,
+} from '../dto/department.dto';
 
 const departmentSortAccessors = {
     created_at: (department: DepartmentEntity) => department.createdAt,
@@ -22,11 +26,7 @@ const departmentSortAccessors = {
 export class DepartmentService {
     constructor(private readonly departmentRepository: DepartmentRepository) { }
 
-    async createDepartment(data: {
-        name: string;
-        description?: string;
-        location: string;
-    }): Promise<DepartmentEntity> {
+    async createDepartment(data: CreateDepartmentDto): Promise<DepartmentEntity> {
         const normalizedName = data.name.trim();
         const normalizedLocation = data.location.trim();
 
@@ -64,27 +64,30 @@ export class DepartmentService {
 
     async updateDepartment(
         id: string,
-        data: {
-            name: string;
-            description?: string;
-            location: string;
-        },
+        data: UpdateDepartmentDto,
     ): Promise<DepartmentEntity> {
         await this.ensureDepartmentExists(id);
 
-        const normalizedName = data.name.trim();
-        const normalizedLocation = data.location.trim();
-        const existingDepartment =
-            await this.departmentRepository.findByName(normalizedName);
+        if (data.name !== undefined) {
+            const normalizedName = data.name.trim();
+            const existingDepartment =
+                await this.departmentRepository.findByName(normalizedName);
 
-        if (existingDepartment && existingDepartment.id !== id) {
-            throw new AppError('Department already exists', 409);
+            if (existingDepartment && existingDepartment.id !== id) {
+                throw new AppError('Department already exists', 409);
+            }
         }
 
         return this.departmentRepository.update(id, {
-            name: normalizedName,
-            description: this.normalizeDescription(data.description),
-            location: normalizedLocation,
+            ...(data.name !== undefined
+                ? { name: data.name.trim() }
+                : {}),
+            ...(data.description !== undefined
+                ? { description: this.normalizeDescription(data.description) }
+                : {}),
+            ...(data.location !== undefined
+                ? { location: data.location.trim() }
+                : {}),
         });
     }
 

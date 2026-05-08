@@ -1,9 +1,28 @@
 import { z } from 'zod';
+import {
+    IsDefined,
+    IsIn,
+    IsNotEmpty,
+    IsString,
+    MaxLength,
+} from 'class-validator';
 import { AppError } from '../../../shared/core/errors/app-error';
 import {
     createPaginationQuerySchema,
     normalizeOptionalString,
 } from '../../../shared/core/pagination';
+import {
+    IsDateOnlyString,
+    IsTimeString,
+    NormalizeNullableString,
+    NormalizeString,
+    OptionalField,
+    OptionalNullableField,
+} from '../../../shared/validation/decorators';
+import {
+    assertAtLeastOneField,
+    validateDto,
+} from '../../../shared/validation/validate-dto';
 import { AppointmentStatus } from '../domain/appointment.entity';
 
 const appointmentStatusValues = [
@@ -71,43 +90,106 @@ const appointmentStatusSchema = z.preprocess(
         .transform((value) => value as AppointmentStatus),
 );
 
-const createAppointmentSchema = z.object({
-    patientId: requiredString('Patient id', 255),
-    doctorId: requiredString('Doctor id', 255),
-    date: appointmentDateSchema,
-    time: appointmentTimeSchema,
-    notes: z.preprocess(
-        (value) => (typeof value === 'string' ? value : undefined),
-        z.string().trim().max(1000).optional(),
-    ),
-});
+export class CreateAppointmentDto {
+    @IsDefined({ message: 'Patient id is required' })
+    @IsString({ message: 'Patient id is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Patient id is required' })
+    @MaxLength(255, {
+        message: 'Patient id must not exceed 255 characters',
+    })
+    patientId!: string;
 
-const updateAppointmentSchema = z.object({
-    patientId: requiredString('Patient id', 255).optional(),
-    doctorId: requiredString('Doctor id', 255).optional(),
-    date: appointmentDateSchema.optional(),
-    time: appointmentTimeSchema.optional(),
-    status: appointmentStatusSchema.optional(),
-    notes: z.preprocess(
-        (value) => {
-            if (value === null) {
-                return null;
-            }
+    @IsDefined({ message: 'Doctor id is required' })
+    @IsString({ message: 'Doctor id is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Doctor id is required' })
+    @MaxLength(255, {
+        message: 'Doctor id must not exceed 255 characters',
+    })
+    doctorId!: string;
 
-            if (typeof value === 'string') {
-                return value;
-            }
+    @IsDefined({ message: 'Date is required' })
+    @IsString({ message: 'Date is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Date is required' })
+    @IsDateOnlyString({
+        message: 'Date must be in YYYY-MM-DD format',
+    })
+    date!: string;
 
-            return undefined;
-        },
-        z.union([z.string().trim().max(1000), z.null()]).optional(),
-    ),
-}).refine(
-    (value) => Object.values(value).some((item) => item !== undefined),
-    {
-        message: 'At least one field is required',
-    },
-);
+    @IsDefined({ message: 'Time is required' })
+    @IsString({ message: 'Time is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Time is required' })
+    @IsTimeString({
+        message: 'Time must be in HH:mm format',
+    })
+    time!: string;
+
+    @OptionalField()
+    @IsString({ message: 'Notes must be a string' })
+    @NormalizeString()
+    @MaxLength(1000, {
+        message: 'Notes must not exceed 1000 characters',
+    })
+    notes?: string;
+}
+
+export class UpdateAppointmentDto {
+    @OptionalField()
+    @IsString({ message: 'Patient id is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Patient id is required' })
+    @MaxLength(255, {
+        message: 'Patient id must not exceed 255 characters',
+    })
+    patientId?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Doctor id is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Doctor id is required' })
+    @MaxLength(255, {
+        message: 'Doctor id must not exceed 255 characters',
+    })
+    doctorId?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Date is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Date is required' })
+    @IsDateOnlyString({
+        message: 'Date must be in YYYY-MM-DD format',
+    })
+    date?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Time is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Time is required' })
+    @IsTimeString({
+        message: 'Time must be in HH:mm format',
+    })
+    time?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Status is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Status is required' })
+    @IsIn(appointmentStatusValues, {
+        message: 'Status must be Scheduled, Completed, or Cancelled',
+    })
+    status?: AppointmentStatus;
+
+    @OptionalNullableField()
+    @IsString({ message: 'Notes must be a string' })
+    @NormalizeNullableString()
+    @MaxLength(1000, {
+        message: 'Notes must not exceed 1000 characters',
+    })
+    notes?: string | null;
+}
 
 const getAppointmentsQuerySchema = createPaginationQuerySchema(
     appointmentSortByValues,
@@ -144,32 +226,25 @@ const getAppointmentsQuerySchema = createPaginationQuerySchema(
     },
 );
 
-export type CreateAppointmentDto = z.infer<typeof createAppointmentSchema>;
-export type UpdateAppointmentDto = z.infer<typeof updateAppointmentSchema>;
 export type GetAppointmentsQueryDto = z.infer<typeof getAppointmentsQuerySchema>;
 
 export function validateCreateAppointmentDto(
     input: unknown,
 ): CreateAppointmentDto {
-    const result = createAppointmentSchema.safeParse(input);
-
-    if (!result.success) {
-        throw new AppError(getValidationMessage(result.error), 400);
-    }
-
-    return result.data;
+    return validateDto(CreateAppointmentDto, input);
 }
 
 export function validateUpdateAppointmentDto(
     input: unknown,
 ): UpdateAppointmentDto {
-    const result = updateAppointmentSchema.safeParse(input);
+    const dto = validateDto(UpdateAppointmentDto, input);
 
-    if (!result.success) {
-        throw new AppError(getValidationMessage(result.error), 400);
-    }
+    assertAtLeastOneField(
+        dto,
+        ['patientId', 'doctorId', 'date', 'time', 'status', 'notes'],
+    );
 
-    return result.data;
+    return dto;
 }
 
 export function validateGetAppointmentsQueryDto(

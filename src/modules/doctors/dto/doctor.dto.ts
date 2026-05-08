@@ -1,9 +1,24 @@
 import { z } from 'zod';
+import {
+    IsDefined,
+    IsNotEmpty,
+    IsString,
+    Matches,
+    MaxLength,
+} from 'class-validator';
 import { AppError } from '../../../shared/core/errors/app-error';
 import {
     createPaginationQuerySchema,
     normalizeOptionalString,
 } from '../../../shared/core/pagination';
+import {
+    NormalizeString,
+    OptionalField,
+} from '../../../shared/validation/decorators';
+import {
+    assertAtLeastOneField,
+    validateDto,
+} from '../../../shared/validation/validate-dto';
 
 const phoneNumberRegex = /^\+?[0-9]{7,15}$/;
 const doctorSortByValues = [
@@ -36,21 +51,117 @@ function phoneNumberSchema() {
     );
 }
 
-const createDoctorSchema = z.object({
-    userId: requiredString('User id', 255),
-    firstName: requiredString('First name', 100),
-    lastName: requiredString('Last name', 100),
-    specialization: requiredString('Specialization', 100),
-    departmentId: requiredString('Department id', 255),
-    phoneNumber: phoneNumberSchema(),
-});
+export class CreateDoctorDto {
+    @IsDefined({ message: 'User id is required' })
+    @IsString({ message: 'User id is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'User id is required' })
+    @MaxLength(255, {
+        message: 'User id must not exceed 255 characters',
+    })
+    userId!: string;
 
-const updateDoctorSchema = createDoctorSchema.partial().refine(
-    (value) => Object.values(value).some((item) => item !== undefined),
-    {
-        message: 'At least one field is required',
-    },
-);
+    @IsDefined({ message: 'First name is required' })
+    @IsString({ message: 'First name is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'First name is required' })
+    @MaxLength(100, {
+        message: 'First name must not exceed 100 characters',
+    })
+    firstName!: string;
+
+    @IsDefined({ message: 'Last name is required' })
+    @IsString({ message: 'Last name is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Last name is required' })
+    @MaxLength(100, {
+        message: 'Last name must not exceed 100 characters',
+    })
+    lastName!: string;
+
+    @IsDefined({ message: 'Specialization is required' })
+    @IsString({ message: 'Specialization is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Specialization is required' })
+    @MaxLength(100, {
+        message: 'Specialization must not exceed 100 characters',
+    })
+    specialization!: string;
+
+    @IsDefined({ message: 'Department id is required' })
+    @IsString({ message: 'Department id is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Department id is required' })
+    @MaxLength(255, {
+        message: 'Department id must not exceed 255 characters',
+    })
+    departmentId!: string;
+
+    @IsDefined({ message: 'Phone number is required' })
+    @IsString({ message: 'Phone number is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Phone number is required' })
+    @Matches(phoneNumberRegex, {
+        message: 'phoneNumber format is invalid',
+    })
+    phoneNumber!: string;
+}
+
+export class UpdateDoctorDto {
+    @OptionalField()
+    @IsString({ message: 'User id is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'User id is required' })
+    @MaxLength(255, {
+        message: 'User id must not exceed 255 characters',
+    })
+    userId?: string;
+
+    @OptionalField()
+    @IsString({ message: 'First name is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'First name is required' })
+    @MaxLength(100, {
+        message: 'First name must not exceed 100 characters',
+    })
+    firstName?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Last name is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Last name is required' })
+    @MaxLength(100, {
+        message: 'Last name must not exceed 100 characters',
+    })
+    lastName?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Specialization is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Specialization is required' })
+    @MaxLength(100, {
+        message: 'Specialization must not exceed 100 characters',
+    })
+    specialization?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Department id is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Department id is required' })
+    @MaxLength(255, {
+        message: 'Department id must not exceed 255 characters',
+    })
+    departmentId?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Phone number is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Phone number is required' })
+    @Matches(phoneNumberRegex, {
+        message: 'phoneNumber format is invalid',
+    })
+    phoneNumber?: string;
+}
 
 const getDoctorsQuerySchema = createPaginationQuerySchema(
     doctorSortByValues,
@@ -65,28 +176,28 @@ const getDoctorsQuerySchema = createPaginationQuerySchema(
     ),
 });
 
-export type CreateDoctorDto = z.infer<typeof createDoctorSchema>;
-export type UpdateDoctorDto = z.infer<typeof updateDoctorSchema>;
 export type GetDoctorsQueryDto = z.infer<typeof getDoctorsQuerySchema>;
 
 export function validateCreateDoctorDto(input: unknown): CreateDoctorDto {
-    const result = createDoctorSchema.safeParse(input);
-
-    if (!result.success) {
-        throw new AppError(getValidationMessage(result.error), 400);
-    }
-
-    return result.data;
+    return validateDto(CreateDoctorDto, input);
 }
 
 export function validateUpdateDoctorDto(input: unknown): UpdateDoctorDto {
-    const result = updateDoctorSchema.safeParse(input);
+    const dto = validateDto(UpdateDoctorDto, input);
 
-    if (!result.success) {
-        throw new AppError(getValidationMessage(result.error), 400);
-    }
+    assertAtLeastOneField(
+        dto,
+        [
+            'userId',
+            'firstName',
+            'lastName',
+            'specialization',
+            'departmentId',
+            'phoneNumber',
+        ],
+    );
 
-    return result.data;
+    return dto;
 }
 
 export function validateGetDoctorsQueryDto(input: unknown): GetDoctorsQueryDto {

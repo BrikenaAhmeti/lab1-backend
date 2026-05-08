@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../../../shared/middleware/authenticate';
 import { authorizeRoles } from '../../../shared/middleware/authorize-roles';
+import { asyncHandler } from '../../../shared/utils/async-handler';
 import { RoomController } from './room.controller';
 
 const controller = new RoomController();
@@ -9,21 +10,24 @@ export const roomRoutes = Router();
 
 roomRoutes.use(authenticate);
 
-roomRoutes.get('/', (req, res) => controller.getAll(req, res));
-roomRoutes.get('/available', (req, res) => controller.getAvailable(req, res));
-roomRoutes.get('/:id', (req, res) => controller.getById(req, res));
+roomRoutes.get('/', asyncHandler(controller.getAll.bind(controller)));
+roomRoutes.get(
+    '/available',
+    asyncHandler(controller.getAvailable.bind(controller)),
+);
+roomRoutes.get('/:id', asyncHandler(controller.getById.bind(controller)));
 roomRoutes.post(
     '/',
     authorizeRoles('ADMIN'),
-    (req, res) => controller.create(req, res),
+    asyncHandler(controller.create.bind(controller)),
 );
 roomRoutes.put(
     '/:id',
     authorizeRoles('ADMIN'),
-    (req, res) => controller.update(req, res),
+    asyncHandler(controller.update.bind(controller)),
 );
 roomRoutes.delete(
     '/:id',
     authorizeRoles('ADMIN'),
-    (req, res) => controller.delete(req, res),
+    asyncHandler(controller.delete.bind(controller)),
 );
