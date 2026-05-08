@@ -8,10 +8,6 @@ export class GetPatientsHandler
     constructor(private readonly patientService: PatientService) { }
 
     async execute(query: GetPatientsQuery): Promise<PatientListResponse> {
-        return this.patientService.getPatients({
-            page: query.page,
-            limit: query.limit,
-            search: query.search,
-        });
+        return this.patientService.getPatients(query.data);
     }
 }

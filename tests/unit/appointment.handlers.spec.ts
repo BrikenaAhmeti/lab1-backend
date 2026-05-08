@@ -4,8 +4,10 @@ import { DeleteAppointmentCommand } from '../../src/modules/appointments/applica
 import { UpdateAppointmentCommand } from '../../src/modules/appointments/application/commands/update-appointment.command';
 import { CreateAppointmentHandler } from '../../src/modules/appointments/application/handlers/create-appointment.handler';
 import { DeleteAppointmentHandler } from '../../src/modules/appointments/application/handlers/delete-appointment.handler';
+import { GetAppointmentsHandler } from '../../src/modules/appointments/application/handlers/get-appointments.handler';
 import { GetTodayAppointmentsHandler } from '../../src/modules/appointments/application/handlers/get-today-appointments.handler';
 import { UpdateAppointmentHandler } from '../../src/modules/appointments/application/handlers/update-appointment.handler';
+import { GetAppointmentsQuery } from '../../src/modules/appointments/application/queries/get-appointments.query';
 import { GetTodayAppointmentsQuery } from '../../src/modules/appointments/application/queries/get-today-appointments.query';
 import {
     AppointmentDoctorEntity,
@@ -257,6 +259,45 @@ describe('Appointment handlers', () => {
         });
     });
 
+    it('should return appointments filtered by date range and status', async () => {
+        const appointments = [
+            createAppointment(),
+            createAppointment({
+                id: 'appointment-2',
+                appointmentDate: new Date('2026-05-07T00:00:00.000Z'),
+                status: 'Completed',
+            }),
+        ];
+
+        repository.findMany.mockResolvedValue(appointments);
+
+        const service = new AppointmentService(repository);
+        const handler = new GetAppointmentsHandler(service);
+        const result = await handler.execute(new GetAppointmentsQuery({
+            page: 1,
+            limit: 10,
+            sortBy: 'date',
+            order: 'ASC',
+            status: 'Completed',
+            from: '2026-05-06',
+            to: '2026-05-08',
+        }));
+
+        expect(repository.findMany).toHaveBeenCalledWith({
+            appointmentDate: undefined,
+            doctorId: undefined,
+            patientId: undefined,
+            status: 'Completed',
+        });
+        expect(result).toEqual({
+            data: [appointments[1]],
+            total: 1,
+            page: 1,
+            limit: 10,
+            totalPages: 1,
+        });
+    });
+
     it('should return today appointments', async () => {
         const appointments = [
             createAppointment(),
@@ -270,11 +311,25 @@ describe('Appointment handlers', () => {
 
         const service = new AppointmentService(repository);
         const handler = new GetTodayAppointmentsHandler(service);
-        const result = await handler.execute(new GetTodayAppointmentsQuery());
+        const result = await handler.execute(new GetTodayAppointmentsQuery({
+            page: 1,
+            limit: 10,
+            sortBy: 'time',
+            order: 'ASC',
+        }));
 
         expect(repository.findMany).toHaveBeenCalledWith({
             appointmentDate: new Date('2026-05-04T00:00:00.000Z'),
+            doctorId: undefined,
+            patientId: undefined,
+            status: undefined,
         });
-        expect(result).toHaveLength(2);
+        expect(result).toEqual({
+            data: appointments,
+            total: 2,
+            page: 1,
+            limit: 10,
+            totalPages: 1,
+        });
     });
 });

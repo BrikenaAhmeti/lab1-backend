@@ -1,11 +1,6 @@
 import { Query } from '../../../../shared/core/buses/query-bus';
-import { AppointmentStatus } from '../../domain/appointment.entity';
+import { GetAppointmentsQueryDto } from '../../dto/appointment.dto';
 
 export class GetAppointmentsQuery implements Query {
-    constructor(
-        public readonly date?: string,
-        public readonly doctorId?: string,
-        public readonly patientId?: string,
-        public readonly status?: AppointmentStatus,
-    ) { }
+    constructor(public readonly data: GetAppointmentsQueryDto) { }
 }

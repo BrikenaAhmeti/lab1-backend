@@ -1,11 +1,23 @@
 import { AppError } from '../../../shared/core/errors/app-error';
 import {
+    PaginatedResponse,
+    paginateItems,
+    sortItems,
+} from '../../../shared/core/pagination';
+import {
     DepartmentDoctorEntity,
     DepartmentEntity,
     DepartmentNurseEntity,
     DepartmentRoomEntity,
 } from '../domain/department.entity';
 import { DepartmentRepository } from '../domain/department.repository';
+import { GetDepartmentsQueryDto } from '../dto/department.dto';
+
+const departmentSortAccessors = {
+    created_at: (department: DepartmentEntity) => department.createdAt,
+    name: (department: DepartmentEntity) => department.name,
+    location: (department: DepartmentEntity) => department.location,
+} as const;
 
 export class DepartmentService {
     constructor(private readonly departmentRepository: DepartmentRepository) { }
@@ -32,8 +44,18 @@ export class DepartmentService {
         });
     }
 
-    async getDepartments(): Promise<DepartmentEntity[]> {
-        return this.departmentRepository.findMany();
+    async getDepartments(
+        data: GetDepartmentsQueryDto,
+    ): Promise<PaginatedResponse<DepartmentEntity>> {
+        const departments = await this.departmentRepository.findMany();
+        const sortedDepartments = sortItems(
+            departments,
+            data.sortBy,
+            data.order,
+            departmentSortAccessors,
+        );
+
+        return paginateItems(sortedDepartments, data.page, data.limit);
     }
 
     async getDepartmentById(id: string): Promise<DepartmentEntity> {

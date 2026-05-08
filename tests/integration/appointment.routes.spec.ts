@@ -463,20 +463,20 @@ describe('Appointment routes', () => {
 
         const listResponse = await request(app)
             .get(
-                `/api/appointments?date=${tomorrow}&doctorId=${doctor.id}&status=Scheduled`,
+                `/api/appointments?page=1&limit=10&sortBy=date&order=ASC&doctorId=${doctor.id}&status=Scheduled&from=${tomorrow}&to=${dayAfterTomorrow}`,
             )
             .set('Authorization', `Bearer ${token}`);
 
         expect(listResponse.status).toBe(200);
-        expect(listResponse.body).toHaveLength(1);
-        expect(listResponse.body[0].id).toBe(appointmentId);
+        expect(listResponse.body.data).toHaveLength(1);
+        expect(listResponse.body.data[0].id).toBe(appointmentId);
 
         const todayResponse = await request(app)
             .get('/api/appointments/today')
             .set('Authorization', `Bearer ${token}`);
 
         expect(todayResponse.status).toBe(200);
-        expect(todayResponse.body).toHaveLength(1);
+        expect(todayResponse.body.data).toHaveLength(1);
 
         const getByIdResponse = await request(app)
             .get(`/api/appointments/${appointmentId}`)
@@ -552,8 +552,8 @@ describe('Appointment routes', () => {
             .set('Authorization', `Bearer ${token}`);
 
         expect(cancelledListResponse.status).toBe(200);
-        expect(cancelledListResponse.body).toHaveLength(1);
-        expect(cancelledListResponse.body[0].id).toBe(secondAppointmentId);
+        expect(cancelledListResponse.body.data).toHaveLength(1);
+        expect(cancelledListResponse.body.data[0].id).toBe(secondAppointmentId);
     });
 
     it('should reject appointment creation in the past', async () => {

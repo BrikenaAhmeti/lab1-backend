@@ -38,11 +38,7 @@ export class PatientsController {
     async getAll(req: Request, res: Response) {
         const queryData = validateGetPatientsQueryDto(req.query);
         const handler = new GetPatientsHandler(this.service);
-        const query = new GetPatientsQuery(
-            queryData.page,
-            queryData.limit,
-            queryData.search,
-        );
+        const query = new GetPatientsQuery(queryData);
         const result = await this.queryBus.execute(handler, query);
 
         return res.status(200).json(result);

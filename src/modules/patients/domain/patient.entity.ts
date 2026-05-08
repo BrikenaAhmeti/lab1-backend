@@ -1,3 +1,5 @@
+import type { PaginatedResponse } from '../../../shared/core/pagination';
+
 export interface PatientEntity {
     id: string;
     firstName: string;
@@ -12,10 +14,4 @@ export interface PatientEntity {
     updatedAt: Date;
 }
 
-export interface PatientListResponse {
-    items: PatientEntity[];
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-}
+export type PatientListResponse = PaginatedResponse<PatientEntity>;

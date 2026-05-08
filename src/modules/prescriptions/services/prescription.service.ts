@@ -1,4 +1,9 @@
 import { AppError } from '../../../shared/core/errors/app-error';
+import {
+    PaginatedResponse,
+    paginateItems,
+    sortItems,
+} from '../../../shared/core/pagination';
 import { PrescriptionEntity } from '../domain/prescription.entity';
 import {
     PrescriptionRepository,
@@ -9,6 +14,11 @@ import {
     GetPrescriptionsQueryDto,
     UpdatePrescriptionDto,
 } from '../dto/prescription.dto';
+
+const prescriptionSortAccessors = {
+    created_at: (prescription: PrescriptionEntity) => prescription.createdAt,
+    medicine: (prescription: PrescriptionEntity) => prescription.medicine,
+} as const;
 
 export class PrescriptionService {
     constructor(
@@ -33,14 +43,22 @@ export class PrescriptionService {
 
     async getPrescriptions(
         data: GetPrescriptionsQueryDto,
-    ): Promise<PrescriptionEntity[]> {
+    ): Promise<PaginatedResponse<PrescriptionEntity>> {
         const medicalRecordId = data.medicalRecordId.trim();
 
         await this.ensureMedicalRecordExists(medicalRecordId);
 
-        return this.prescriptionRepository.findManyByMedicalRecordId(
+        const prescriptions = await this.prescriptionRepository.findManyByMedicalRecordId(
             medicalRecordId,
         );
+        const sortedPrescriptions = sortItems(
+            prescriptions,
+            data.sortBy,
+            data.order,
+            prescriptionSortAccessors,
+        );
+
+        return paginateItems(sortedPrescriptions, data.page, data.limit);
     }
 
     async getPrescriptionById(id: string): Promise<PrescriptionEntity> {

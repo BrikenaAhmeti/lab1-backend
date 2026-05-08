@@ -398,8 +398,8 @@ describe('Department routes', () => {
             .set('Authorization', `Bearer ${token}`);
 
         expect(listResponse.status).toBe(200);
-        expect(listResponse.body).toHaveLength(1);
-        expect(listResponse.body[0].id).toBe(departmentId);
+        expect(listResponse.body.data).toHaveLength(1);
+        expect(listResponse.body.data[0].id).toBe(departmentId);
 
         const getResponse = await request(app)
             .get(`/api/departments/${departmentId}`)

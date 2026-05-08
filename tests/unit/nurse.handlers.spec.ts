@@ -112,11 +112,23 @@ describe('Nurse handlers', () => {
 
         const service = new NurseService(repository);
         const handler = new GetNursesHandler(service);
-        const result = await handler.execute(new GetNursesQuery('department-1'));
+        const result = await handler.execute(new GetNursesQuery({
+            page: 1,
+            limit: 10,
+            sortBy: 'created_at',
+            order: 'DESC',
+            departmentId: 'department-1',
+        }));
 
         expect(repository.findDepartmentById).toHaveBeenCalledWith('department-1');
         expect(repository.findMany).toHaveBeenCalledWith('department-1');
-        expect(result).toEqual(nurses);
+        expect(result).toEqual({
+            data: nurses,
+            total: 1,
+            page: 1,
+            limit: 10,
+            totalPages: 1,
+        });
     });
 
     it('should return a nurse by id', async () => {

@@ -176,11 +176,23 @@ describe('Medical record handlers', () => {
         const service = new MedicalRecordService(repository);
         const handler = new GetMedicalRecordsHandler(service);
         const result = await handler.execute(
-            new GetMedicalRecordsQuery('patient-1'),
+            new GetMedicalRecordsQuery({
+                page: 1,
+                limit: 10,
+                sortBy: 'created_at',
+                order: 'DESC',
+                patientId: 'patient-1',
+            }),
         );
 
         expect(repository.findManyByPatientId).toHaveBeenCalledWith('patient-1');
-        expect(result).toEqual(medicalRecords);
+        expect(result).toEqual({
+            data: medicalRecords,
+            total: 2,
+            page: 1,
+            limit: 10,
+            totalPages: 1,
+        });
     });
 
     it('should return a medical record by id', async () => {

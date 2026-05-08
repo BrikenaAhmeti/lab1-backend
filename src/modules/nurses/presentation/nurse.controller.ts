@@ -38,7 +38,7 @@ export class NurseController {
     async getAll(req: Request, res: Response) {
         const queryData = validateGetNursesQueryDto(req.query);
         const handler = new GetNursesHandler(this.service);
-        const query = new GetNursesQuery(queryData.departmentId);
+        const query = new GetNursesQuery(queryData);
         const result = await this.queryBus.execute(handler, query);
 
         return res.status(200).json(result);

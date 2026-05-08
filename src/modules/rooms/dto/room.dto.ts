@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import { AppError } from '../../../shared/core/errors/app-error';
+import {
+    createPaginationQuerySchema,
+    normalizeOptionalString,
+} from '../../../shared/core/pagination';
 import { RoomStatus, RoomType } from '../domain/room.entity';
 
 const roomTypeValues = [
@@ -15,6 +19,7 @@ const roomStatusValues = [
     'OCCUPIED',
     'UNDER_MAINTENANCE',
 ] as const;
+const roomSortByValues = ['created_at', 'room_number', 'capacity'] as const;
 
 function getValidationMessage(error: z.ZodError) {
     return error.issues[0]?.message ?? 'Validation failed';
@@ -87,13 +92,13 @@ const updateRoomSchema = createRoomSchema.partial().refine(
     },
 );
 
-const getRoomsQuerySchema = z.object({
+const getRoomsQuerySchema = createPaginationQuerySchema(roomSortByValues).extend({
     departmentId: z.preprocess(
-        (value) => (typeof value === 'string' ? value : undefined),
-        z.string().trim().min(1, 'Department id is required').max(255).optional(),
+        normalizeOptionalString,
+        z.string().max(255).optional(),
     ),
     type: z.preprocess(
-        (value) => (typeof value === 'string' ? value : undefined),
+        normalizeOptionalString,
         roomTypeSchema.optional(),
     ),
 });

@@ -1,8 +1,17 @@
 import { z } from 'zod';
 import { AppError } from '../../../shared/core/errors/app-error';
+import {
+    createPaginationQuerySchema,
+    normalizeOptionalString,
+} from '../../../shared/core/pagination';
 import { AdmissionStatus } from '../domain/admission.entity';
 
 const admissionStatusValues = ['ACTIVE', 'DISCHARGED'] as const;
+const admissionSortByValues = [
+    'created_at',
+    'admission_date',
+    'discharge_date',
+] as const;
 
 function getValidationMessage(error: z.ZodError) {
     return error.issues[0]?.message ?? 'Validation failed';
@@ -53,18 +62,20 @@ const dischargeAdmissionSchema = z.object({
     dischargeDate: optionalDateString('Discharge date'),
 });
 
-const getAdmissionsQuerySchema = z.object({
+const getAdmissionsQuerySchema = createPaginationQuerySchema(
+    admissionSortByValues,
+).extend({
     status: z.preprocess(
-        (value) => (typeof value === 'string' ? value : undefined),
+        normalizeOptionalString,
         admissionStatusSchema.optional(),
     ),
     patientId: z.preprocess(
-        (value) => (typeof value === 'string' ? value : undefined),
-        z.string().trim().min(1, 'Patient id is required').max(255).optional(),
+        normalizeOptionalString,
+        z.string().max(255).optional(),
     ),
     roomId: z.preprocess(
-        (value) => (typeof value === 'string' ? value : undefined),
-        z.string().trim().min(1, 'Room id is required').max(255).optional(),
+        normalizeOptionalString,
+        z.string().max(255).optional(),
     ),
 });
 

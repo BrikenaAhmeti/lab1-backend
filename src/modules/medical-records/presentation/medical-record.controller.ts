@@ -40,7 +40,7 @@ export class MedicalRecordController {
     async getAll(req: Request, res: Response) {
         const queryData = validateGetMedicalRecordsQueryDto(req.query);
         const handler = new GetMedicalRecordsHandler(this.service);
-        const query = new GetMedicalRecordsQuery(queryData.patientId);
+        const query = new GetMedicalRecordsQuery(queryData);
         const result = await this.queryBus.execute(handler, query);
 
         return res.status(200).json(result);

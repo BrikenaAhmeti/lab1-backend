@@ -14,6 +14,7 @@ import { GetDoctorsQuery } from '../application/queries/get-doctors.query';
 import {
     validateCreateDoctorDto,
     validateDoctorId,
+    validateGetDoctorsQueryDto,
     validateUpdateDoctorDto,
 } from '../dto/doctor.dto';
 import { DoctorPrismaRepository } from '../infrastructure/doctor.prisma.repository';
@@ -34,9 +35,10 @@ export class DoctorController {
         return res.status(201).json(result);
     }
 
-    async getAll(_req: Request, res: Response) {
+    async getAll(req: Request, res: Response) {
+        const queryData = validateGetDoctorsQueryDto(req.query);
         const handler = new GetDoctorsHandler(this.service);
-        const query = new GetDoctorsQuery();
+        const query = new GetDoctorsQuery(queryData);
         const result = await this.queryBus.execute(handler, query);
 
         return res.status(200).json(result);

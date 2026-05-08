@@ -1,7 +1,23 @@
 import { AppError } from '../../../shared/core/errors/app-error';
+import {
+    PaginatedResponse,
+    paginateItems,
+    sortItems,
+} from '../../../shared/core/pagination';
 import { DoctorEntity } from '../domain/doctor.entity';
 import { DoctorRepository, UpdateDoctorData } from '../domain/doctor.repository';
-import { CreateDoctorDto, UpdateDoctorDto } from '../dto/doctor.dto';
+import {
+    CreateDoctorDto,
+    GetDoctorsQueryDto,
+    UpdateDoctorDto,
+} from '../dto/doctor.dto';
+
+const doctorSortAccessors = {
+    created_at: (doctor: DoctorEntity) => doctor.createdAt,
+    first_name: (doctor: DoctorEntity) => doctor.firstName,
+    last_name: (doctor: DoctorEntity) => doctor.lastName,
+    specialization: (doctor: DoctorEntity) => doctor.specialization,
+} as const;
 
 export class DoctorService {
     constructor(private readonly doctorRepository: DoctorRepository) { }
@@ -31,8 +47,37 @@ export class DoctorService {
         });
     }
 
-    async getDoctors(): Promise<DoctorEntity[]> {
-        return this.doctorRepository.findMany();
+    async getDoctors(
+        data: GetDoctorsQueryDto,
+    ): Promise<PaginatedResponse<DoctorEntity>> {
+        const doctors = await this.doctorRepository.findMany();
+        const normalizedSpecialization = data.specialization?.toLowerCase();
+
+        const filteredDoctors = doctors.filter((doctor) => {
+            if (data.departmentId && doctor.departmentId !== data.departmentId) {
+                return false;
+            }
+
+            if (
+                normalizedSpecialization
+                && !doctor.specialization.toLowerCase().includes(
+                    normalizedSpecialization,
+                )
+            ) {
+                return false;
+            }
+
+            return true;
+        });
+
+        const sortedDoctors = sortItems(
+            filteredDoctors,
+            data.sortBy,
+            data.order,
+            doctorSortAccessors,
+        );
+
+        return paginateItems(sortedDoctors, data.page, data.limit);
     }
 
     async getDoctorById(id: string): Promise<DoctorEntity> {

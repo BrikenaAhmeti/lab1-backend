@@ -1,10 +1,20 @@
 import { z } from 'zod';
 import { AppError } from '../../../shared/core/errors/app-error';
+import {
+    createPaginationQuerySchema,
+    normalizeOptionalString,
+} from '../../../shared/core/pagination';
 
 const phoneNumberRegex = /^\+?[0-9]{7,15}$/;
 const dateOfBirthRegex = /^\d{4}-\d{2}-\d{2}$/;
 const genderValues = ['MALE', 'FEMALE', 'OTHER'] as const;
 const bloodTypeValues = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const;
+const patientSortByValues = [
+    'created_at',
+    'first_name',
+    'last_name',
+    'date_of_birth',
+] as const;
 
 function isValidDateOfBirth(value: string) {
     if (!dateOfBirthRegex.test(value)) {
@@ -39,18 +49,36 @@ const updatePatientSchema = createPatientSchema.partial().refine(
     },
 );
 
-const getPatientsQuerySchema = z.object({
-    page: z.coerce.number().int().min(1).default(1),
-    limit: z.coerce.number().int().min(1).max(100).default(10),
+const getPatientsQuerySchema = createPaginationQuerySchema(
+    patientSortByValues,
+).extend({
     search: z.preprocess(
+        normalizeOptionalString,
+        z.string().max(100).optional(),
+    ),
+    bloodGroup: z.preprocess(
         (value) => {
-            if (typeof value === 'string' && value.trim() === '') {
+            if (typeof value !== 'string') {
                 return undefined;
             }
 
-            return value;
+            const normalizedValue = value.trim().toUpperCase();
+
+            return normalizedValue.length > 0 ? normalizedValue : undefined;
         },
-        z.string().min(1).max(100).optional(),
+        z.enum(bloodTypeValues).optional(),
+    ),
+    gender: z.preprocess(
+        (value) => {
+            if (typeof value !== 'string') {
+                return undefined;
+            }
+
+            const normalizedValue = value.trim().toUpperCase();
+
+            return normalizedValue.length > 0 ? normalizedValue : undefined;
+        },
+        z.enum(genderValues).optional(),
     ),
 });
 

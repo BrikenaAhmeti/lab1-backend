@@ -1,4 +1,9 @@
 import { AppError } from '../../../shared/core/errors/app-error';
+import {
+    PaginatedResponse,
+    paginateItems,
+    sortItems,
+} from '../../../shared/core/pagination';
 import { InvoiceEntity, InvoiceStatsEntity } from '../domain/invoice.entity';
 import { InvoiceRepository, UpdateInvoiceData } from '../domain/invoice.repository';
 import {
@@ -6,6 +11,13 @@ import {
     GetInvoicesQueryDto,
     UpdateInvoiceDto,
 } from '../dto/invoice.dto';
+
+const invoiceSortAccessors = {
+    created_at: (invoice: InvoiceEntity) => invoice.createdAt,
+    date: (invoice: InvoiceEntity) => invoice.invoiceDate,
+    amount: (invoice: InvoiceEntity) => invoice.amount,
+    status: (invoice: InvoiceEntity) => invoice.status,
+} as const;
 
 export class InvoiceService {
     constructor(private readonly invoiceRepository: InvoiceRepository) { }
@@ -24,17 +36,28 @@ export class InvoiceService {
         });
     }
 
-    async getInvoices(data: GetInvoicesQueryDto): Promise<InvoiceEntity[]> {
+    async getInvoices(
+        data: GetInvoicesQueryDto,
+    ): Promise<PaginatedResponse<InvoiceEntity>> {
         const patientId = data.patientId?.trim();
 
         if (patientId) {
             await this.ensurePatientExists(patientId);
         }
 
-        return this.invoiceRepository.findMany({
+        const invoices = await this.invoiceRepository.findMany({
             ...(patientId ? { patientId } : {}),
             ...(data.status ? { status: data.status } : {}),
         });
+
+        const sortedInvoices = sortItems(
+            invoices,
+            data.sortBy,
+            data.order,
+            invoiceSortAccessors,
+        );
+
+        return paginateItems(sortedInvoices, data.page, data.limit);
     }
 
     async getInvoiceById(id: string): Promise<InvoiceEntity> {

@@ -1,5 +1,10 @@
 import { AppError } from '../../../shared/core/errors/app-error';
 import {
+    PaginatedResponse,
+    paginateItems,
+    sortItems,
+} from '../../../shared/core/pagination';
+import {
     RoomDetailEntity,
     RoomEntity,
     RoomStatus,
@@ -11,6 +16,12 @@ import {
     GetRoomsQueryDto,
     UpdateRoomDto,
 } from '../dto/room.dto';
+
+const roomSortAccessors = {
+    created_at: (room: RoomEntity) => room.createdAt,
+    room_number: (room: RoomEntity) => room.roomNumber,
+    capacity: (room: RoomEntity) => room.capacity,
+} as const;
 
 export class RoomService {
     constructor(private readonly roomRepository: RoomRepository) { }
@@ -38,7 +49,39 @@ export class RoomService {
         return this.decorateRoom(room);
     }
 
-    async getRooms(data: GetRoomsQueryDto): Promise<RoomEntity[]> {
+    async getRooms(data: GetRoomsQueryDto): Promise<PaginatedResponse<RoomEntity>> {
+        const rooms = await this.findRooms(data);
+        const sortedRooms = sortItems(
+            rooms,
+            data.sortBy,
+            data.order,
+            roomSortAccessors,
+        );
+
+        return paginateItems(sortedRooms, data.page, data.limit);
+    }
+
+    async getAvailableRooms(
+        data: GetRoomsQueryDto,
+    ): Promise<PaginatedResponse<RoomEntity>> {
+        const rooms = await this.findRooms(data);
+        const availableRooms = rooms.filter((room) => {
+            return (
+                room.status !== 'UNDER_MAINTENANCE'
+                && room.availableCapacity > 0
+            );
+        });
+        const sortedRooms = sortItems(
+            availableRooms,
+            data.sortBy,
+            data.order,
+            roomSortAccessors,
+        );
+
+        return paginateItems(sortedRooms, data.page, data.limit);
+    }
+
+    private async findRooms(data: GetRoomsQueryDto): Promise<RoomEntity[]> {
         const departmentId = data.departmentId?.trim();
 
         if (departmentId) {
@@ -51,17 +94,6 @@ export class RoomService {
         });
 
         return this.decorateRooms(rooms);
-    }
-
-    async getAvailableRooms(data: GetRoomsQueryDto): Promise<RoomEntity[]> {
-        const rooms = await this.getRooms(data);
-
-        return rooms.filter((room) => {
-            return (
-                room.status !== 'UNDER_MAINTENANCE'
-                && room.availableCapacity > 0
-            );
-        });
     }
 
     async getRoomById(id: string): Promise<RoomDetailEntity> {

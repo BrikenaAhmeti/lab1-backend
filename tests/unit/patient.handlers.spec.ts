@@ -134,24 +134,32 @@ describe('Patient handlers', () => {
 
     it('should return paginated patients', async () => {
         const patient = createPatient();
-
-        repository.findMany.mockResolvedValue({
-            items: [patient],
-            total: 1,
+        const secondPatient = createPatient({
+            id: 'patient-2',
+            firstName: 'Blerim',
+            lastName: 'Hoxha',
+            gender: 'MALE',
+            bloodType: 'O+',
         });
+
+        repository.findMany.mockResolvedValue([patient, secondPatient]);
 
         const service = new PatientService(repository);
         const handler = new GetPatientsHandler(service);
-        const result = await handler.execute(new GetPatientsQuery(2, 5, ' Ana '));
-
-        expect(repository.findMany).toHaveBeenCalledWith({
-            page: 2,
+        const result = await handler.execute(new GetPatientsQuery({
+            page: 1,
             limit: 5,
-            search: 'Ana',
-        });
+            sortBy: 'last_name',
+            order: 'ASC',
+            search: ' Ana Krasniqi ',
+            bloodGroup: 'A+',
+            gender: 'FEMALE',
+        }));
+
+        expect(repository.findMany).toHaveBeenCalledWith();
         expect(result).toEqual({
-            items: [patient],
-            page: 2,
+            data: [patient],
+            page: 1,
             limit: 5,
             total: 1,
             totalPages: 1,

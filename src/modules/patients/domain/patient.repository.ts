@@ -20,21 +20,10 @@ export interface UpdatePatientData {
     bloodType?: string;
 }
 
-export interface FindPatientsParams {
-    page: number;
-    limit: number;
-    search?: string;
-}
-
-export interface FindPatientsResult {
-    items: PatientEntity[];
-    total: number;
-}
-
 export interface PatientRepository {
     create(data: CreatePatientData): Promise<PatientEntity>;
     findById(id: string): Promise<PatientEntity | null>;
-    findMany(params: FindPatientsParams): Promise<FindPatientsResult>;
+    findMany(): Promise<PatientEntity[]>;
     update(id: string, data: UpdatePatientData): Promise<PatientEntity>;
     softDelete(id: string): Promise<PatientEntity>;
 }

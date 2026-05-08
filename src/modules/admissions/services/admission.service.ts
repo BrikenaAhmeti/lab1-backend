@@ -1,4 +1,9 @@
 import { AppError } from '../../../shared/core/errors/app-error';
+import {
+    PaginatedResponse,
+    paginateItems,
+    sortItems,
+} from '../../../shared/core/pagination';
 import { RoomStatus } from '../../rooms/domain/room.entity';
 import { AdmissionEntity, AdmissionRoomEntity } from '../domain/admission.entity';
 import {
@@ -12,6 +17,12 @@ import {
     DischargeAdmissionDto,
     GetAdmissionsQueryDto,
 } from '../dto/admission.dto';
+
+const admissionSortAccessors = {
+    created_at: (admission: AdmissionEntity) => admission.createdAt,
+    admission_date: (admission: AdmissionEntity) => admission.admissionDate,
+    discharge_date: (admission: AdmissionEntity) => admission.dischargeDate,
+} as const;
 
 export class AdmissionService {
     constructor(
@@ -64,7 +75,7 @@ export class AdmissionService {
 
     async getAdmissions(
         data: GetAdmissionsQueryDto,
-    ): Promise<AdmissionEntity[]> {
+    ): Promise<PaginatedResponse<AdmissionEntity>> {
         const patientId = data.patientId?.trim();
         const roomId = data.roomId?.trim();
 
@@ -82,11 +93,22 @@ export class AdmissionService {
             ...(roomId !== undefined ? { roomId } : {}),
         };
 
-        return this.admissionRepository.findMany(params);
+        const admissions = await this.admissionRepository.findMany(params);
+        const sortedAdmissions = sortItems(
+            admissions,
+            data.sortBy,
+            data.order,
+            admissionSortAccessors,
+        );
+
+        return paginateItems(sortedAdmissions, data.page, data.limit);
     }
 
-    async getActiveAdmissions(): Promise<AdmissionEntity[]> {
-        return this.admissionRepository.findMany({
+    async getActiveAdmissions(
+        data: GetAdmissionsQueryDto,
+    ): Promise<PaginatedResponse<AdmissionEntity>> {
+        return this.getAdmissions({
+            ...data,
             status: 'ACTIVE',
         });
     }

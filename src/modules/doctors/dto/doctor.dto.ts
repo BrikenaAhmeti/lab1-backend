@@ -1,7 +1,17 @@
 import { z } from 'zod';
 import { AppError } from '../../../shared/core/errors/app-error';
+import {
+    createPaginationQuerySchema,
+    normalizeOptionalString,
+} from '../../../shared/core/pagination';
 
 const phoneNumberRegex = /^\+?[0-9]{7,15}$/;
+const doctorSortByValues = [
+    'created_at',
+    'first_name',
+    'last_name',
+    'specialization',
+] as const;
 
 function getValidationMessage(error: z.ZodError) {
     return error.issues[0]?.message ?? 'Validation failed';
@@ -42,8 +52,22 @@ const updateDoctorSchema = createDoctorSchema.partial().refine(
     },
 );
 
+const getDoctorsQuerySchema = createPaginationQuerySchema(
+    doctorSortByValues,
+).extend({
+    departmentId: z.preprocess(
+        normalizeOptionalString,
+        z.string().max(255).optional(),
+    ),
+    specialization: z.preprocess(
+        normalizeOptionalString,
+        z.string().max(100).optional(),
+    ),
+});
+
 export type CreateDoctorDto = z.infer<typeof createDoctorSchema>;
 export type UpdateDoctorDto = z.infer<typeof updateDoctorSchema>;
+export type GetDoctorsQueryDto = z.infer<typeof getDoctorsQuerySchema>;
 
 export function validateCreateDoctorDto(input: unknown): CreateDoctorDto {
     const result = createDoctorSchema.safeParse(input);
@@ -57,6 +81,16 @@ export function validateCreateDoctorDto(input: unknown): CreateDoctorDto {
 
 export function validateUpdateDoctorDto(input: unknown): UpdateDoctorDto {
     const result = updateDoctorSchema.safeParse(input);
+
+    if (!result.success) {
+        throw new AppError(getValidationMessage(result.error), 400);
+    }
+
+    return result.data;
+}
+
+export function validateGetDoctorsQueryDto(input: unknown): GetDoctorsQueryDto {
+    const result = getDoctorsQuerySchema.safeParse(input);
 
     if (!result.success) {
         throw new AppError(getValidationMessage(result.error), 400);

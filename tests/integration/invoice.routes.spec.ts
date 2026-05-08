@@ -364,8 +364,8 @@ describe('Invoice routes', () => {
             .set('Authorization', `Bearer ${userToken}`);
 
         expect(listResponse.status).toBe(200);
-        expect(listResponse.body).toHaveLength(1);
-        expect(listResponse.body[0].id).toBe(invoiceId);
+        expect(listResponse.body.data).toHaveLength(1);
+        expect(listResponse.body.data[0].id).toBe(invoiceId);
 
         const getByIdResponse = await request(app)
             .get(`/api/invoices/${invoiceId}`)
@@ -427,8 +427,8 @@ describe('Invoice routes', () => {
             .set('Authorization', `Bearer ${userToken}`);
 
         expect(cancelledListResponse.status).toBe(200);
-        expect(cancelledListResponse.body).toHaveLength(1);
-        expect(cancelledListResponse.body[0].id).toBe(secondInvoiceId);
-        expect(cancelledListResponse.body[0].status).toBe('CANCELLED');
+        expect(cancelledListResponse.body.data).toHaveLength(1);
+        expect(cancelledListResponse.body.data[0].id).toBe(secondInvoiceId);
+        expect(cancelledListResponse.body.data[0].status).toBe('CANCELLED');
     });
 });

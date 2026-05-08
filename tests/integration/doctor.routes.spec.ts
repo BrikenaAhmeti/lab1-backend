@@ -287,12 +287,14 @@ describe('Doctor routes', () => {
         const doctorId = createResponse.body.id as string;
 
         const listResponse = await request(app)
-            .get('/api/doctors')
+            .get(
+                `/api/doctors?page=1&limit=10&sortBy=last_name&order=ASC&departmentId=${cardiology.id}&specialization=cardio`,
+            )
             .set('Authorization', `Bearer ${userToken}`);
 
         expect(listResponse.status).toBe(200);
-        expect(listResponse.body).toHaveLength(1);
-        expect(listResponse.body[0].department.name).toBe('Cardiology');
+        expect(listResponse.body.data).toHaveLength(1);
+        expect(listResponse.body.data[0].department.name).toBe('Cardiology');
 
         const getResponse = await request(app)
             .get(`/api/doctors/${doctorId}`)

@@ -475,8 +475,8 @@ describe('Medical record routes', () => {
             .set('Authorization', `Bearer ${userToken}`);
 
         expect(listResponse.status).toBe(200);
-        expect(listResponse.body).toHaveLength(2);
-        expect(listResponse.body[0].id).toBe(medicalRecordId);
+        expect(listResponse.body.data).toHaveLength(2);
+        expect(listResponse.body.data[0].id).toBe(medicalRecordId);
 
         const getByIdResponse = await request(app)
             .get(`/api/medical-records/${medicalRecordId}`)

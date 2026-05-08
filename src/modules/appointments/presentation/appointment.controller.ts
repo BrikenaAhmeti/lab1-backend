@@ -40,20 +40,16 @@ export class AppointmentController {
     async getAll(req: Request, res: Response) {
         const queryData = validateGetAppointmentsQueryDto(req.query);
         const handler = new GetAppointmentsHandler(this.service);
-        const query = new GetAppointmentsQuery(
-            queryData.date,
-            queryData.doctorId,
-            queryData.patientId,
-            queryData.status,
-        );
+        const query = new GetAppointmentsQuery(queryData);
         const result = await this.queryBus.execute(handler, query);
 
         return res.status(200).json(result);
     }
 
-    async getToday(_req: Request, res: Response) {
+    async getToday(req: Request, res: Response) {
+        const queryData = validateGetAppointmentsQueryDto(req.query);
         const handler = new GetTodayAppointmentsHandler(this.service);
-        const query = new GetTodayAppointmentsQuery();
+        const query = new GetTodayAppointmentsQuery(queryData);
         const result = await this.queryBus.execute(handler, query);
 
         return res.status(200).json(result);

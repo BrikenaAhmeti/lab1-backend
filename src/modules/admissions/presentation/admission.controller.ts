@@ -42,9 +42,10 @@ export class AdmissionController {
         return res.status(200).json(result);
     }
 
-    async getActive(_req: Request, res: Response) {
+    async getActive(req: Request, res: Response) {
+        const queryData = validateGetAdmissionsQueryDto(req.query);
         const handler = new GetActiveAdmissionsHandler(this.service);
-        const query = new GetActiveAdmissionsQuery();
+        const query = new GetActiveAdmissionsQuery(queryData);
         const result = await this.queryBus.execute(handler, query);
 
         return res.status(200).json(result);

@@ -1,7 +1,17 @@
 import { z } from 'zod';
 import { AppError } from '../../../shared/core/errors/app-error';
+import {
+    createPaginationQuerySchema,
+    normalizeOptionalString,
+} from '../../../shared/core/pagination';
 
 const nurseShiftValues = ['Morning', 'Evening', 'Night'] as const;
+const nurseSortByValues = [
+    'created_at',
+    'first_name',
+    'last_name',
+    'shift',
+] as const;
 
 function getValidationMessage(error: z.ZodError) {
     return error.issues[0]?.message ?? 'Validation failed';
@@ -44,10 +54,12 @@ const updateNurseSchema = createNurseSchema.partial().refine(
     },
 );
 
-const getNursesQuerySchema = z.object({
+const getNursesQuerySchema = createPaginationQuerySchema(
+    nurseSortByValues,
+).extend({
     departmentId: z.preprocess(
-        (value) => (typeof value === 'string' ? value : undefined),
-        z.string().trim().min(1, 'Department id is required').max(255).optional(),
+        normalizeOptionalString,
+        z.string().max(255).optional(),
     ),
 });
 

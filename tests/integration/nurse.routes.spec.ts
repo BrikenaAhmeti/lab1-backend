@@ -272,16 +272,16 @@ describe('Nurse routes', () => {
             .set('Authorization', `Bearer ${userToken}`);
 
         expect(listResponse.status).toBe(200);
-        expect(listResponse.body).toHaveLength(1);
-        expect(listResponse.body[0].id).toBe(nurseId);
+        expect(listResponse.body.data).toHaveLength(1);
+        expect(listResponse.body.data[0].id).toBe(nurseId);
 
         const filterResponse = await request(app)
             .get(`/api/nurses?departmentId=${cardiology.id}`)
             .set('Authorization', `Bearer ${userToken}`);
 
         expect(filterResponse.status).toBe(200);
-        expect(filterResponse.body).toHaveLength(1);
-        expect(filterResponse.body[0].departmentId).toBe(cardiology.id);
+        expect(filterResponse.body.data).toHaveLength(1);
+        expect(filterResponse.body.data[0].departmentId).toBe(cardiology.id);
 
         const getResponse = await request(app)
             .get(`/api/nurses/${nurseId}`)
@@ -307,8 +307,8 @@ describe('Nurse routes', () => {
             .set('Authorization', `Bearer ${userToken}`);
 
         expect(filteredAfterUpdateResponse.status).toBe(200);
-        expect(filteredAfterUpdateResponse.body).toHaveLength(1);
-        expect(filteredAfterUpdateResponse.body[0].departmentId).toBe(
+        expect(filteredAfterUpdateResponse.body.data).toHaveLength(1);
+        expect(filteredAfterUpdateResponse.body.data[0].departmentId).toBe(
             neurology.id,
         );
 

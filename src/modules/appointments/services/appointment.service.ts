@@ -1,4 +1,9 @@
 import { AppError } from '../../../shared/core/errors/app-error';
+import {
+    PaginatedResponse,
+    paginateItems,
+    sortItems,
+} from '../../../shared/core/pagination';
 import { AppointmentEntity, AppointmentStatus } from '../domain/appointment.entity';
 import {
     AppointmentRepository,
@@ -9,6 +14,13 @@ import {
     GetAppointmentsQueryDto,
     UpdateAppointmentDto,
 } from '../dto/appointment.dto';
+
+const appointmentSortAccessors = {
+    created_at: (appointment: AppointmentEntity) => appointment.createdAt,
+    date: (appointment: AppointmentEntity) => appointment.appointmentDate,
+    time: (appointment: AppointmentEntity) => appointment.appointmentTime,
+    status: (appointment: AppointmentEntity) => appointment.status,
+} as const;
 
 export class AppointmentService {
     constructor(
@@ -40,7 +52,7 @@ export class AppointmentService {
 
     async getAppointments(
         data: GetAppointmentsQueryDto,
-    ): Promise<AppointmentEntity[]> {
+    ): Promise<PaginatedResponse<AppointmentEntity>> {
         const doctorId = data.doctorId?.trim();
         const patientId = data.patientId?.trim();
 
@@ -52,7 +64,7 @@ export class AppointmentService {
             await this.ensurePatientExists(patientId);
         }
 
-        return this.appointmentRepository.findMany({
+        const appointments = await this.appointmentRepository.findMany({
             appointmentDate: data.date
                 ? this.toAppointmentDate(data.date)
                 : undefined,
@@ -60,11 +72,50 @@ export class AppointmentService {
             patientId,
             status: data.status,
         });
+
+        const fromDate = data.from
+            ? this.toAppointmentDate(data.from)
+            : undefined;
+        const toDate = data.to
+            ? this.toAppointmentDate(data.to)
+            : undefined;
+
+        const filteredAppointments = appointments.filter((appointment) => {
+            if (
+                fromDate
+                && appointment.appointmentDate.getTime() < fromDate.getTime()
+            ) {
+                return false;
+            }
+
+            if (
+                toDate
+                && appointment.appointmentDate.getTime() > toDate.getTime()
+            ) {
+                return false;
+            }
+
+            return true;
+        });
+
+        const sortedAppointments = sortItems(
+            filteredAppointments,
+            data.sortBy,
+            data.order,
+            appointmentSortAccessors,
+        );
+
+        return paginateItems(sortedAppointments, data.page, data.limit);
     }
 
-    async getTodayAppointments(): Promise<AppointmentEntity[]> {
-        return this.appointmentRepository.findMany({
-            appointmentDate: this.toAppointmentDate(this.getTodayDate()),
+    async getTodayAppointments(
+        data: GetAppointmentsQueryDto,
+    ): Promise<PaginatedResponse<AppointmentEntity>> {
+        return this.getAppointments({
+            ...data,
+            date: this.getTodayDate(),
+            from: undefined,
+            to: undefined,
         });
     }
 

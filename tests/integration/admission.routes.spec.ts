@@ -447,8 +447,8 @@ describe('Admission routes', () => {
             .set('Authorization', `Bearer ${adminToken}`);
 
         expect(listResponse.status).toBe(200);
-        expect(listResponse.body).toHaveLength(1);
-        expect(listResponse.body[0]).toMatchObject({
+        expect(listResponse.body.data).toHaveLength(1);
+        expect(listResponse.body.data[0]).toMatchObject({
             patientId,
             roomId,
             status: 'ACTIVE',
@@ -459,7 +459,7 @@ describe('Admission routes', () => {
             .set('Authorization', `Bearer ${adminToken}`);
 
         expect(activeResponse.status).toBe(200);
-        expect(activeResponse.body).toHaveLength(1);
+        expect(activeResponse.body.data).toHaveLength(1);
 
         const admissionId = createResponse.body.id as string;
         const dischargeResponse = await request(app)
@@ -483,7 +483,7 @@ describe('Admission routes', () => {
             .set('Authorization', `Bearer ${adminToken}`);
 
         expect(finalActiveResponse.status).toBe(200);
-        expect(finalActiveResponse.body).toHaveLength(0);
+        expect(finalActiveResponse.body.data).toHaveLength(0);
     });
 
     it('should reject a second active admission for the same patient', async () => {

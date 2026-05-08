@@ -178,12 +178,20 @@ describe('Room handlers', () => {
 
         const allRooms = await getRoomsHandler.execute(
             new GetRoomsQuery({
+                page: 1,
+                limit: 10,
+                sortBy: 'created_at',
+                order: 'DESC',
                 departmentId: 'department-1',
             }),
         );
 
         const availableRooms = await getAvailableRoomsHandler.execute(
             new GetAvailableRoomsQuery({
+                page: 1,
+                limit: 10,
+                sortBy: 'created_at',
+                order: 'DESC',
                 departmentId: 'department-1',
             }),
         );
@@ -192,13 +200,13 @@ describe('Room handlers', () => {
             departmentId: 'department-1',
             type: undefined,
         });
-        expect(allRooms.find((room) => room.id === 'room-2')).toMatchObject({
+        expect(allRooms.data.find((room) => room.id === 'room-2')).toMatchObject({
             status: 'OCCUPIED',
             activeAdmissionsCount: 1,
             availableCapacity: 0,
         });
-        expect(availableRooms).toHaveLength(1);
-        expect(availableRooms[0]).toMatchObject({
+        expect(availableRooms.data).toHaveLength(1);
+        expect(availableRooms.data[0]).toMatchObject({
             id: 'room-1',
             status: 'AVAILABLE',
             activeAdmissionsCount: 1,

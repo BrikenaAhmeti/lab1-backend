@@ -1,8 +1,6 @@
 import { prisma } from '../../../infrastructure/db/prisma';
 import {
     CreatePatientData,
-    FindPatientsParams,
-    FindPatientsResult,
     PatientRepository,
     UpdatePatientData,
 } from '../domain/patient.repository';
@@ -24,47 +22,12 @@ export class PatientPrismaRepository implements PatientRepository {
         });
     }
 
-    async findMany(params: FindPatientsParams): Promise<FindPatientsResult> {
-        const search = params.search?.trim();
-        const where = {
-            isDeleted: false,
-            ...(search
-                ? {
-                    OR: [
-                        {
-                            firstName: {
-                                contains: search,
-                                mode: 'insensitive' as const,
-                            },
-                        },
-                        {
-                            lastName: {
-                                contains: search,
-                                mode: 'insensitive' as const,
-                            },
-                        },
-                    ],
-                }
-                : {}),
-        };
-
-        const items = await prisma.patient.findMany({
-            where,
-            orderBy: {
-                createdAt: 'desc',
+    async findMany(): Promise<PatientEntity[]> {
+        return prisma.patient.findMany({
+            where: {
+                isDeleted: false,
             },
-            skip: (params.page - 1) * params.limit,
-            take: params.limit,
         });
-
-        const total = await prisma.patient.count({
-            where,
-        });
-
-        return {
-            items,
-            total,
-        };
     }
 
     async update(id: string, data: UpdatePatientData): Promise<PatientEntity> {

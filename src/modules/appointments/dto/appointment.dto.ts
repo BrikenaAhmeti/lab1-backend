@@ -1,11 +1,21 @@
 import { z } from 'zod';
 import { AppError } from '../../../shared/core/errors/app-error';
+import {
+    createPaginationQuerySchema,
+    normalizeOptionalString,
+} from '../../../shared/core/pagination';
 import { AppointmentStatus } from '../domain/appointment.entity';
 
 const appointmentStatusValues = [
     'Scheduled',
     'Completed',
     'Cancelled',
+] as const;
+const appointmentSortByValues = [
+    'created_at',
+    'date',
+    'time',
+    'status',
 ] as const;
 const appointmentDateRegex = /^\d{4}-\d{2}-\d{2}$/;
 const appointmentTimeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -99,24 +109,40 @@ const updateAppointmentSchema = z.object({
     },
 );
 
-const getAppointmentsQuerySchema = z.object({
+const getAppointmentsQuerySchema = createPaginationQuerySchema(
+    appointmentSortByValues,
+).extend({
     date: z.preprocess(
-        (value) => (typeof value === 'string' ? value.trim() : undefined),
+        normalizeOptionalString,
         appointmentDateSchema.optional(),
     ),
     doctorId: z.preprocess(
-        (value) => (typeof value === 'string' ? value : undefined),
-        z.string().trim().min(1, 'Doctor id is required').max(255).optional(),
+        normalizeOptionalString,
+        z.string().max(255).optional(),
     ),
     patientId: z.preprocess(
-        (value) => (typeof value === 'string' ? value : undefined),
-        z.string().trim().min(1, 'Patient id is required').max(255).optional(),
+        normalizeOptionalString,
+        z.string().max(255).optional(),
     ),
     status: z.preprocess(
-        (value) => (typeof value === 'string' ? value.trim() : undefined),
+        normalizeOptionalString,
         appointmentStatusSchema.optional(),
     ),
-});
+    from: z.preprocess(
+        normalizeOptionalString,
+        appointmentDateSchema.optional(),
+    ),
+    to: z.preprocess(
+        normalizeOptionalString,
+        appointmentDateSchema.optional(),
+    ),
+}).refine(
+    (value) => !value.from || !value.to || value.from <= value.to,
+    {
+        message: 'from date cannot be after to date',
+        path: ['from'],
+    },
+);
 
 export type CreateAppointmentDto = z.infer<typeof createAppointmentSchema>;
 export type UpdateAppointmentDto = z.infer<typeof updateAppointmentSchema>;

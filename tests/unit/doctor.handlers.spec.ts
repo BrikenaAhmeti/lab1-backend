@@ -150,7 +150,7 @@ describe('Doctor handlers', () => {
         expect(repository.create).not.toHaveBeenCalled();
     });
 
-    it('should return all doctors', async () => {
+    it('should return paginated doctors filtered by department', async () => {
         const doctors = [
             createDoctor(),
             createDoctor({
@@ -158,6 +158,8 @@ describe('Doctor handlers', () => {
                 userId: 'user-2',
                 firstName: 'Besa',
                 lastName: 'Krasniqi',
+                specialization: 'Neurology',
+                departmentId: 'department-2',
             }),
         ];
 
@@ -165,10 +167,23 @@ describe('Doctor handlers', () => {
 
         const service = new DoctorService(repository);
         const handler = new GetDoctorsHandler(service);
-        const result = await handler.execute(new GetDoctorsQuery());
+        const result = await handler.execute(new GetDoctorsQuery({
+            page: 1,
+            limit: 10,
+            sortBy: 'last_name',
+            order: 'ASC',
+            departmentId: 'department-1',
+            specialization: 'cardio',
+        }));
 
         expect(repository.findMany).toHaveBeenCalled();
-        expect(result).toEqual(doctors);
+        expect(result).toEqual({
+            data: [doctors[0]],
+            total: 1,
+            page: 1,
+            limit: 10,
+            totalPages: 1,
+        });
     });
 
     it('should return a doctor by id', async () => {

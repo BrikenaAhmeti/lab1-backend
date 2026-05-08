@@ -10,6 +10,7 @@ import { GetDepartmentByIdHandler } from '../application/handlers/get-department
 import {
     validateCreateDepartmentDto,
     validateDepartmentId,
+    validateGetDepartmentsQueryDto,
     validateUpdateDepartmentDto,
 } from '../dto/department.dto';
 import { GetDepartmentsQuery } from '../application/queries/get-departments.query';
@@ -46,9 +47,10 @@ export class DepartmentController {
         return res.status(201).json(result);
     }
 
-    async getAll(_req: Request, res: Response) {
+    async getAll(req: Request, res: Response) {
+        const queryData = validateGetDepartmentsQueryDto(req.query);
         const handler = new GetDepartmentsHandler(this.service);
-        const query = new GetDepartmentsQuery();
+        const query = new GetDepartmentsQuery(queryData);
 
         const result = await this.queryBus.execute(handler, query);
 

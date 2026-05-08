@@ -149,10 +149,21 @@ describe('Department handlers', () => {
 
         const service = new DepartmentService(repository);
         const handler = new GetDepartmentsHandler(service);
-        const result = await handler.execute(new GetDepartmentsQuery());
+        const result = await handler.execute(new GetDepartmentsQuery({
+            page: 1,
+            limit: 10,
+            sortBy: 'created_at',
+            order: 'DESC',
+        }));
 
         expect(repository.findMany).toHaveBeenCalled();
-        expect(result).toEqual(departments);
+        expect(result).toEqual({
+            data: departments,
+            total: 2,
+            page: 1,
+            limit: 10,
+            totalPages: 1,
+        });
     });
 
     it('should return a department by id', async () => {

@@ -1,9 +1,14 @@
 import { z } from 'zod';
 import { AppError } from '../../../shared/core/errors/app-error';
+import {
+    createPaginationQuerySchema,
+    normalizeOptionalString,
+} from '../../../shared/core/pagination';
 import { InvoiceStatus } from '../domain/invoice.entity';
 
 const invoiceDateRegex = /^\d{4}-\d{2}-\d{2}$/;
 const invoiceStatusValues = ['PENDING', 'PAID', 'CANCELLED'] as const;
+const invoiceSortByValues = ['created_at', 'date', 'amount', 'status'] as const;
 
 function getValidationMessage(error: z.ZodError) {
     return error.issues[0]?.message ?? 'Validation failed';
@@ -47,6 +52,7 @@ function normalizeInvoiceQuery(input: unknown) {
     const value = input as Record<string, unknown>;
 
     return {
+        ...value,
         patientId: value.patientId ?? value.patient_id,
         status: value.status ?? value.statusi,
     };
@@ -140,13 +146,13 @@ const updateInvoiceSchema = z.preprocess(
 
 const getInvoicesQuerySchema = z.preprocess(
     normalizeInvoiceQuery,
-    z.object({
+    createPaginationQuerySchema(invoiceSortByValues).extend({
         patientId: z.preprocess(
-            (value) => (typeof value === 'string' ? value : undefined),
-            z.string().trim().min(1, 'Patient id is required').max(255).optional(),
+            normalizeOptionalString,
+            z.string().max(255).optional(),
         ),
         status: z.preprocess(
-            (value) => (typeof value === 'string' ? value : undefined),
+            normalizeOptionalString,
             invoiceStatusSchema.optional(),
         ),
     }),

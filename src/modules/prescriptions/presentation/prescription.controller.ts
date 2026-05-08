@@ -38,7 +38,7 @@ export class PrescriptionController {
     async getAll(req: Request, res: Response) {
         const queryData = validateGetPrescriptionsQueryDto(req.query);
         const handler = new GetPrescriptionsHandler(this.service);
-        const query = new GetPrescriptionsQuery(queryData.medicalRecordId);
+        const query = new GetPrescriptionsQuery(queryData);
         const result = await this.queryBus.execute(handler, query);
 
         return res.status(200).json(result);

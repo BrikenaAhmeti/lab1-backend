@@ -1,7 +1,22 @@
 import { AppError } from '../../../shared/core/errors/app-error';
+import {
+    paginateItems,
+    sortItems,
+} from '../../../shared/core/pagination';
 import { PatientEntity, PatientListResponse } from '../domain/patient.entity';
 import { PatientRepository, UpdatePatientData } from '../domain/patient.repository';
-import { CreatePatientDto, UpdatePatientDto } from '../dto/patient.dto';
+import {
+    CreatePatientDto,
+    GetPatientsQueryDto,
+    UpdatePatientDto,
+} from '../dto/patient.dto';
+
+const patientSortAccessors = {
+    created_at: (patient: PatientEntity) => patient.createdAt,
+    first_name: (patient: PatientEntity) => patient.firstName,
+    last_name: (patient: PatientEntity) => patient.lastName,
+    date_of_birth: (patient: PatientEntity) => patient.dateOfBirth,
+} as const;
 
 export class PatientService {
     constructor(private readonly patientRepository: PatientRepository) { }
@@ -28,24 +43,36 @@ export class PatientService {
         return patient;
     }
 
-    async getPatients(data: {
-        page: number;
-        limit: number;
-        search?: string;
-    }): Promise<PatientListResponse> {
-        const result = await this.patientRepository.findMany({
-            page: data.page,
-            limit: data.limit,
-            search: data.search?.trim(),
+    async getPatients(data: GetPatientsQueryDto): Promise<PatientListResponse> {
+        const patients = await this.patientRepository.findMany();
+        const normalizedSearch = data.search?.trim().toLowerCase();
+
+        const filteredPatients = patients.filter((patient) => {
+            if (data.bloodGroup && patient.bloodType !== data.bloodGroup) {
+                return false;
+            }
+
+            if (data.gender && patient.gender !== data.gender) {
+                return false;
+            }
+
+            if (!normalizedSearch) {
+                return true;
+            }
+
+            const fullName = `${patient.firstName} ${patient.lastName}`.toLowerCase();
+
+            return fullName.includes(normalizedSearch);
         });
 
-        return {
-            items: result.items,
-            page: data.page,
-            limit: data.limit,
-            total: result.total,
-            totalPages: Math.ceil(result.total / data.limit) || 1,
-        };
+        const sortedPatients = sortItems(
+            filteredPatients,
+            data.sortBy,
+            data.order,
+            patientSortAccessors,
+        );
+
+        return paginateItems(sortedPatients, data.page, data.limit);
     }
 
     async updatePatient(

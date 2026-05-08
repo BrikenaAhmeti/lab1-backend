@@ -1,5 +1,8 @@
 import { z } from 'zod';
 import { AppError } from '../../../shared/core/errors/app-error';
+import { createPaginationQuerySchema } from '../../../shared/core/pagination';
+
+const departmentSortByValues = ['created_at', 'name', 'location'] as const;
 
 function getValidationMessage(error: z.ZodError) {
     return error.issues[0]?.message ?? 'Validation failed';
@@ -18,9 +21,13 @@ const createDepartmentSchema = z.object({
 });
 
 const updateDepartmentSchema = createDepartmentSchema;
+const getDepartmentsQuerySchema = createPaginationQuerySchema(
+    departmentSortByValues,
+);
 
 export type CreateDepartmentDto = z.infer<typeof createDepartmentSchema>;
 export type UpdateDepartmentDto = z.infer<typeof updateDepartmentSchema>;
+export type GetDepartmentsQueryDto = z.infer<typeof getDepartmentsQuerySchema>;
 
 export function validateCreateDepartmentDto(input: unknown): CreateDepartmentDto {
     const result = createDepartmentSchema.safeParse(input);
@@ -34,6 +41,18 @@ export function validateCreateDepartmentDto(input: unknown): CreateDepartmentDto
 
 export function validateUpdateDepartmentDto(input: unknown): UpdateDepartmentDto {
     const result = updateDepartmentSchema.safeParse(input);
+
+    if (!result.success) {
+        throw new AppError(getValidationMessage(result.error), 400);
+    }
+
+    return result.data;
+}
+
+export function validateGetDepartmentsQueryDto(
+    input: unknown,
+): GetDepartmentsQueryDto {
+    const result = getDepartmentsQuerySchema.safeParse(input);
 
     if (!result.success) {
         throw new AppError(getValidationMessage(result.error), 400);

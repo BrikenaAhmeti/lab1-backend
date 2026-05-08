@@ -1,7 +1,23 @@
 import { AppError } from '../../../shared/core/errors/app-error';
+import {
+    PaginatedResponse,
+    paginateItems,
+    sortItems,
+} from '../../../shared/core/pagination';
 import { NurseEntity } from '../domain/nurse.entity';
 import { NurseRepository, UpdateNurseData } from '../domain/nurse.repository';
-import { CreateNurseDto, UpdateNurseDto } from '../dto/nurse.dto';
+import {
+    CreateNurseDto,
+    GetNursesQueryDto,
+    UpdateNurseDto,
+} from '../dto/nurse.dto';
+
+const nurseSortAccessors = {
+    created_at: (nurse: NurseEntity) => nurse.createdAt,
+    first_name: (nurse: NurseEntity) => nurse.firstName,
+    last_name: (nurse: NurseEntity) => nurse.lastName,
+    shift: (nurse: NurseEntity) => nurse.shift,
+} as const;
 
 export class NurseService {
     constructor(private readonly nurseRepository: NurseRepository) { }
@@ -19,14 +35,24 @@ export class NurseService {
         });
     }
 
-    async getNurses(data: { departmentId?: string }): Promise<NurseEntity[]> {
+    async getNurses(
+        data: GetNursesQueryDto,
+    ): Promise<PaginatedResponse<NurseEntity>> {
         const departmentId = data.departmentId?.trim();
 
         if (departmentId) {
             await this.ensureDepartmentExists(departmentId);
         }
 
-        return this.nurseRepository.findMany(departmentId);
+        const nurses = await this.nurseRepository.findMany(departmentId);
+        const sortedNurses = sortItems(
+            nurses,
+            data.sortBy,
+            data.order,
+            nurseSortAccessors,
+        );
+
+        return paginateItems(sortedNurses, data.page, data.limit);
     }
 
     async getNurseById(id: string): Promise<NurseEntity> {

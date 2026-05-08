@@ -1,5 +1,10 @@
 import { AppError } from '../../../shared/core/errors/app-error';
 import {
+    PaginatedResponse,
+    paginateItems,
+    sortItems,
+} from '../../../shared/core/pagination';
+import {
     MedicalRecordEntity,
     MedicalRecordPrescriptionEntity,
 } from '../domain/medical-record.entity';
@@ -12,6 +17,11 @@ import {
     GetMedicalRecordsQueryDto,
     UpdateMedicalRecordDto,
 } from '../dto/medical-record.dto';
+
+const medicalRecordSortAccessors = {
+    created_at: (medicalRecord: MedicalRecordEntity) => medicalRecord.createdAt,
+    date: (medicalRecord: MedicalRecordEntity) => medicalRecord.recordDate,
+} as const;
 
 export class MedicalRecordService {
     constructor(
@@ -41,12 +51,22 @@ export class MedicalRecordService {
 
     async getMedicalRecords(
         data: GetMedicalRecordsQueryDto,
-    ): Promise<MedicalRecordEntity[]> {
+    ): Promise<PaginatedResponse<MedicalRecordEntity>> {
         const patientId = data.patientId.trim();
 
         await this.ensurePatientExists(patientId);
 
-        return this.medicalRecordRepository.findManyByPatientId(patientId);
+        const medicalRecords = await this.medicalRecordRepository.findManyByPatientId(
+            patientId,
+        );
+        const sortedMedicalRecords = sortItems(
+            medicalRecords,
+            data.sortBy,
+            data.order,
+            medicalRecordSortAccessors,
+        );
+
+        return paginateItems(sortedMedicalRecords, data.page, data.limit);
     }
 
     async getMedicalRecordById(id: string): Promise<MedicalRecordEntity> {

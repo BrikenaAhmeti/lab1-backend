@@ -218,11 +218,13 @@ describe('Patient routes', () => {
         const patientId = createResponse.body.id as string;
 
         const listResponse = await request(app)
-            .get('/api/patients?page=1&limit=10&search=ana')
+            .get(
+                '/api/patients?page=1&limit=10&sortBy=last_name&order=ASC&search=ana%20krasniqi&bloodGroup=A%2B&gender=FEMALE',
+            )
             .set('Authorization', `Bearer ${userToken}`);
 
         expect(listResponse.status).toBe(200);
-        expect(listResponse.body.items).toHaveLength(1);
+        expect(listResponse.body.data).toHaveLength(1);
         expect(listResponse.body.total).toBe(1);
         expect(listResponse.body.page).toBe(1);
         expect(listResponse.body.limit).toBe(10);

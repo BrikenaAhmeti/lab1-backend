@@ -438,8 +438,8 @@ describe('Room routes', () => {
             .set('Authorization', `Bearer ${adminToken}`);
 
         expect(listResponse.status).toBe(200);
-        expect(listResponse.body).toHaveLength(1);
-        expect(listResponse.body[0].id).toBe(roomId);
+        expect(listResponse.body.data).toHaveLength(1);
+        expect(listResponse.body.data[0].id).toBe(roomId);
 
         const getResponse = await request(app)
             .get(`/api/rooms/${roomId}`)
@@ -478,7 +478,7 @@ describe('Room routes', () => {
             .set('Authorization', `Bearer ${adminToken}`);
 
         expect(finalListResponse.status).toBe(200);
-        expect(finalListResponse.body).toHaveLength(0);
+        expect(finalListResponse.body.data).toHaveLength(0);
     });
 
     it('should return only rooms with available capacity', async () => {
@@ -521,8 +521,8 @@ describe('Room routes', () => {
             .set('Authorization', `Bearer ${adminToken}`);
 
         expect(availableResponse.status).toBe(200);
-        expect(availableResponse.body).toHaveLength(1);
-        expect(availableResponse.body[0]).toMatchObject({
+        expect(availableResponse.body.data).toHaveLength(1);
+        expect(availableResponse.body.data[0]).toMatchObject({
             id: availableRoomId,
             status: 'AVAILABLE',
             activeAdmissionsCount: 1,
@@ -534,8 +534,8 @@ describe('Room routes', () => {
             .set('Authorization', `Bearer ${adminToken}`);
 
         expect(filteredResponse.status).toBe(200);
-        expect(filteredResponse.body).toHaveLength(1);
-        expect(filteredResponse.body[0]).toMatchObject({
+        expect(filteredResponse.body.data).toHaveLength(1);
+        expect(filteredResponse.body.data[0]).toMatchObject({
             id: fullRoomId,
             status: 'OCCUPIED',
             activeAdmissionsCount: 1,

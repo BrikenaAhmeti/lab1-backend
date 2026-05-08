@@ -1,7 +1,12 @@
 import { z } from 'zod';
 import { AppError } from '../../../shared/core/errors/app-error';
+import {
+    createPaginationQuerySchema,
+    normalizeOptionalString,
+} from '../../../shared/core/pagination';
 
 const medicalRecordDateRegex = /^\d{4}-\d{2}-\d{2}$/;
+const medicalRecordSortByValues = ['created_at', 'date'] as const;
 
 function getValidationMessage(error: z.ZodError) {
     return error.issues[0]?.message ?? 'Validation failed';
@@ -50,6 +55,7 @@ function normalizeMedicalRecordQuery(input: unknown) {
     const value = input as Record<string, unknown>;
 
     return {
+        ...value,
         patientId: value.patientId ?? value.patient_id,
     };
 }
@@ -109,7 +115,7 @@ const updateMedicalRecordSchema = z.preprocess(
 
 const getMedicalRecordsQuerySchema = z.preprocess(
     normalizeMedicalRecordQuery,
-    z.object({
+    createPaginationQuerySchema(medicalRecordSortByValues).extend({
         patientId: requiredString('Patient id', 255),
     }),
 );
