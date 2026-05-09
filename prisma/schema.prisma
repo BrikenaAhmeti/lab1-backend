@@ -74,14 +74,15 @@ model UserToken {
 }
 
 model RefreshToken {
-  id             String   @id @default(uuid())
-  userId         String
-  token          String   @unique
-  expires        DateTime
-  created        DateTime @default(now())
-  revoked        DateTime?
-  replacedByToken String?
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String   @id @default(uuid())
+  userId            String
+  tokenId           String   @unique
+  tokenHash         String
+  expires           DateTime
+  created           DateTime @default(now())
+  revoked           DateTime?
+  replacedByTokenId String?
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }

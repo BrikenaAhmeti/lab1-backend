@@ -1,10 +1,10 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { AppError } from '../../src/shared/core/errors/app-error';
+import { env } from '../../src/config/env';
 import { AuthRepository, UserRoleWithRole, UserWithRoles } from '../../src/modules/auth/domain/auth.repository';
 import { AuthService } from '../../src/modules/auth/services/auth.service';
 import { RefreshToken, Role, User, UserClaim, UserRole, UserToken } from '../../src/generated/prisma';
-import { env } from '../../src/config/env';
+import { AppError } from '../../src/shared/core/errors/app-error';
 
 function createRepositoryMock(): jest.Mocked<AuthRepository> {
     return {
@@ -19,7 +19,6 @@ function createRepositoryMock(): jest.Mocked<AuthRepository> {
         setUserStatus: jest.fn(),
         incrementAccessFailedCount: jest.fn(),
         resetAccessFailedCount: jest.fn(),
-
         createRole: jest.fn(),
         updateRole: jest.fn(),
         deleteRole: jest.fn(),
@@ -27,20 +26,16 @@ function createRepositoryMock(): jest.Mocked<AuthRepository> {
         findRoleByNormalizedName: jest.fn(),
         listRoles: jest.fn(),
         countRoleAssignments: jest.fn(),
-
         listUserRoles: jest.fn(),
         assignRoleToUser: jest.fn(),
         removeRoleFromUser: jest.fn(),
         removeAllUserRoles: jest.fn(),
-
         createUserClaim: jest.fn(),
         listUserClaims: jest.fn(),
-
         createOrUpdateUserToken: jest.fn(),
         listUserTokens: jest.fn(),
-
         createRefreshToken: jest.fn(),
-        findRefreshToken: jest.fn(),
+        findRefreshTokenByTokenId: jest.fn(),
         revokeRefreshToken: jest.fn(),
         revokeUserRefreshTokens: jest.fn(),
         removeExpiredRefreshTokens: jest.fn(),
@@ -123,11 +118,12 @@ function createRefreshToken(overrides: Partial<RefreshToken> = {}): RefreshToken
     return {
         id: overrides.id ?? 'refresh-token-id-1',
         userId: overrides.userId ?? 'user-id-1',
-        token: overrides.token ?? 'refresh-token-value',
+        tokenId: overrides.tokenId ?? 'refresh-token-jti',
+        tokenHash: overrides.tokenHash ?? '$2b$12$abcdefghijklmnopqrstuuuuuuuuuuuuuuuuuuuuuu',
         expires: overrides.expires ?? new Date(Date.now() + 60 * 60 * 1000),
         created: overrides.created ?? new Date('2026-01-01T10:00:00.000Z'),
         revoked: overrides.revoked ?? null,
-        replacedByToken: overrides.replacedByToken ?? null,
+        replacedByTokenId: overrides.replacedByTokenId ?? null,
     };
 }
 
@@ -152,11 +148,18 @@ describe('AuthService', () => {
         description: 'Full access',
     });
 
-    const managerRole = createRole({
-        id: 'role-manager-id',
-        name: 'Manager',
-        normalizedName: 'MANAGER',
-        description: 'Operations management',
+    const receptionistRole = createRole({
+        id: 'role-receptionist-id',
+        name: 'Receptionist',
+        normalizedName: 'RECEPTIONIST',
+        description: 'Front desk access',
+    });
+
+    const nurseRole = createRole({
+        id: 'role-nurse-id',
+        name: 'Nurse',
+        normalizedName: 'NURSE',
+        description: 'Nurse access',
     });
 
     const userRole = createRole({
@@ -173,6 +176,7 @@ describe('AuthService', () => {
         env.jwtRefreshSecret = 'test-refresh-secret';
         env.jwtAccessExpiresIn = '15m';
         env.jwtRefreshExpiresIn = '7d';
+        env.bcryptSaltRounds = 12;
         env.maxAccessFailedCount = 5;
 
         repository.listUsers.mockResolvedValue([]);
@@ -180,7 +184,12 @@ describe('AuthService', () => {
         repository.setUserStatus.mockResolvedValue(createUser());
         repository.deleteUser.mockResolvedValue();
         repository.updateUser.mockResolvedValue(createUser());
-        repository.listRoles.mockResolvedValue([adminRole, managerRole, userRole]);
+        repository.listRoles.mockResolvedValue([
+            adminRole,
+            receptionistRole,
+            nurseRole,
+            userRole,
+        ]);
         repository.countRoleAssignments.mockResolvedValue(0);
         repository.findRoleById.mockResolvedValue(userRole);
         repository.updateRole.mockResolvedValue(userRole);
@@ -208,8 +217,12 @@ describe('AuthService', () => {
                 return adminRole;
             }
 
-            if (name === 'MANAGER') {
-                return managerRole;
+            if (name === 'RECEPTIONIST') {
+                return receptionistRole;
+            }
+
+            if (name === 'NURSE') {
+                return nurseRole;
             }
 
             if (name === 'USER') {
@@ -221,7 +234,7 @@ describe('AuthService', () => {
         repository.findUserByNormalizedUsername.mockResolvedValue(null);
     });
 
-    it('should register user and return access and refresh tokens', async () => {
+    it('should register user and return hashed refresh token data', async () => {
         const passwordHash = await bcrypt.hash('password123', 10);
         const createdUser = createUser({
             id: 'new-user-id',
@@ -238,8 +251,9 @@ describe('AuthService', () => {
         repository.findUserByNormalizedEmail.mockResolvedValueOnce(null);
         repository.createUser.mockResolvedValue(createdUser);
         repository.findUserById.mockResolvedValue(createdUserWithRoles);
-        repository.createRefreshToken.mockImplementation(async ({ userId, token, expires }) =>
-            createRefreshToken({ userId, token, expires }),
+        repository.createRefreshToken.mockImplementation(
+            async ({ userId, tokenId, tokenHash, expires }) =>
+                createRefreshToken({ userId, tokenId, tokenHash, expires }),
         );
 
         const result = await service.register({
@@ -250,7 +264,10 @@ describe('AuthService', () => {
             phoneNumber: '044123123',
         });
 
-        expect(repository.createUser).toHaveBeenCalledWith(
+        const createdUserData = repository.createUser.mock.calls[0][0];
+        const createdRefreshToken = repository.createRefreshToken.mock.calls[0][0];
+
+        expect(createdUserData).toEqual(
             expect.objectContaining({
                 firstName: 'Ana',
                 lastName: 'Krasniqi',
@@ -260,7 +277,10 @@ describe('AuthService', () => {
                 normalizedUsername: 'ANA',
             }),
         );
+        expect(bcrypt.getRounds(createdUserData.passwordHash)).toBe(12);
         expect(repository.assignRoleToUser).toHaveBeenCalledWith('new-user-id', userRole.id);
+        expect(createdRefreshToken.tokenId).toBeTruthy();
+        expect(await bcrypt.compare(result.refreshToken, createdRefreshToken.tokenHash)).toBe(true);
         expect(result.user.email).toBe('ana@example.com');
         expect(result.user.roles).toEqual(['USER']);
         expect(result.accessToken).toBeTruthy();
@@ -277,7 +297,7 @@ describe('AuthService', () => {
             accessFailedCount: 2,
         });
         const existingUserWithRoles = createUserWithRoles(existingUser, [
-            createUserRoleWithRole(existingUser.id, managerRole),
+            createUserRoleWithRole(existingUser.id, receptionistRole),
         ]);
 
         repository.findUserByNormalizedEmail.mockResolvedValue(existingUserWithRoles);
@@ -286,8 +306,9 @@ describe('AuthService', () => {
             accessFailedCount: 0,
         });
         repository.findUserById.mockResolvedValue(existingUserWithRoles);
-        repository.createRefreshToken.mockImplementation(async ({ userId, token, expires }) =>
-            createRefreshToken({ userId, token, expires }),
+        repository.createRefreshToken.mockImplementation(
+            async ({ userId, tokenId, tokenHash, expires }) =>
+                createRefreshToken({ userId, tokenId, tokenHash, expires }),
         );
 
         const result = await service.login({
@@ -296,7 +317,7 @@ describe('AuthService', () => {
         });
 
         expect(repository.resetAccessFailedCount).toHaveBeenCalledWith(existingUser.id);
-        expect(result.user.roles).toEqual(['MANAGER']);
+        expect(result.user.roles).toEqual(['RECEPTIONIST']);
         expect(result.accessToken).toBeTruthy();
         expect(result.refreshToken).toBeTruthy();
     });
@@ -319,8 +340,9 @@ describe('AuthService', () => {
         repository.findUserByNormalizedEmail.mockResolvedValue(null);
         repository.findUserByNormalizedUsername.mockResolvedValue(existingUserWithRoles);
         repository.findUserById.mockResolvedValue(existingUserWithRoles);
-        repository.createRefreshToken.mockImplementation(async ({ userId, token, expires }) =>
-            createRefreshToken({ userId, token, expires }),
+        repository.createRefreshToken.mockImplementation(
+            async ({ userId, tokenId, tokenHash, expires }) =>
+                createRefreshToken({ userId, tokenId, tokenHash, expires }),
         );
 
         const result = await service.login({
@@ -378,31 +400,56 @@ describe('AuthService', () => {
 
         const oldRefreshToken = jwt.sign({}, env.jwtRefreshSecret, {
             subject: existingUser.id,
+            jwtid: 'old-refresh-token-id',
             expiresIn: '1h',
         });
+        const oldRefreshTokenHash = await bcrypt.hash(
+            oldRefreshToken,
+            env.bcryptSaltRounds,
+        );
 
-        repository.findRefreshToken.mockResolvedValue(
+        repository.findRefreshTokenByTokenId.mockResolvedValue(
             createRefreshToken({
                 userId: existingUser.id,
-                token: oldRefreshToken,
+                tokenId: 'old-refresh-token-id',
+                tokenHash: oldRefreshTokenHash,
                 expires: new Date(Date.now() + 60 * 60 * 1000),
                 revoked: null,
             }),
         );
         repository.findUserById.mockResolvedValue(existingUserWithRoles);
-        repository.createRefreshToken.mockImplementation(async ({ userId, token, expires }) =>
-            createRefreshToken({ userId, token, expires }),
+        repository.createRefreshToken.mockImplementation(
+            async ({ userId, tokenId, tokenHash, expires }) =>
+                createRefreshToken({ userId, tokenId, tokenHash, expires }),
         );
 
         const result = await service.refresh(oldRefreshToken);
+        const createdRefreshToken = repository.createRefreshToken.mock.calls[0][0];
 
+        expect(repository.findRefreshTokenByTokenId).toHaveBeenCalledWith('old-refresh-token-id');
         expect(repository.revokeRefreshToken).toHaveBeenCalled();
-        expect(repository.revokeRefreshToken.mock.calls[0][0]).toBe(oldRefreshToken);
-        expect(repository.revokeRefreshToken.mock.calls[0][2]).toBe(result.refreshToken);
+        expect(repository.revokeRefreshToken.mock.calls[0][0]).toBe('old-refresh-token-id');
+        expect(repository.revokeRefreshToken.mock.calls[0][2]).toBe(createdRefreshToken.tokenId);
         expect(result.user.roles).toEqual(['ADMIN']);
         expect(result.accessToken).toBeTruthy();
         expect(result.refreshToken).toBeTruthy();
         expect(result.refreshToken).not.toBe(oldRefreshToken);
+        expect(await bcrypt.compare(result.refreshToken, createdRefreshToken.tokenHash)).toBe(true);
+    });
+
+    it('should reject expired refresh tokens', async () => {
+        const expiredRefreshToken = jwt.sign({}, env.jwtRefreshSecret, {
+            subject: 'refresh-user-id',
+            jwtid: 'expired-refresh-token-id',
+            expiresIn: -1,
+        });
+
+        await expect(service.refresh(expiredRefreshToken)).rejects.toMatchObject({
+            message: 'Invalid refresh token',
+            statusCode: 401,
+        });
+
+        expect(repository.findRefreshTokenByTokenId).not.toHaveBeenCalled();
     });
 
     it('should throw when creating duplicate role', async () => {
@@ -411,8 +458,8 @@ describe('AuthService', () => {
                 return adminRole;
             }
 
-            if (name === 'MANAGER') {
-                return managerRole;
+            if (name === 'RECEPTIONIST') {
+                return receptionistRole;
             }
 
             if (name === 'USER') {
@@ -420,11 +467,7 @@ describe('AuthService', () => {
             }
 
             if (name === 'NURSE') {
-                return createRole({
-                    id: 'role-nurse-id',
-                    name: 'Nurse',
-                    normalizedName: 'NURSE',
-                });
+                return nurseRole;
             }
 
             return null;

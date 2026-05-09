@@ -329,11 +329,11 @@ const userRoleExample = {
 const refreshTokenExample = {
     id: 'refresh-token-1',
     userId: 'user-1',
-    token: 'jwt-refresh-token',
+    tokenId: 'refresh-token-jti',
     expires: '2026-05-15T10:00:00.000Z',
     created: '2026-05-08T10:00:00.000Z',
     revoked: null,
-    replacedByToken: null,
+    replacedByTokenId: null,
 };
 
 const swaggerDefinition = {
@@ -725,11 +725,11 @@ const swaggerDefinition = {
                 properties: {
                     id: { type: 'string' },
                     userId: { type: 'string' },
-                    token: { type: 'string' },
+                    tokenId: { type: 'string' },
                     expires: { type: 'string', format: 'date-time' },
                     created: { type: 'string', format: 'date-time' },
                     revoked: { type: 'string', format: 'date-time', nullable: true },
-                    replacedByToken: { type: 'string', nullable: true },
+                    replacedByTokenId: { type: 'string', nullable: true },
                 },
             },
         },
@@ -804,12 +804,11 @@ const swaggerDefinition = {
             post: {
                 tags: ['Auth'],
                 summary: 'Refresh tokens',
-                description: 'Generates a new access token and refresh token pair.',
+                description: 'Generates a new access token and refresh token pair using the refresh token from the httpOnly cookie or request body.',
                 requestBody: requestBody(
-                    'Refresh token payload',
+                    'Optional refresh token payload',
                     {
                         type: 'object',
-                        required: ['refreshToken'],
                         properties: {
                             refreshToken: { type: 'string' },
                         },
@@ -830,12 +829,11 @@ const swaggerDefinition = {
             post: {
                 tags: ['Auth'],
                 summary: 'Logout user',
-                description: 'Revokes a refresh token and logs the user out.',
+                description: 'Revokes the current refresh token from the httpOnly cookie or request body and logs the user out.',
                 requestBody: requestBody(
-                    'Logout payload',
+                    'Optional logout payload',
                     {
                         type: 'object',
-                        required: ['refreshToken'],
                         properties: {
                             refreshToken: { type: 'string' },
                         },
@@ -847,6 +845,19 @@ const swaggerDefinition = {
                 responses: {
                     '204': noContentResponse('Logout successful'),
                     '400': errorResponse(400, 'Validation failed'),
+                    '500': errorResponse(500, 'Internal server error'),
+                },
+            },
+        },
+        '/api/auth/logout-all': {
+            post: {
+                tags: ['Auth'],
+                summary: 'Logout from all devices',
+                description: 'Revokes all refresh tokens for the authenticated user.',
+                security: bearerSecurity,
+                responses: {
+                    '204': noContentResponse('All refresh tokens revoked successfully'),
+                    '401': errorResponse(401, 'Unauthorized'),
                     '500': errorResponse(500, 'Internal server error'),
                 },
             },

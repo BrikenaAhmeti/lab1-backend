@@ -10,6 +10,15 @@ export const env = {
     jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || '',
     jwtAccessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m',
     jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+    bcryptSaltRounds: Number(process.env.BCRYPT_SALT_ROUNDS || 12),
+    corsAllowedOrigins: (
+        process.env.CORS_ALLOWED_ORIGINS
+        || 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000'
+    )
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean),
+    refreshTokenCookieName: process.env.REFRESH_TOKEN_COOKIE_NAME || 'refreshToken',
     maxAccessFailedCount: Number(process.env.MAX_ACCESS_FAILED_COUNT || 5),
     adminFirstName: process.env.ADMIN_FIRST_NAME || 'System',
     adminLastName: process.env.ADMIN_LAST_NAME || 'Admin',

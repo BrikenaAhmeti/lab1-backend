@@ -3,18 +3,23 @@ import { z } from 'zod';
 import { AuthPrismaRepository } from '../infrastructure/auth.prisma.repository';
 import { AuthService } from '../services/auth.service';
 import { RequestWithUser } from '../../../shared/core/types/request-with-user';
+import { AppError } from '../../../shared/core/errors/app-error';
 import {
     validateAssignRoleDto,
     validateCreateRoleDto,
     validateCreateUserDto,
     validateLoginDto,
-    validateRefreshDto,
     validateRegisterDto,
     validateReplaceRolesDto,
     validateSetUserStatusDto,
     validateUpdateRoleDto,
     validateUpdateUserDto,
 } from '../dto/auth.dto';
+import {
+    clearRefreshTokenCookie,
+    readRefreshToken,
+    setRefreshTokenCookie,
+} from './auth.cookies';
 
 const paramsWithIdSchema = z.object({
     id: z.string().min(1),
@@ -40,6 +45,7 @@ export class AuthController {
     async register(req: Request, res: Response) {
         const body = validateRegisterDto(req.body);
         const result = await this.service.register(body);
+        setRefreshTokenCookie(res, result.refreshToken);
 
         return res.status(201).json(result);
     }
@@ -50,21 +56,42 @@ export class AuthController {
             identifier: body.identifier ?? body.email ?? '',
             password: body.password,
         });
+        setRefreshTokenCookie(res, result.refreshToken);
 
         return res.status(200).json(result);
     }
 
     async refresh(req: Request, res: Response) {
-        const body = validateRefreshDto(req.body);
-        const result = await this.service.refresh(body.refreshToken);
+        const refreshToken = readRefreshToken(req);
+
+        if (!refreshToken) {
+            throw new AppError('Refresh token is required', 400);
+        }
+
+        const result = await this.service.refresh(refreshToken);
+        setRefreshTokenCookie(res, result.refreshToken);
 
         return res.status(200).json(result);
     }
 
     async logout(req: Request, res: Response) {
-        const body = validateRefreshDto(req.body);
+        const refreshToken = readRefreshToken(req);
 
-        await this.service.logout(body.refreshToken);
+        if (!refreshToken) {
+            throw new AppError('Refresh token is required', 400);
+        }
+
+        await this.service.logout(refreshToken);
+        clearRefreshTokenCookie(res);
+
+        return res.status(204).send();
+    }
+
+    async logoutAll(req: Request, res: Response) {
+        const requestWithUser = req as RequestWithUser;
+
+        await this.service.logoutAll(requestWithUser.user.id);
+        clearRefreshTokenCookie(res);
 
         return res.status(204).send();
     }

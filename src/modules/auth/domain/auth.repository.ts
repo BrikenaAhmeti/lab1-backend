@@ -74,7 +74,8 @@ export interface CreateOrUpdateUserTokenData {
 
 export interface CreateRefreshTokenData {
     userId: string;
-    token: string;
+    tokenId: string;
+    tokenHash: string;
     expires: Date;
 }
 
@@ -111,11 +112,11 @@ export interface AuthRepository {
     listUserTokens(userId: string): Promise<UserToken[]>;
 
     createRefreshToken(data: CreateRefreshTokenData): Promise<RefreshToken>;
-    findRefreshToken(token: string): Promise<RefreshToken | null>;
+    findRefreshTokenByTokenId(tokenId: string): Promise<RefreshToken | null>;
     revokeRefreshToken(
-        token: string,
+        tokenId: string,
         revokedAt: Date,
-        replacedByToken?: string,
+        replacedByTokenId?: string,
     ): Promise<void>;
     revokeUserRefreshTokens(userId: string, revokedAt: Date): Promise<void>;
     removeExpiredRefreshTokens(now: Date): Promise<void>;

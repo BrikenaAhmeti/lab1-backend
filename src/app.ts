@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import { env } from './config/env';
 import { errorHandler } from './shared/middleware/error-handler';
 import { notFoundHandler } from './shared/middleware/not-found';
 import { departmentRoutes } from './modules/departments/presentation/department.routes';
@@ -19,14 +20,33 @@ import { invoiceRoutes } from './modules/invoices/presentation/invoice.routes';
 import { dashboardRoutes } from './modules/dashboard/presentation/dashboard.routes';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './docs/swagger.config';
+import { AppError } from './shared/core/errors/app-error';
+import { createAuthLoginRateLimiter } from './modules/auth/presentation/auth.rate-limit';
 
 export function createApp() {
     const app = express();
 
-    app.use(helmet());
-    app.use(cors());
+    app.use(helmet({
+        contentSecurityPolicy: false,
+    }));
+    app.use(cors({
+        origin(origin, callback) {
+            if (!origin || env.corsAllowedOrigins.includes(origin)) {
+                callback(null, true);
+
+                return;
+            }
+
+            callback(new AppError('CORS origin not allowed', 403));
+        },
+        credentials: true,
+    }));
     app.use(morgan(envLogFormat()));
     app.use(express.json());
+    const loginRateLimiter = createAuthLoginRateLimiter();
+
+    app.use('/auth/login', loginRateLimiter);
+    app.use('/api/auth/login', loginRateLimiter);
 
     app.get('/health', (_req, res) => {
         res.json({ status: 'ok' });

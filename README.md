@@ -18,9 +18,12 @@ Backend API for the Hospital Management System (Lab Course 1), built with Expres
 ## Identity Features
 - JWT access tokens
 - Refresh token rotation
+- Hashed refresh token storage
 - Login with `identifier` (username or email)
 - Backward-compatible login with `email`
 - Role-based authorization (`ADMIN` routes)
+- Rate limiting on login
+- CORS allowlist + Helmet headers
 - Single-admin policy (only one user can hold `ADMIN` role)
 - Admin seed script
 
@@ -39,6 +42,9 @@ JWT_ACCESS_SECRET=your_access_secret
 JWT_REFRESH_SECRET=your_refresh_secret
 JWT_ACCESS_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
+BCRYPT_SALT_ROUNDS=12
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+REFRESH_TOKEN_COOKIE_NAME=refreshToken
 MAX_ACCESS_FAILED_COUNT=5
 ADMIN_FIRST_NAME=System
 ADMIN_LAST_NAME=Admin
@@ -115,6 +121,7 @@ If you changed env values, use your updated credentials.
 - `POST /auth/login`
 - `POST /auth/refresh`
 - `POST /auth/logout`
+- `POST /auth/logout-all`
 - `GET /auth/me` (Bearer token)
 
 ### Users (Admin)

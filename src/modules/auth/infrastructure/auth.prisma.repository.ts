@@ -260,25 +260,25 @@ export class AuthPrismaRepository implements AuthRepository {
         });
     }
 
-    async findRefreshToken(token: string): Promise<RefreshToken | null> {
+    async findRefreshTokenByTokenId(tokenId: string): Promise<RefreshToken | null> {
         return prisma.refreshToken.findUnique({
-            where: { token },
+            where: { tokenId },
         });
     }
 
     async revokeRefreshToken(
-        token: string,
+        tokenId: string,
         revokedAt: Date,
-        replacedByToken?: string,
+        replacedByTokenId?: string,
     ): Promise<void> {
         await prisma.refreshToken.updateMany({
             where: {
-                token,
+                tokenId,
                 revoked: null,
             },
             data: {
                 revoked: revokedAt,
-                replacedByToken,
+                replacedByTokenId,
             },
         });
     }

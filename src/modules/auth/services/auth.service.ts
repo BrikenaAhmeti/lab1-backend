@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
 import { env } from '../../../config/env';
 import { AppError } from '../../../shared/core/errors/app-error';
-import { Role, User } from '../../../generated/prisma';
+import { RefreshToken, Role, User } from '../../../generated/prisma';
 import { AuthRepository, UserRoleWithRole, UserWithRoles } from '../domain/auth.repository';
 
 export interface AuthUserResponse {
@@ -26,6 +26,16 @@ export interface AuthResponse {
     user: AuthUserResponse;
     accessToken: string;
     refreshToken: string;
+}
+
+export interface AuthRefreshTokenResponse {
+    id: string;
+    userId: string;
+    tokenId: string;
+    expires: Date;
+    created: Date;
+    revoked: Date | null;
+    replacedByTokenId: string | null;
 }
 
 export interface RegisterInput {
@@ -91,6 +101,7 @@ export interface SeedAdminInput {
 
 interface RefreshTokenPayload extends jwt.JwtPayload {
     sub: string;
+    jti: string;
 }
 
 export class AuthService {
@@ -106,7 +117,7 @@ export class AuthService {
             throw new AppError('Email already exists', 409);
         }
 
-        const passwordHash = await bcrypt.hash(input.password, 10);
+        const passwordHash = await this.hashValue(input.password);
         const usernameData = await this.resolveUsernameForCreate(
             input.username,
             input.email,
@@ -181,7 +192,7 @@ export class AuthService {
 
     async refresh(refreshToken: string): Promise<AuthResponse> {
         const payload = this.verifyRefreshToken(refreshToken);
-        const tokenInDatabase = await this.repository.findRefreshToken(refreshToken);
+        const tokenInDatabase = await this.repository.findRefreshTokenByTokenId(payload.jti);
 
         if (!tokenInDatabase || tokenInDatabase.revoked) {
             throw new AppError('Invalid refresh token', 401);
@@ -195,23 +206,33 @@ export class AuthService {
             throw new AppError('Invalid refresh token', 401);
         }
 
+        const refreshTokenMatches = await bcrypt.compare(
+            refreshToken,
+            tokenInDatabase.tokenHash,
+        );
+
+        if (!refreshTokenMatches) {
+            throw new AppError('Invalid refresh token', 401);
+        }
+
         const user = await this.getExistingUserById(tokenInDatabase.userId);
 
         if (!user.isActive) {
             throw new AppError('User is inactive', 403);
         }
 
-        const newRefreshTokenData = this.generateRefreshToken(user.id);
+        const newRefreshTokenData = await this.createStoredRefreshToken(user.id);
 
         await this.repository.revokeRefreshToken(
-            refreshToken,
+            tokenInDatabase.tokenId,
             new Date(),
-            newRefreshTokenData.token,
+            newRefreshTokenData.tokenId,
         );
 
         await this.repository.createRefreshToken({
             userId: user.id,
-            token: newRefreshTokenData.token,
+            tokenId: newRefreshTokenData.tokenId,
+            tokenHash: newRefreshTokenData.tokenHash,
             expires: newRefreshTokenData.expires,
         });
 
@@ -234,13 +255,39 @@ export class AuthService {
     }
 
     async logout(refreshToken: string): Promise<void> {
-        const existingToken = await this.repository.findRefreshToken(refreshToken);
+        let payload: RefreshTokenPayload;
 
-        if (!existingToken || existingToken.revoked) {
+        try {
+            payload = this.verifyRefreshToken(refreshToken, true);
+        } catch {
             return;
         }
 
-        await this.repository.revokeRefreshToken(refreshToken, new Date());
+        const existingToken = await this.repository.findRefreshTokenByTokenId(payload.jti);
+
+        if (
+            !existingToken
+            || existingToken.revoked
+            || existingToken.userId !== payload.sub
+        ) {
+            return;
+        }
+
+        const refreshTokenMatches = await bcrypt.compare(
+            refreshToken,
+            existingToken.tokenHash,
+        );
+
+        if (!refreshTokenMatches) {
+            return;
+        }
+
+        await this.repository.revokeRefreshToken(existingToken.tokenId, new Date());
+    }
+
+    async logoutAll(userId: string): Promise<void> {
+        await this.getExistingUserById(userId);
+        await this.repository.revokeUserRefreshTokens(userId, new Date());
     }
 
     async getCurrentUser(userId: string): Promise<AuthUserResponse> {
@@ -271,7 +318,7 @@ export class AuthService {
             throw new AppError('Email already exists', 409);
         }
 
-        const passwordHash = await bcrypt.hash(input.password, 10);
+        const passwordHash = await this.hashValue(input.password);
         const usernameData = await this.resolveUsernameForCreate(
             input.username,
             input.email,
@@ -372,7 +419,7 @@ export class AuthService {
         }
 
         if (input.password !== undefined) {
-            dataToUpdate.passwordHash = await bcrypt.hash(input.password, 10);
+            dataToUpdate.passwordHash = await this.hashValue(input.password);
         }
 
         if (input.phoneNumber !== undefined) {
@@ -546,10 +593,12 @@ export class AuthService {
         return this.repository.listUserRoles(userId);
     }
 
-    async listUserRefreshTokens(userId: string) {
+    async listUserRefreshTokens(userId: string): Promise<AuthRefreshTokenResponse[]> {
         await this.getExistingUserById(userId);
 
-        return this.repository.listUserRefreshTokens(userId);
+        const refreshTokens = await this.repository.listUserRefreshTokens(userId);
+
+        return refreshTokens.map((refreshToken) => this.mapRefreshToken(refreshToken));
     }
 
     async revokeUserRefreshTokens(userId: string): Promise<void> {
@@ -568,7 +617,7 @@ export class AuthService {
             throw new AppError('Admin role not found', 500);
         }
 
-        const passwordHash = await bcrypt.hash(input.password, 10);
+        const passwordHash = await this.hashValue(input.password);
         const userByEmail = await this.repository.findUserByNormalizedEmail(normalizedEmail);
         const userByUsername = await this.repository.findUserByNormalizedUsername(
             usernameData.normalizedUsername,
@@ -636,9 +685,19 @@ export class AuthService {
                 description: 'Full access to the system',
             },
             {
-                name: 'Manager',
-                normalizedName: 'MANAGER',
-                description: 'Manages core operations',
+                name: 'Doctor',
+                normalizedName: 'DOCTOR',
+                description: 'Medical staff with clinical access',
+            },
+            {
+                name: 'Nurse',
+                normalizedName: 'NURSE',
+                description: 'Nursing staff access',
+            },
+            {
+                name: 'Receptionist',
+                normalizedName: 'RECEPTIONIST',
+                description: 'Front desk and admission access',
             },
             {
                 name: 'User',
@@ -665,11 +724,12 @@ export class AuthService {
 
     private async createSession(user: UserWithRoles): Promise<AuthResponse> {
         const accessToken = this.generateAccessToken(user);
-        const refreshTokenData = this.generateRefreshToken(user.id);
+        const refreshTokenData = await this.createStoredRefreshToken(user.id);
 
         await this.repository.createRefreshToken({
             userId: user.id,
-            token: refreshTokenData.token,
+            tokenId: refreshTokenData.tokenId,
+            tokenHash: refreshTokenData.tokenHash,
             expires: refreshTokenData.expires,
         });
 
@@ -705,10 +765,15 @@ export class AuthService {
         );
     }
 
-    private generateRefreshToken(userId: string): { token: string; expires: Date } {
+    private generateRefreshToken(userId: string): {
+        token: string;
+        tokenId: string;
+        expires: Date;
+    } {
+        const tokenId = randomUUID();
         const token = jwt.sign({}, env.jwtRefreshSecret, {
             subject: userId,
-            jwtid: randomUUID(),
+            jwtid: tokenId,
             expiresIn: env.jwtRefreshExpiresIn as jwt.SignOptions['expiresIn'],
         });
 
@@ -720,15 +785,21 @@ export class AuthService {
 
         return {
             token,
+            tokenId,
             expires: new Date(decodedToken.exp * 1000),
         };
     }
 
-    private verifyRefreshToken(token: string): RefreshTokenPayload {
+    private verifyRefreshToken(
+        token: string,
+        ignoreExpiration = false,
+    ): RefreshTokenPayload {
         try {
-            const payload = jwt.verify(token, env.jwtRefreshSecret) as RefreshTokenPayload;
+            const payload = jwt.verify(token, env.jwtRefreshSecret, {
+                ignoreExpiration,
+            }) as RefreshTokenPayload;
 
-            if (!payload.sub) {
+            if (!payload.sub || !payload.jti) {
                 throw new AppError('Invalid refresh token', 401);
             }
 
@@ -756,8 +827,34 @@ export class AuthService {
         };
     }
 
+    private mapRefreshToken(refreshToken: RefreshToken): AuthRefreshTokenResponse {
+        return {
+            id: refreshToken.id,
+            userId: refreshToken.userId,
+            tokenId: refreshToken.tokenId,
+            expires: refreshToken.expires,
+            created: refreshToken.created,
+            revoked: refreshToken.revoked,
+            replacedByTokenId: refreshToken.replacedByTokenId,
+        };
+    }
+
     private normalizeEmail(email: string): string {
         return email.trim().toUpperCase();
+    }
+
+    private async createStoredRefreshToken(userId: string): Promise<{
+        token: string;
+        tokenId: string;
+        tokenHash: string;
+        expires: Date;
+    }> {
+        const refreshTokenData = this.generateRefreshToken(userId);
+
+        return {
+            ...refreshTokenData,
+            tokenHash: await this.hashValue(refreshTokenData.token),
+        };
     }
 
     private normalizeUsername(username: string): {
@@ -914,6 +1011,10 @@ export class AuthService {
 
     private isUserLocked(user: User): boolean {
         return user.lockoutEnabled && user.accessFailedCount >= env.maxAccessFailedCount;
+    }
+
+    private async hashValue(value: string): Promise<string> {
+        return bcrypt.hash(value, env.bcryptSaltRounds);
     }
 
     private async validateRoleIds(roleIds: string[]): Promise<void> {
