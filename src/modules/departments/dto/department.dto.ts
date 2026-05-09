@@ -16,6 +16,7 @@ import {
     validateDto,
 } from '../../../shared/validation/validate-dto';
 
+const sortOrderValues = ['ASC', 'DESC'] as const;
 const departmentSortByValues = ['created_at', 'name', 'location'] as const;
 
 function getValidationMessage(error: z.ZodError) {
@@ -81,7 +82,38 @@ const getDepartmentsQuerySchema = createPaginationQuerySchema(
     departmentSortByValues,
 );
 
+const getAllDepartmentsQuerySchema = z.object({
+    sortBy: z.preprocess(
+        (value) => {
+            if (typeof value !== 'string') {
+                return undefined;
+            }
+
+            const normalizedValue = value.trim().toLowerCase();
+
+            return normalizedValue.length > 0 ? normalizedValue : undefined;
+        },
+        z.enum(departmentSortByValues).default(departmentSortByValues[0]),
+    ),
+    order: z.preprocess(
+        (value) => {
+            if (typeof value !== 'string') {
+                return undefined;
+            }
+
+            const normalizedValue = value.trim().toUpperCase();
+
+            return normalizedValue.length > 0 ? normalizedValue : undefined;
+        },
+        z.enum(sortOrderValues).default('DESC'),
+    ),
+});
+
 export type GetDepartmentsQueryDto = z.infer<typeof getDepartmentsQuerySchema>;
+
+export type GetAllDepartmentsQueryDto = z.infer<
+    typeof getAllDepartmentsQuerySchema
+>;
 
 export function validateCreateDepartmentDto(input: unknown): CreateDepartmentDto {
     return validateDto(CreateDepartmentDto, input);
@@ -99,6 +131,18 @@ export function validateGetDepartmentsQueryDto(
     input: unknown,
 ): GetDepartmentsQueryDto {
     const result = getDepartmentsQuerySchema.safeParse(input);
+
+    if (!result.success) {
+        throw new AppError(getValidationMessage(result.error), 400);
+    }
+
+    return result.data;
+}
+
+export function validateGetAllDepartmentsQueryDto(
+    input: unknown,
+): GetAllDepartmentsQueryDto {
+    const result = getAllDepartmentsQuerySchema.safeParse(input);
 
     if (!result.success) {
         throw new AppError(getValidationMessage(result.error), 400);

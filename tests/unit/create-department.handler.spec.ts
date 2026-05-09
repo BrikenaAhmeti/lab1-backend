@@ -7,6 +7,7 @@ import { GetDepartmentByIdHandler } from '../../src/modules/departments/applicat
 import { GetDepartmentDoctorsHandler } from '../../src/modules/departments/application/handlers/get-department-doctors.handler';
 import { GetDepartmentNursesHandler } from '../../src/modules/departments/application/handlers/get-department-nurses.handler';
 import { GetDepartmentRoomsHandler } from '../../src/modules/departments/application/handlers/get-department-rooms.handler';
+import { GetAllDepartmentsHandler } from '../../src/modules/departments/application/handlers/get-all-departments.handler';
 import { GetDepartmentsHandler } from '../../src/modules/departments/application/handlers/get-departments.handler';
 import { UpdateDepartmentHandler } from '../../src/modules/departments/application/handlers/update-department.handler';
 import {
@@ -20,6 +21,7 @@ import { GetDepartmentByIdQuery } from '../../src/modules/departments/applicatio
 import { GetDepartmentDoctorsQuery } from '../../src/modules/departments/application/queries/get-department-doctors.query';
 import { GetDepartmentNursesQuery } from '../../src/modules/departments/application/queries/get-department-nurses.query';
 import { GetDepartmentRoomsQuery } from '../../src/modules/departments/application/queries/get-department-rooms.query';
+import { GetAllDepartmentsQuery } from '../../src/modules/departments/application/queries/get-all-departments.query';
 import { GetDepartmentsQuery } from '../../src/modules/departments/application/queries/get-departments.query';
 import { DepartmentService } from '../../src/modules/departments/services/department.service';
 import { AppError } from '../../src/shared/core/errors/app-error';
@@ -135,7 +137,7 @@ describe('Department handlers', () => {
         expect(repository.create).not.toHaveBeenCalled();
     });
 
-    it('should return all departments', async () => {
+    it('should return departments with pagination', async () => {
         const departments = [
             createDepartment(),
             createDepartment({
@@ -163,6 +165,31 @@ describe('Department handlers', () => {
             page: 1,
             limit: 10,
             totalPages: 1,
+        });
+    });
+
+    it('should return every department without pagination', async () => {
+        const departments = [
+            createDepartment(),
+            createDepartment({
+                id: 'department-2',
+                name: 'Neurology',
+                location: 'Block B',
+            }),
+        ];
+
+        repository.findMany.mockResolvedValue(departments);
+
+        const service = new DepartmentService(repository);
+        const handler = new GetAllDepartmentsHandler(service);
+        const result = await handler.execute(new GetAllDepartmentsQuery({
+            sortBy: 'created_at',
+            order: 'DESC',
+        }));
+
+        expect(repository.findMany).toHaveBeenCalled();
+        expect(result).toEqual({
+            data: departments,
         });
     });
 

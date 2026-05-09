@@ -394,12 +394,24 @@ describe('Department routes', () => {
         const departmentId = createResponse.body.id as string;
 
         const listResponse = await request(app)
-            .get('/api/departments')
+            .get('/api/departments?page=1&limit=10')
             .set('Authorization', `Bearer ${token}`);
 
         expect(listResponse.status).toBe(200);
         expect(listResponse.body.data).toHaveLength(1);
+        expect(listResponse.body.total).toBe(1);
+        expect(listResponse.body.page).toBe(1);
+        expect(listResponse.body.totalPages).toBe(1);
         expect(listResponse.body.data[0].id).toBe(departmentId);
+
+        const allResponse = await request(app)
+            .get('/api/departments/all')
+            .set('Authorization', `Bearer ${token}`);
+
+        expect(allResponse.status).toBe(200);
+        expect(allResponse.body.data).toHaveLength(1);
+        expect(allResponse.body.data[0].id).toBe(departmentId);
+        expect(allResponse.body.total).toBeUndefined();
 
         const getResponse = await request(app)
             .get(`/api/departments/${departmentId}`)

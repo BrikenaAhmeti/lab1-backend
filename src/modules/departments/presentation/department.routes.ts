@@ -9,7 +9,11 @@ export const departmentRoutes = Router();
 
 departmentRoutes.use(authenticate);
 
-departmentRoutes.get('/', asyncHandler(controller.getAll.bind(controller)));
+departmentRoutes.get('/', asyncHandler(controller.listPaginated.bind(controller)));
+departmentRoutes.get(
+    '/all',
+    asyncHandler(controller.listAll.bind(controller)),
+);
 departmentRoutes.post('/', asyncHandler(controller.create.bind(controller)));
 departmentRoutes.get(
     '/:id/doctors',

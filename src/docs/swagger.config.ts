@@ -105,6 +105,38 @@ const paginationParameters = [
     },
 ];
 
+const sortOnlyParameters = [
+    {
+        name: 'sortBy',
+        in: 'query',
+        schema: {
+            type: 'string',
+            enum: ['created_at', 'name', 'location'],
+            default: 'created_at',
+        },
+        description: 'Sort field (all departments returned; no paging)',
+    },
+    {
+        name: 'order',
+        in: 'query',
+        schema: { type: 'string', enum: ['ASC', 'DESC'], default: 'DESC' },
+        description: 'Sort direction',
+    },
+];
+
+function departmentListSchema(ref: string) {
+    return {
+        type: 'object',
+        properties: {
+            data: {
+                type: 'array',
+                items: { $ref: ref },
+            },
+        },
+        required: ['data'],
+    };
+}
+
 const patientExample = {
     id: 'patient-1',
     firstName: 'Ana',
@@ -1374,7 +1406,7 @@ const swaggerDefinition = {
             get: {
                 tags: ['Departments'],
                 summary: 'List departments',
-                description: 'Returns hospital departments with pagination support.',
+                description: 'Returns hospital departments with pagination and sorting.',
                 security: bearerSecurity,
                 parameters: paginationParameters,
                 responses: {
@@ -1414,6 +1446,22 @@ const swaggerDefinition = {
                 responses: {
                     '201': response('Department created successfully', { $ref: '#/components/schemas/Department' }, departmentExample),
                     '400': errorResponse(400, 'Validation failed'),
+                    '401': errorResponse(401, 'Unauthorized'),
+                    '500': errorResponse(500, 'Internal server error'),
+                },
+            },
+        },
+        '/api/departments/all': {
+            get: {
+                tags: ['Departments'],
+                summary: 'List all departments',
+                description: 'Returns every department with optional sorting. No paging (no page or limit query parameters).',
+                security: bearerSecurity,
+                parameters: sortOnlyParameters,
+                responses: {
+                    '200': response('Departments retrieved successfully', departmentListSchema('#/components/schemas/Department'), {
+                        data: [departmentExample],
+                    }),
                     '401': errorResponse(401, 'Unauthorized'),
                     '500': errorResponse(500, 'Internal server error'),
                 },

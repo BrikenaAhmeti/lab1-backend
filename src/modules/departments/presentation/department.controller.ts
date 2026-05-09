@@ -10,10 +10,13 @@ import { GetDepartmentByIdHandler } from '../application/handlers/get-department
 import {
     validateCreateDepartmentDto,
     validateDepartmentId,
+    validateGetAllDepartmentsQueryDto,
     validateGetDepartmentsQueryDto,
     validateUpdateDepartmentDto,
 } from '../dto/department.dto';
+import { GetAllDepartmentsQuery } from '../application/queries/get-all-departments.query';
 import { GetDepartmentsQuery } from '../application/queries/get-departments.query';
+import { GetAllDepartmentsHandler } from '../application/handlers/get-all-departments.handler';
 import { GetDepartmentsHandler } from '../application/handlers/get-departments.handler';
 import { UpdateDepartmentHandler } from '../application/handlers/update-department.handler';
 import { UpdateDepartmentCommand } from '../application/commands/update-department.command';
@@ -47,10 +50,20 @@ export class DepartmentController {
         return res.status(201).json(result);
     }
 
-    async getAll(req: Request, res: Response) {
+    async listPaginated(req: Request, res: Response) {
         const queryData = validateGetDepartmentsQueryDto(req.query);
         const handler = new GetDepartmentsHandler(this.service);
         const query = new GetDepartmentsQuery(queryData);
+
+        const result = await this.queryBus.execute(handler, query);
+
+        return res.status(200).json(result);
+    }
+
+    async listAll(req: Request, res: Response) {
+        const queryData = validateGetAllDepartmentsQueryDto(req.query);
+        const handler = new GetAllDepartmentsHandler(this.service);
+        const query = new GetAllDepartmentsQuery(queryData);
 
         const result = await this.queryBus.execute(handler, query);
 

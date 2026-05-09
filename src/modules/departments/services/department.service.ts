@@ -13,6 +13,7 @@ import {
 import { DepartmentRepository } from '../domain/department.repository';
 import {
     CreateDepartmentDto,
+    GetAllDepartmentsQueryDto,
     GetDepartmentsQueryDto,
     UpdateDepartmentDto,
 } from '../dto/department.dto';
@@ -56,6 +57,20 @@ export class DepartmentService {
         );
 
         return paginateItems(sortedDepartments, data.page, data.limit);
+    }
+
+    async getAllDepartments(
+        data: GetAllDepartmentsQueryDto,
+    ): Promise<{ data: DepartmentEntity[] }> {
+        const departments = await this.departmentRepository.findMany();
+        const sortedDepartments = sortItems(
+            departments,
+            data.sortBy,
+            data.order,
+            departmentSortAccessors,
+        );
+
+        return { data: sortedDepartments };
     }
 
     async getDepartmentById(id: string): Promise<DepartmentEntity> {
