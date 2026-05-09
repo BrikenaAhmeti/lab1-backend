@@ -55,6 +55,11 @@ ADMIN_PHONE_NUMBER=
 ```
 
 ## Commands
+### 0) Create `.env`
+```bash
+cp .env.example .env
+```
+
 ### 1) Install dependencies
 ```bash
 npm install
@@ -67,7 +72,11 @@ npm run prisma:generate
 
 ### 3) Run migrations
 ```bash
-npm run prisma:migrate -- --name init
+npm run prisma:migrate
+```
+If you're creating a new migration after updating `prisma/schema.prisma`, you can name it:
+```bash
+npm run prisma:migrate -- --name <migration_name>
 ```
 
 ### 4) Seed default admin and base roles
@@ -85,7 +94,12 @@ npm run dev
 npm run build
 ```
 
-### 7) Run tests
+### 7) Run production build locally (after `npm run build`)
+```bash
+npm start
+```
+
+### 8) Run tests
 ```bash
 npm test
 ```
