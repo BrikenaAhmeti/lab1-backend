@@ -35,22 +35,22 @@ Backend API for the Hospital Management System (Lab Course 1), built with Expres
 Create `.env` (or copy from `.env.example`) with:
 
 ```env
-PORT=3005
+PORT=3006
 NODE_ENV=development
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/medsphere?schema=public
+DATABASE_URL=
 JWT_ACCESS_SECRET=your_access_secret
 JWT_REFRESH_SECRET=your_refresh_secret
 JWT_ACCESS_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
 BCRYPT_SALT_ROUNDS=12
-CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
-REFRESH_TOKEN_COOKIE_NAME=refreshToken
-MAX_ACCESS_FAILED_COUNT=5
-ADMIN_FIRST_NAME=System
-ADMIN_LAST_NAME=Admin
-ADMIN_EMAIL=admin@medsphere.local
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=Admin123!
+CORS_ALLOWED_ORIGINS=
+REFRESH_TOKEN_COOKIE_NAME=
+MAX_ACCESS_FAILED_COUNT=
+ADMIN_FIRST_NAME=
+ADMIN_LAST_NAME=
+ADMIN_EMAIL=
+ADMIN_USERNAME=
+ADMIN_PASSWORD=
 ADMIN_PHONE_NUMBER=
 ```
 
@@ -82,6 +82,11 @@ npm run prisma:migrate -- --name <migration_name>
 ### 4) Seed default admin and base roles
 ```bash
 npm run prisma:seed
+```
+
+### (Optional) Open Prisma Studio
+```bash
+npm run prisma:studio
 ```
 
 ### 5) Run development server
@@ -169,22 +174,13 @@ If you changed env values, use your updated credentials.
 ## Login Payload Example
 Use either username or email:
 
-```json
-{
-  "identifier": "admin",
-  "password": "Admin123!"
-}
-```
-
-or
-
-```json
-{
-  "email": "admin@medsphere.local",
-  "password": "Admin123!"
-}
-```
 
 ## Notes
 - If Prisma reports migration drift on your local DB, use a clean local DB or reset dev schema before re-running migrations.
 - Seed enforces one active admin role owner.
+
+### Reset local database (destructive)
+This will drop and recreate your DB schema, then re-apply migrations:
+```bash
+npx prisma migrate reset
+```

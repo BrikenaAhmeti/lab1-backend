@@ -226,7 +226,7 @@ describe('Auth routes', () => {
         env.bcryptSaltRounds = 12;
         env.maxAccessFailedCount = 5;
         env.refreshTokenCookieName = 'refreshToken';
-        env.corsAllowedOrigins = ['http://localhost:5173'];
+        env.corsAllowedOrigins = ['http://localhost:3001'];
     });
 
     it('should set refresh token cookie on successful login', async () => {
@@ -256,7 +256,7 @@ describe('Auth routes', () => {
             const response = await request(app)
                 .post('/api/auth/login')
                 .send({
-                    identifier: 'ana@example.com',
+                    identifier: 'erza@example.com',
                     password: 'wrong-password',
                 });
 
@@ -266,7 +266,7 @@ describe('Auth routes', () => {
         const blockedResponse = await request(app)
             .post('/api/auth/login')
             .send({
-                identifier: 'ana@example.com',
+                identifier: 'erza@example.com',
                 password: 'wrong-password',
             });
 
