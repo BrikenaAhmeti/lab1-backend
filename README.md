@@ -1,6 +1,6 @@
 # MedSphere Lab1 Backend
 
-Backend API for the Hospital Management System (Lab Course 1), built with Express, TypeScript, Prisma, PostgreSQL, and CQRS-style layering.
+Backend API for the Hospital Management System (Lenda Laboratorike 1), built with Express, TypeScript, Prisma, PostgreSQL, and CQRS-style layering.
 
 ## Tech Stack
 - Node.js
