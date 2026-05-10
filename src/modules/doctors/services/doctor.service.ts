@@ -4,6 +4,7 @@ import {
     paginateItems,
     sortItems,
 } from '../../../shared/core/pagination';
+import { AuthUserResponse } from '../../auth/services/auth.service';
 import { DoctorEntity } from '../domain/doctor.entity';
 import { DoctorRepository, UpdateDoctorData } from '../domain/doctor.repository';
 import {
@@ -11,6 +12,15 @@ import {
     GetDoctorsQueryDto,
     UpdateDoctorDto,
 } from '../dto/doctor.dto';
+
+export interface DoctorUserProvisioningService {
+    provisionDoctorUser(input: {
+        firstName: string;
+        lastName: string;
+        phoneNumber?: string;
+    }): Promise<AuthUserResponse>;
+    deleteUser(userId: string): Promise<void>;
+}
 
 const doctorSortAccessors = {
     created_at: (doctor: DoctorEntity) => doctor.createdAt,
@@ -20,31 +30,59 @@ const doctorSortAccessors = {
 } as const;
 
 export class DoctorService {
-    constructor(private readonly doctorRepository: DoctorRepository) { }
+    constructor(
+        private readonly doctorRepository: DoctorRepository,
+        private readonly userProvisioningService: DoctorUserProvisioningService,
+    ) { }
 
     async createDoctor(data: CreateDoctorDto): Promise<DoctorEntity> {
-        const userId = data.userId.trim();
+        const providedUserId = data.userId?.trim();
         const departmentId = data.departmentId.trim();
+        const firstName = data.firstName.trim();
+        const lastName = data.lastName.trim();
+        const specialization = data.specialization.trim();
+        const phoneNumber = data.phoneNumber.trim();
 
-        await this.ensureUserExists(userId);
         await this.ensureDepartmentExists(departmentId);
 
-        const existingDoctor = await this.doctorRepository.findByUserId(
-            userId,
-        );
+        let userId = providedUserId;
+        let shouldCleanupProvisionedUser = false;
 
-        if (existingDoctor) {
-            throw new AppError('Doctor already exists for this user', 409);
+        if (userId) {
+            await this.ensureUserExists(userId);
+
+            const existingDoctor = await this.doctorRepository.findByUserId(userId);
+
+            if (existingDoctor) {
+                throw new AppError('Doctor already exists for this user', 409);
+            }
+        } else {
+            const provisionedUser = await this.userProvisioningService.provisionDoctorUser({
+                firstName,
+                lastName,
+                phoneNumber,
+            });
+
+            userId = provisionedUser.id;
+            shouldCleanupProvisionedUser = true;
         }
 
-        return this.doctorRepository.create({
-            userId,
-            firstName: data.firstName.trim(),
-            lastName: data.lastName.trim(),
-            specialization: data.specialization.trim(),
-            departmentId,
-            phoneNumber: data.phoneNumber.trim(),
-        });
+        try {
+            return await this.doctorRepository.create({
+                userId,
+                firstName,
+                lastName,
+                specialization,
+                departmentId,
+                phoneNumber,
+            });
+        } catch (error) {
+            if (shouldCleanupProvisionedUser && userId) {
+                await this.userProvisioningService.deleteUser(userId).catch(() => undefined);
+            }
+
+            throw error;
+        }
     }
 
     async getDoctors(

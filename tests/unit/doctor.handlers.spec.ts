@@ -15,7 +15,10 @@ import {
 import { DoctorRepository } from '../../src/modules/doctors/domain/doctor.repository';
 import { GetDoctorByIdQuery } from '../../src/modules/doctors/application/queries/get-doctor-by-id.query';
 import { GetDoctorsQuery } from '../../src/modules/doctors/application/queries/get-doctors.query';
-import { DoctorService } from '../../src/modules/doctors/services/doctor.service';
+import {
+    DoctorService,
+    DoctorUserProvisioningService,
+} from '../../src/modules/doctors/services/doctor.service';
 
 function createDepartment(
     overrides: Partial<DoctorDepartmentEntity> = {},
@@ -59,6 +62,10 @@ describe('Doctor handlers', () => {
         update: jest.fn(),
         delete: jest.fn(),
     };
+    const userProvisioningService: jest.Mocked<DoctorUserProvisioningService> = {
+        provisionDoctorUser: jest.fn(),
+        deleteUser: jest.fn(),
+    };
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -78,7 +85,7 @@ describe('Doctor handlers', () => {
         repository.findByUserId.mockResolvedValue(null);
         repository.create.mockResolvedValue(doctor);
 
-        const service = new DoctorService(repository);
+        const service = new DoctorService(repository, userProvisioningService);
         const handler = new CreateDoctorHandler(service);
         const command = new CreateDoctorCommand({
             userId: ' user-1 ',
@@ -110,7 +117,7 @@ describe('Doctor handlers', () => {
         repository.findDepartmentById.mockResolvedValue(createDepartment());
         repository.findByUserId.mockResolvedValue(createDoctor());
 
-        const service = new DoctorService(repository);
+        const service = new DoctorService(repository, userProvisioningService);
         const handler = new CreateDoctorHandler(service);
 
         await expect(
@@ -132,7 +139,7 @@ describe('Doctor handlers', () => {
         repository.findUserById.mockResolvedValue(createUser());
         repository.findDepartmentById.mockResolvedValue(null);
 
-        const service = new DoctorService(repository);
+        const service = new DoctorService(repository, userProvisioningService);
         const handler = new CreateDoctorHandler(service);
 
         await expect(
@@ -165,7 +172,7 @@ describe('Doctor handlers', () => {
 
         repository.findMany.mockResolvedValue(doctors);
 
-        const service = new DoctorService(repository);
+        const service = new DoctorService(repository, userProvisioningService);
         const handler = new GetDoctorsHandler(service);
         const result = await handler.execute(new GetDoctorsQuery({
             page: 1,
@@ -191,7 +198,7 @@ describe('Doctor handlers', () => {
 
         repository.findById.mockResolvedValue(doctor);
 
-        const service = new DoctorService(repository);
+        const service = new DoctorService(repository, userProvisioningService);
         const handler = new GetDoctorByIdHandler(service);
         const result = await handler.execute(new GetDoctorByIdQuery('doctor-1'));
 
@@ -217,7 +224,7 @@ describe('Doctor handlers', () => {
         repository.findDepartmentById.mockResolvedValue(nextDepartment);
         repository.update.mockResolvedValue(updatedDoctor);
 
-        const service = new DoctorService(repository);
+        const service = new DoctorService(repository, userProvisioningService);
         const handler = new UpdateDoctorHandler(service);
         const command = new UpdateDoctorCommand('doctor-1', {
             specialization: ' Neurology ',
@@ -241,12 +248,67 @@ describe('Doctor handlers', () => {
         repository.findById.mockResolvedValue(doctor);
         repository.delete.mockResolvedValue(doctor);
 
-        const service = new DoctorService(repository);
+        const service = new DoctorService(repository, userProvisioningService);
         const handler = new DeleteDoctorHandler(service);
 
         await handler.execute(new DeleteDoctorCommand('doctor-1'));
 
         expect(repository.findById).toHaveBeenCalledWith('doctor-1');
         expect(repository.delete).toHaveBeenCalledWith('doctor-1');
+    });
+
+    it('should auto-provision a user when userId is not provided', async () => {
+        const department = createDepartment();
+        const doctor = createDoctor({
+            userId: 'generated-user-1',
+            departmentId: department.id,
+            department,
+        });
+
+        repository.findDepartmentById.mockResolvedValue(department);
+        repository.create.mockResolvedValue(doctor);
+        userProvisioningService.provisionDoctorUser.mockResolvedValue({
+            id: 'generated-user-1',
+            firstName: 'Leo',
+            lastName: 'Doe',
+            email: 'leo.doe@medsphere.local',
+            username: 'leo.doe',
+            phoneNumber: '+38349280810',
+            emailConfirmed: false,
+            isActive: true,
+            lockoutEnabled: true,
+            accessFailedCount: 0,
+            roles: ['DOCTOR'],
+            createdAt: new Date('2026-01-01T10:00:00.000Z'),
+            updatedAt: new Date('2026-01-01T10:00:00.000Z'),
+        });
+
+        const service = new DoctorService(repository, userProvisioningService);
+        const handler = new CreateDoctorHandler(service);
+
+        const result = await handler.execute(
+            new CreateDoctorCommand({
+                firstName: ' Leo ',
+                lastName: ' Doe ',
+                specialization: ' Neurolog ',
+                departmentId: ` ${department.id} `,
+                phoneNumber: ' +38349280810 ',
+            }),
+        );
+
+        expect(userProvisioningService.provisionDoctorUser).toHaveBeenCalledWith({
+            firstName: 'Leo',
+            lastName: 'Doe',
+            phoneNumber: '+38349280810',
+        });
+        expect(repository.create).toHaveBeenCalledWith({
+            userId: 'generated-user-1',
+            firstName: 'Leo',
+            lastName: 'Doe',
+            specialization: 'Neurolog',
+            departmentId: department.id,
+            phoneNumber: '+38349280810',
+        });
+        expect(result.userId).toBe('generated-user-1');
     });
 });

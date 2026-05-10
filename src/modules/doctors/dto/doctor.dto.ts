@@ -52,14 +52,14 @@ function phoneNumberSchema() {
 }
 
 export class CreateDoctorDto {
-    @IsDefined({ message: 'User id is required' })
+    @OptionalField()
     @IsString({ message: 'User id is required' })
     @NormalizeString()
     @IsNotEmpty({ message: 'User id is required' })
     @MaxLength(255, {
         message: 'User id must not exceed 255 characters',
     })
-    userId!: string;
+    userId?: string;
 
     @IsDefined({ message: 'First name is required' })
     @IsString({ message: 'First name is required' })

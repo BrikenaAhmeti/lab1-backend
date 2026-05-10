@@ -99,6 +99,12 @@ export interface SeedAdminInput {
     phoneNumber?: string;
 }
 
+export interface ProvisionDoctorUserInput {
+    firstName: string;
+    lastName: string;
+    phoneNumber?: string;
+}
+
 interface RefreshTokenPayload extends jwt.JwtPayload {
     sub: string;
     jti: string;
@@ -677,6 +683,49 @@ export class AuthService {
         return this.mapUser(user);
     }
 
+    async provisionDoctorUser(
+        input: ProvisionDoctorUserInput,
+    ): Promise<AuthUserResponse> {
+        await this.ensureBaseRoles();
+
+        const generatedEmail = await this.generateUniqueInternalEmail(
+            input.firstName,
+            input.lastName,
+            'doctor',
+        );
+        const normalizedEmail = this.normalizeEmail(generatedEmail);
+        const usernameData = await this.resolveUsernameForCreate(
+            undefined,
+            generatedEmail,
+        );
+        const passwordHash = await this.hashValue(randomUUID());
+
+        const user = await this.repository.createUser({
+            firstName: input.firstName.trim(),
+            lastName: input.lastName.trim(),
+            email: generatedEmail,
+            normalizedEmail,
+            username: usernameData.username,
+            normalizedUsername: usernameData.normalizedUsername,
+            passwordHash,
+            phoneNumber: input.phoneNumber?.trim(),
+            emailConfirmed: false,
+            lockoutEnabled: true,
+            accessFailedCount: 0,
+            isActive: true,
+        });
+
+        const doctorRole = await this.repository.findRoleByNormalizedName('DOCTOR');
+
+        if (doctorRole) {
+            await this.repository.assignRoleToUser(user.id, doctorRole.id);
+        }
+
+        const createdUser = await this.getExistingUserById(user.id);
+
+        return this.mapUser(createdUser);
+    }
+
     async ensureBaseRoles(): Promise<void> {
         const baseRoles: Array<{ name: string; normalizedName: string; description: string }> = [
             {
@@ -932,6 +981,34 @@ export class AuthService {
         throw new AppError('Unable to generate username', 500);
     }
 
+    private async generateUniqueInternalEmail(
+        firstName: string,
+        lastName: string,
+        label: string,
+    ): Promise<string> {
+        const firstPart = this.sanitizeIdentifierPart(firstName);
+        const lastPart = this.sanitizeIdentifierPart(lastName);
+        const nameBase = [firstPart, lastPart].filter(Boolean).join('.');
+        const base = nameBase || label.toLowerCase();
+        let attempts = 0;
+
+        while (attempts < 100) {
+            const candidate =
+                `${base}.${randomUUID().slice(0, 8)}@medsphere.local`;
+            const existingUser = await this.repository.findUserByNormalizedEmail(
+                this.normalizeEmail(candidate),
+            );
+
+            if (!existingUser) {
+                return candidate;
+            }
+
+            attempts += 1;
+        }
+
+        throw new AppError('Unable to generate email', 500);
+    }
+
     private usernameBaseFromEmail(email: string): string {
         const localPart = email.trim().toLowerCase().split('@')[0] ?? '';
         const sanitized = localPart.replace(/[^a-z0-9._-]/g, '');
@@ -941,6 +1018,15 @@ export class AuthService {
         }
 
         return 'user';
+    }
+
+    private sanitizeIdentifierPart(value: string): string {
+        return value
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '.')
+            .replace(/^\.+|\.+$/g, '')
+            .slice(0, 24);
     }
 
     private normalizeRoleName(roleName: string): string {

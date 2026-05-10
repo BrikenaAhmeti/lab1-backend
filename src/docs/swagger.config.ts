@@ -1603,9 +1603,12 @@ const swaggerDefinition = {
                     'Doctor payload',
                     {
                         type: 'object',
-                        required: ['userId', 'firstName', 'lastName', 'specialization', 'departmentId', 'phoneNumber'],
+                        required: ['firstName', 'lastName', 'specialization', 'departmentId', 'phoneNumber'],
                         properties: {
-                            userId: { type: 'string' },
+                            userId: {
+                                type: 'string',
+                                description: 'Optional existing user id. If omitted, a linked doctor user is auto-created.',
+                            },
                             firstName: { type: 'string' },
                             lastName: { type: 'string' },
                             specialization: { type: 'string' },
@@ -1614,7 +1617,6 @@ const swaggerDefinition = {
                         },
                     },
                     {
-                        userId: 'user-2',
                         firstName: 'Arben',
                         lastName: 'Hoxha',
                         specialization: 'Cardiology',

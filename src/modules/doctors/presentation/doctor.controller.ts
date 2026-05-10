@@ -19,12 +19,16 @@ import {
 } from '../dto/doctor.dto';
 import { DoctorPrismaRepository } from '../infrastructure/doctor.prisma.repository';
 import { DoctorService } from '../services/doctor.service';
+import { AuthPrismaRepository } from '../../auth/infrastructure/auth.prisma.repository';
+import { AuthService } from '../../auth/services/auth.service';
 
 export class DoctorController {
     private readonly commandBus = new CommandBus();
     private readonly queryBus = new QueryBus();
     private readonly repository = new DoctorPrismaRepository();
-    private readonly service = new DoctorService(this.repository);
+    private readonly authRepository = new AuthPrismaRepository();
+    private readonly authService = new AuthService(this.authRepository);
+    private readonly service = new DoctorService(this.repository, this.authService);
 
     async create(req: Request, res: Response) {
         const body = validateCreateDoctorDto(req.body);
