@@ -13,6 +13,11 @@ authRoutes.post('/login', asyncHandler(controller.login.bind(controller)));
 authRoutes.post('/refresh', asyncHandler(controller.refresh.bind(controller)));
 authRoutes.post('/logout', asyncHandler(controller.logout.bind(controller)));
 authRoutes.post(
+    '/change-password',
+    authenticate,
+    asyncHandler(controller.changePassword.bind(controller)),
+);
+authRoutes.post(
     '/logout-all',
     authenticate,
     asyncHandler(controller.logoutAll.bind(controller)),
@@ -55,6 +60,12 @@ authRoutes.patch(
     authenticate,
     authorizeRoles('ADMIN'),
     asyncHandler(controller.setUserStatus.bind(controller)),
+);
+authRoutes.patch(
+    '/users/:id/password',
+    authenticate,
+    authorizeRoles('ADMIN'),
+    asyncHandler(controller.setUserPassword.bind(controller)),
 );
 
 authRoutes.get(

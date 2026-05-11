@@ -1,0 +1,9 @@
+ALTER TABLE "Nurse" ADD COLUMN "userId" TEXT;
+
+CREATE UNIQUE INDEX "Nurse_userId_key" ON "Nurse"("userId");
+
+ALTER TABLE "Nurse"
+ADD CONSTRAINT "Nurse_userId_fkey"
+FOREIGN KEY ("userId") REFERENCES "User"("id")
+ON DELETE SET NULL
+ON UPDATE CASCADE;

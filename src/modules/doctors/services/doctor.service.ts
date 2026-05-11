@@ -18,6 +18,7 @@ export interface DoctorUserProvisioningService {
         firstName: string;
         lastName: string;
         phoneNumber?: string;
+        password?: string;
     }): Promise<AuthUserResponse>;
     deleteUser(userId: string): Promise<void>;
 }
@@ -42,6 +43,7 @@ export class DoctorService {
         const lastName = data.lastName.trim();
         const specialization = data.specialization.trim();
         const phoneNumber = data.phoneNumber.trim();
+        const password = data.password?.trim();
 
         await this.ensureDepartmentExists(departmentId);
 
@@ -49,6 +51,13 @@ export class DoctorService {
         let shouldCleanupProvisionedUser = false;
 
         if (userId) {
+            if (password) {
+                throw new AppError(
+                    'Password can only be provided when creating a new linked user',
+                    400,
+                );
+            }
+
             await this.ensureUserExists(userId);
 
             const existingDoctor = await this.doctorRepository.findByUserId(userId);
@@ -61,6 +70,7 @@ export class DoctorService {
                 firstName,
                 lastName,
                 phoneNumber,
+                password,
             });
 
             userId = provisionedUser.id;

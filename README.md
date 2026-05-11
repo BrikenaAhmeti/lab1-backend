@@ -140,6 +140,7 @@ If you changed env values, use your updated credentials.
 - `POST /auth/login`
 - `POST /auth/refresh`
 - `POST /auth/logout`
+- `POST /auth/change-password`
 - `POST /auth/logout-all`
 - `GET /auth/me` (Bearer token)
 
@@ -150,6 +151,7 @@ If you changed env values, use your updated credentials.
 - `PATCH /auth/users/:id`
 - `DELETE /auth/users/:id`
 - `PATCH /auth/users/:id/status`
+- `PATCH /auth/users/:id/password`
 
 ### Roles (Admin)
 - `GET /auth/roles`

@@ -67,6 +67,24 @@ export class NursePrismaRepository implements NurseRepository {
         return nurse ? mapNurseEntity(nurse) : null;
     }
 
+    async findByUserId(userId: string): Promise<NurseEntity | null> {
+        const nurse = await prisma.nurse.findUnique({
+            where: { userId },
+            include: nurseInclude,
+        });
+
+        return nurse ? mapNurseEntity(nurse) : null;
+    }
+
+    async findUserById(userId: string): Promise<{ id: string } | null> {
+        return prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+            },
+        });
+    }
+
     async findDepartmentById(
         departmentId: string,
     ): Promise<NurseDepartmentEntity | null> {

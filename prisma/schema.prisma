@@ -28,6 +28,7 @@ model User {
   userTokens        UserToken[]
   refreshTokens     RefreshToken[]
   doctor            Doctor?
+  nurse             Nurse?
 }
 
 model Role {
@@ -136,12 +137,14 @@ model Room {
 
 model Nurse {
   id           String     @id @default(uuid())
+  userId       String?    @unique
   firstName    String
   lastName     String
   departmentId String
   shift        String
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+  user         User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
   department   Department @relation(fields: [departmentId], references: [id])
 
   @@index([departmentId])

@@ -19,12 +19,16 @@ import {
 } from '../dto/nurse.dto';
 import { NursePrismaRepository } from '../infrastructure/nurse.prisma.repository';
 import { NurseService } from '../services/nurse.service';
+import { AuthPrismaRepository } from '../../auth/infrastructure/auth.prisma.repository';
+import { AuthService } from '../../auth/services/auth.service';
 
 export class NurseController {
     private readonly commandBus = new CommandBus();
     private readonly queryBus = new QueryBus();
     private readonly repository = new NursePrismaRepository();
-    private readonly service = new NurseService(this.repository);
+    private readonly authRepository = new AuthPrismaRepository();
+    private readonly authService = new AuthService(this.authRepository);
+    private readonly service = new NurseService(this.repository, this.authService);
 
     async create(req: Request, res: Response) {
         const body = validateCreateNurseDto(req.body);

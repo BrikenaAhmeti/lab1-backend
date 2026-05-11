@@ -5,12 +5,14 @@ import { AuthService } from '../services/auth.service';
 import { RequestWithUser } from '../../../shared/core/types/request-with-user';
 import { AppError } from '../../../shared/core/errors/app-error';
 import {
+    validateChangePasswordDto,
     validateAssignRoleDto,
     validateCreateRoleDto,
     validateCreateUserDto,
     validateLoginDto,
     validateRegisterDto,
     validateReplaceRolesDto,
+    validateSetUserPasswordDto,
     validateSetUserStatusDto,
     validateUpdateRoleDto,
     validateUpdateUserDto,
@@ -103,6 +105,20 @@ export class AuthController {
         return res.status(200).json(result);
     }
 
+    async changePassword(req: Request, res: Response) {
+        const requestWithUser = req as RequestWithUser;
+        const body = validateChangePasswordDto(req.body);
+
+        await this.service.changePassword(
+            requestWithUser.user.id,
+            body.currentPassword,
+            body.newPassword,
+        );
+        clearRefreshTokenCookie(res);
+
+        return res.status(204).send();
+    }
+
     async listUsers(_req: Request, res: Response) {
         const result = await this.service.listUsers();
 
@@ -145,6 +161,15 @@ export class AuthController {
         const result = await this.service.setUserStatus(params.id, body.isActive);
 
         return res.status(200).json(result);
+    }
+
+    async setUserPassword(req: Request, res: Response) {
+        const params = paramsWithIdSchema.parse(req.params);
+        const body = validateSetUserPasswordDto(req.body);
+
+        await this.service.setUserPassword(params.id, body.password);
+
+        return res.status(204).send();
     }
 
     async listRoles(_req: Request, res: Response) {

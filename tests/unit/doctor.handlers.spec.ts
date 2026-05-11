@@ -300,6 +300,7 @@ describe('Doctor handlers', () => {
             firstName: 'Leo',
             lastName: 'Doe',
             phoneNumber: '+38349280810',
+            password: undefined,
         });
         expect(repository.create).toHaveBeenCalledWith({
             userId: 'generated-user-1',
@@ -310,5 +311,72 @@ describe('Doctor handlers', () => {
             phoneNumber: '+38349280810',
         });
         expect(result.userId).toBe('generated-user-1');
+    });
+
+    it('should pass the initial password when auto-provisioning a doctor user', async () => {
+        const department = createDepartment();
+        const doctor = createDoctor({
+            userId: 'generated-user-2',
+            departmentId: department.id,
+            department,
+        });
+
+        repository.findDepartmentById.mockResolvedValue(department);
+        repository.create.mockResolvedValue(doctor);
+        userProvisioningService.provisionDoctorUser.mockResolvedValue({
+            id: 'generated-user-2',
+            firstName: 'Mira',
+            lastName: 'Selimi',
+            email: 'mira.selimi@medsphere.local',
+            username: 'mira.selimi',
+            phoneNumber: '+38344111111',
+            emailConfirmed: false,
+            isActive: true,
+            lockoutEnabled: true,
+            accessFailedCount: 0,
+            roles: ['DOCTOR'],
+            createdAt: new Date('2026-01-01T10:00:00.000Z'),
+            updatedAt: new Date('2026-01-01T10:00:00.000Z'),
+        });
+
+        const service = new DoctorService(repository, userProvisioningService);
+
+        await service.createDoctor({
+            firstName: 'Mira',
+            lastName: 'Selimi',
+            specialization: 'Pediatrics',
+            departmentId: department.id,
+            phoneNumber: '+38344111111',
+            password: 'Doctor123!',
+        });
+
+        expect(userProvisioningService.provisionDoctorUser).toHaveBeenCalledWith({
+            firstName: 'Mira',
+            lastName: 'Selimi',
+            phoneNumber: '+38344111111',
+            password: 'Doctor123!',
+        });
+    });
+
+    it('should reject password when linking an existing user to a doctor', async () => {
+        const department = createDepartment();
+        repository.findDepartmentById.mockResolvedValue(department);
+
+        const service = new DoctorService(repository, userProvisioningService);
+
+        await expect(
+            service.createDoctor({
+                userId: 'user-1',
+                firstName: 'Arben',
+                lastName: 'Hoxha',
+                specialization: 'Cardiology',
+                departmentId: department.id,
+                phoneNumber: '+38344111222',
+                password: 'Doctor123!',
+            }),
+        ).rejects.toMatchObject({
+            message: 'Password can only be provided when creating a new linked user',
+            statusCode: 400,
+        });
     });
 });

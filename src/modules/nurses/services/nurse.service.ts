@@ -4,6 +4,7 @@ import {
     paginateItems,
     sortItems,
 } from '../../../shared/core/pagination';
+import { AuthUserResponse } from '../../auth/services/auth.service';
 import { NurseEntity } from '../domain/nurse.entity';
 import { NurseRepository, UpdateNurseData } from '../domain/nurse.repository';
 import {
@@ -11,6 +12,15 @@ import {
     GetNursesQueryDto,
     UpdateNurseDto,
 } from '../dto/nurse.dto';
+
+export interface NurseUserProvisioningService {
+    provisionNurseUser(input: {
+        firstName: string;
+        lastName: string;
+        password?: string;
+    }): Promise<AuthUserResponse>;
+    deleteUser(userId: string): Promise<void>;
+}
 
 const nurseSortAccessors = {
     created_at: (nurse: NurseEntity) => nurse.createdAt,
@@ -20,19 +30,64 @@ const nurseSortAccessors = {
 } as const;
 
 export class NurseService {
-    constructor(private readonly nurseRepository: NurseRepository) { }
+    constructor(
+        private readonly nurseRepository: NurseRepository,
+        private readonly userProvisioningService: NurseUserProvisioningService,
+    ) { }
 
     async createNurse(data: CreateNurseDto): Promise<NurseEntity> {
+        const providedUserId = data.userId?.trim();
         const departmentId = data.departmentId.trim();
+        const firstName = data.firstName.trim();
+        const lastName = data.lastName.trim();
+        const password = data.password?.trim();
 
         await this.ensureDepartmentExists(departmentId);
 
-        return this.nurseRepository.create({
-            firstName: data.firstName.trim(),
-            lastName: data.lastName.trim(),
-            departmentId,
-            shift: data.shift,
-        });
+        let userId = providedUserId;
+        let shouldCleanupProvisionedUser = false;
+
+        if (userId) {
+            if (password) {
+                throw new AppError(
+                    'Password can only be provided when creating a new linked user',
+                    400,
+                );
+            }
+
+            await this.ensureUserExists(userId);
+
+            const existingNurse = await this.nurseRepository.findByUserId(userId);
+
+            if (existingNurse) {
+                throw new AppError('Nurse already exists for this user', 409);
+            }
+        } else {
+            const provisionedUser = await this.userProvisioningService.provisionNurseUser({
+                firstName,
+                lastName,
+                password,
+            });
+
+            userId = provisionedUser.id;
+            shouldCleanupProvisionedUser = true;
+        }
+
+        try {
+            return await this.nurseRepository.create({
+                userId,
+                firstName,
+                lastName,
+                departmentId,
+                shift: data.shift,
+            });
+        } catch (error) {
+            if (shouldCleanupProvisionedUser && userId) {
+                await this.userProvisioningService.deleteUser(userId).catch(() => undefined);
+            }
+
+            throw error;
+        }
     }
 
     async getNurses(
@@ -66,7 +121,22 @@ export class NurseService {
             await this.ensureDepartmentExists(data.departmentId.trim());
         }
 
+        if (data.userId !== undefined) {
+            const userId = data.userId.trim();
+
+            await this.ensureUserExists(userId);
+
+            const nurseWithSameUser = await this.nurseRepository.findByUserId(userId);
+
+            if (nurseWithSameUser && nurseWithSameUser.id !== id) {
+                throw new AppError('Nurse already exists for this user', 409);
+            }
+        }
+
         const updateData: UpdateNurseData = {
+            ...(data.userId !== undefined
+                ? { userId: data.userId.trim() }
+                : {}),
             ...(data.firstName !== undefined
                 ? { firstName: data.firstName.trim() }
                 : {}),
@@ -106,6 +176,14 @@ export class NurseService {
 
         if (!department) {
             throw new AppError('Department not found', 404);
+        }
+    }
+
+    private async ensureUserExists(userId: string): Promise<void> {
+        const user = await this.nurseRepository.findUserById(userId.trim());
+
+        if (!user) {
+            throw new AppError('User not found', 404);
         }
     }
 }

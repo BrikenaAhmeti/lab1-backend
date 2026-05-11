@@ -3,6 +3,43 @@ import request from 'supertest';
 import { env } from '../../src/config/env';
 
 jest.mock('../../src/infrastructure/db/prisma', () => {
+    interface MockRole {
+        id: string;
+        name: string;
+        normalizedName: string;
+        description: string | null;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+    }
+
+    interface MockUserRole {
+        id: string;
+        userId: string;
+        roleId: string;
+        createdAt: Date;
+        role: MockRole;
+    }
+
+    interface MockUser {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        normalizedEmail: string;
+        username: string;
+        normalizedUsername: string;
+        passwordHash: string;
+        phoneNumber: string | null;
+        emailConfirmed: boolean;
+        lockoutEnabled: boolean;
+        accessFailedCount: number;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        userRoles: MockUserRole[];
+    }
+
     interface MockDepartment {
         id: string;
         name: string;
@@ -11,6 +48,7 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
 
     interface MockNurse {
         id: string;
+        userId: string | null;
         firstName: string;
         lastName: string;
         departmentId: string;
@@ -19,10 +57,59 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
         updatedAt: Date;
     }
 
+    const nurseRole: MockRole = {
+        id: 'role-nurse-id',
+        name: 'Nurse',
+        normalizedName: 'NURSE',
+        description: 'Nurse access',
+        isActive: true,
+        createdAt: new Date('2026-01-01T10:00:00.000Z'),
+        updatedAt: new Date('2026-01-01T10:00:00.000Z'),
+    };
+
+    const userStore: MockUser[] = [
+        {
+            id: 'user-1',
+            firstName: 'Admin',
+            lastName: 'User',
+            email: 'admin@example.com',
+            normalizedEmail: 'ADMIN@EXAMPLE.COM',
+            username: 'admin',
+            normalizedUsername: 'ADMIN',
+            passwordHash: 'hash',
+            phoneNumber: null,
+            emailConfirmed: true,
+            lockoutEnabled: true,
+            accessFailedCount: 0,
+            isActive: true,
+            createdAt: new Date('2026-01-01T10:00:00.000Z'),
+            updatedAt: new Date('2026-01-01T10:00:00.000Z'),
+            userRoles: [],
+        },
+        {
+            id: 'user-2',
+            firstName: 'Existing',
+            lastName: 'Nurse',
+            email: 'existing.nurse@example.com',
+            normalizedEmail: 'EXISTING.NURSE@EXAMPLE.COM',
+            username: 'existing.nurse',
+            normalizedUsername: 'EXISTING.NURSE',
+            passwordHash: 'hash',
+            phoneNumber: null,
+            emailConfirmed: true,
+            lockoutEnabled: true,
+            accessFailedCount: 0,
+            isActive: true,
+            createdAt: new Date('2026-01-01T10:00:00.000Z'),
+            updatedAt: new Date('2026-01-01T10:00:00.000Z'),
+            userRoles: [],
+        },
+    ];
     const departmentStore: MockDepartment[] = [];
     const nurseStore: MockNurse[] = [];
     let departmentCount = 1;
     let nurseCount = 1;
+    let userCount = 3;
 
     function buildNurseEntity(nurse: MockNurse) {
         const department = departmentStore.find(
@@ -68,6 +155,122 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                     );
                 }),
             },
+            user: {
+                findUnique: jest.fn(async ({
+                    where,
+                    select,
+                    include,
+                }: {
+                    where: { id?: string; normalizedEmail?: string; normalizedUsername?: string };
+                    select?: { id?: boolean };
+                    include?: { userRoles?: { include: { role: true } } };
+                }) => {
+                    let user: MockUser | undefined;
+
+                    if (where.id) {
+                        user = userStore.find((item) => item.id === where.id);
+                    } else if (where.normalizedEmail) {
+                        user = userStore.find(
+                            (item) => item.normalizedEmail === where.normalizedEmail,
+                        );
+                    } else if (where.normalizedUsername) {
+                        user = userStore.find(
+                            (item) => item.normalizedUsername === where.normalizedUsername,
+                        );
+                    }
+
+                    if (!user) {
+                        return null;
+                    }
+
+                    if (select?.id) {
+                        return { id: user.id };
+                    }
+
+                    if (include?.userRoles) {
+                        return user;
+                    }
+
+                    return user;
+                }),
+                create: jest.fn(async ({
+                    data,
+                }: {
+                    data: Omit<MockUser, 'id' | 'createdAt' | 'updatedAt' | 'userRoles'>;
+                }) => {
+                    const now = new Date();
+                    const user: MockUser = {
+                        id: `user-${userCount}`,
+                        ...data,
+                        createdAt: now,
+                        updatedAt: now,
+                        userRoles: [],
+                    };
+
+                    userCount += 1;
+                    userStore.push(user);
+
+                    return user;
+                }),
+                delete: jest.fn(async ({
+                    where,
+                }: {
+                    where: { id: string };
+                }) => {
+                    const index = userStore.findIndex((item) => item.id === where.id);
+
+                    if (index === -1) {
+                        throw new Error('User not found');
+                    }
+
+                    const [user] = userStore.splice(index, 1);
+
+                    return user;
+                }),
+            },
+            role: {
+                findUnique: jest.fn(async ({
+                    where,
+                }: {
+                    where: { normalizedName: string };
+                }) => {
+                    if (where.normalizedName === 'NURSE') {
+                        return nurseRole;
+                    }
+
+                    return null;
+                }),
+                create: jest.fn(async ({
+                    data,
+                }: {
+                    data: MockRole;
+                }) => data),
+            },
+            userRole: {
+                create: jest.fn(async ({
+                    data,
+                }: {
+                    data: { userId: string; roleId: string };
+                }) => {
+                    const user = userStore.find((item) => item.id === data.userId);
+
+                    if (!user) {
+                        throw new Error('User not found');
+                    }
+
+                    const userRole: MockUserRole = {
+                        id: `user-role-${user.userRoles.length + 1}`,
+                        userId: data.userId,
+                        roleId: data.roleId,
+                        createdAt: new Date(),
+                        role: nurseRole,
+                    };
+
+                    user.userRoles.push(userRole);
+
+                    return userRole;
+                }),
+            },
             nurse: {
                 create: jest.fn(async ({
                     data,
@@ -103,9 +306,11 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                 findUnique: jest.fn(async ({
                     where,
                 }: {
-                    where: { id: string };
+                    where: { id?: string; userId?: string };
                 }) => {
-                    const nurse = nurseStore.find((item) => item.id === where.id);
+                    const nurse = where.id
+                        ? nurseStore.find((item) => item.id === where.id)
+                        : nurseStore.find((item) => item.userId === where.userId);
 
                     return nurse ? buildNurseEntity(nurse) : null;
                 }),
@@ -150,6 +355,7 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
             nurseStore.length = 0;
             departmentCount = 1;
             nurseCount = 1;
+            userCount = 3;
         },
         __seedDepartment: (name: string, location = 'Block A') => {
             const department: MockDepartment = {
@@ -254,6 +460,7 @@ describe('Nurse routes', () => {
             .post('/api/nurses')
             .set('Authorization', `Bearer ${adminToken}`)
             .send({
+                userId: 'user-2',
                 firstName: 'Sara',
                 lastName: 'Krasniqi',
                 departmentId: cardiology.id,
@@ -261,6 +468,7 @@ describe('Nurse routes', () => {
             });
 
         expect(createResponse.status).toBe(201);
+        expect(createResponse.body.userId).toBe('user-2');
         expect(createResponse.body.firstName).toBe('Sara');
         expect(createResponse.body.departmentId).toBe(cardiology.id);
         expect(createResponse.body.shift).toBe('Morning');
@@ -324,5 +532,26 @@ describe('Nurse routes', () => {
 
         expect(getDeletedResponse.status).toBe(404);
         expect(getDeletedResponse.body.message).toBe('Nurse not found');
+    });
+
+    it('should auto-provision a nurse user when userId is not provided', async () => {
+        const adminToken = createAccessToken(['ADMIN']);
+        const department = prismaMock.__seedDepartment('Cardiology');
+
+        const response = await request(app)
+            .post('/api/nurses')
+            .set('Authorization', `Bearer ${adminToken}`)
+            .send({
+                firstName: 'Lina',
+                lastName: 'Berisha',
+                departmentId: department.id,
+                shift: 'Evening',
+                password: 'Nurse123!',
+            });
+
+        expect(response.status).toBe(201);
+        expect(response.body.userId).toBeTruthy();
+        expect(response.body.firstName).toBe('Lina');
+        expect(response.body.shift).toBe('Evening');
     });
 });

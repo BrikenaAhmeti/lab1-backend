@@ -5,6 +5,7 @@ import {
     IsNotEmpty,
     IsString,
     MaxLength,
+    MinLength,
 } from 'class-validator';
 import { AppError } from '../../../shared/core/errors/app-error';
 import {
@@ -56,6 +57,15 @@ const nurseShiftSchema = z.preprocess(
 );
 
 export class CreateNurseDto {
+    @OptionalField()
+    @IsString({ message: 'User id is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'User id is required' })
+    @MaxLength(255, {
+        message: 'User id must not exceed 255 characters',
+    })
+    userId?: string;
+
     @IsDefined({ message: 'First name is required' })
     @IsString({ message: 'First name is required' })
     @NormalizeString()
@@ -91,9 +101,24 @@ export class CreateNurseDto {
         message: 'Shift must be Morning, Evening, or Night',
     })
     shift!: (typeof nurseShiftValues)[number];
+
+    @OptionalField()
+    @IsString({ message: 'Password must be a string' })
+    @MinLength(6, { message: 'Password must be at least 6 characters' })
+    @MaxLength(255, { message: 'Password must not exceed 255 characters' })
+    password?: string;
 }
 
 export class UpdateNurseDto {
+    @OptionalField()
+    @IsString({ message: 'User id is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'User id is required' })
+    @MaxLength(255, {
+        message: 'User id must not exceed 255 characters',
+    })
+    userId?: string;
+
     @OptionalField()
     @IsString({ message: 'First name is required' })
     @NormalizeString()
@@ -151,7 +176,7 @@ export function validateUpdateNurseDto(input: unknown): UpdateNurseDto {
 
     assertAtLeastOneField(
         dto,
-        ['firstName', 'lastName', 'departmentId', 'shift'],
+        ['userId', 'firstName', 'lastName', 'departmentId', 'shift'],
     );
 
     return dto;

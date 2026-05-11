@@ -103,6 +103,13 @@ export interface ProvisionDoctorUserInput {
     firstName: string;
     lastName: string;
     phoneNumber?: string;
+    password?: string;
+}
+
+export interface ProvisionNurseUserInput {
+    firstName: string;
+    lastName: string;
+    password?: string;
 }
 
 interface RefreshTokenPayload extends jwt.JwtPayload {
@@ -612,6 +619,29 @@ export class AuthService {
         await this.repository.revokeUserRefreshTokens(userId, new Date());
     }
 
+    async changePassword(
+        userId: string,
+        currentPassword: string,
+        newPassword: string,
+    ): Promise<void> {
+        const user = await this.getExistingUserById(userId);
+        const currentPasswordMatches = await bcrypt.compare(
+            currentPassword,
+            user.passwordHash,
+        );
+
+        if (!currentPasswordMatches) {
+            throw new AppError('Current password is incorrect', 401);
+        }
+
+        await this.updatePassword(user.id, newPassword);
+    }
+
+    async setUserPassword(userId: string, newPassword: string): Promise<void> {
+        await this.getExistingUserById(userId);
+        await this.updatePassword(userId, newPassword);
+    }
+
     async seedAdmin(input: SeedAdminInput): Promise<AuthUserResponse> {
         await this.ensureBaseRoles();
 
@@ -686,44 +716,26 @@ export class AuthService {
     async provisionDoctorUser(
         input: ProvisionDoctorUserInput,
     ): Promise<AuthUserResponse> {
-        await this.ensureBaseRoles();
-
-        const generatedEmail = await this.generateUniqueInternalEmail(
-            input.firstName,
-            input.lastName,
-            'doctor',
-        );
-        const normalizedEmail = this.normalizeEmail(generatedEmail);
-        const usernameData = await this.resolveUsernameForCreate(
-            undefined,
-            generatedEmail,
-        );
-        const passwordHash = await this.hashValue(randomUUID());
-
-        const user = await this.repository.createUser({
-            firstName: input.firstName.trim(),
-            lastName: input.lastName.trim(),
-            email: generatedEmail,
-            normalizedEmail,
-            username: usernameData.username,
-            normalizedUsername: usernameData.normalizedUsername,
-            passwordHash,
-            phoneNumber: input.phoneNumber?.trim(),
-            emailConfirmed: false,
-            lockoutEnabled: true,
-            accessFailedCount: 0,
-            isActive: true,
+        return this.provisionRoleBoundUser({
+            firstName: input.firstName,
+            lastName: input.lastName,
+            phoneNumber: input.phoneNumber,
+            password: input.password,
+            roleName: 'DOCTOR',
+            emailLabel: 'doctor',
         });
+    }
 
-        const doctorRole = await this.repository.findRoleByNormalizedName('DOCTOR');
-
-        if (doctorRole) {
-            await this.repository.assignRoleToUser(user.id, doctorRole.id);
-        }
-
-        const createdUser = await this.getExistingUserById(user.id);
-
-        return this.mapUser(createdUser);
+    async provisionNurseUser(
+        input: ProvisionNurseUserInput,
+    ): Promise<AuthUserResponse> {
+        return this.provisionRoleBoundUser({
+            firstName: input.firstName,
+            lastName: input.lastName,
+            password: input.password,
+            roleName: 'NURSE',
+            emailLabel: 'nurse',
+        });
     }
 
     async ensureBaseRoles(): Promise<void> {
@@ -769,6 +781,54 @@ export class AuthService {
                 });
             }
         }
+    }
+
+    private async provisionRoleBoundUser(input: {
+        firstName: string;
+        lastName: string;
+        phoneNumber?: string;
+        password?: string;
+        roleName: 'DOCTOR' | 'NURSE';
+        emailLabel: string;
+    }): Promise<AuthUserResponse> {
+        await this.ensureBaseRoles();
+
+        const generatedEmail = await this.generateUniqueInternalEmail(
+            input.firstName,
+            input.lastName,
+            input.emailLabel,
+        );
+        const normalizedEmail = this.normalizeEmail(generatedEmail);
+        const usernameData = await this.resolveUsernameForCreate(
+            undefined,
+            generatedEmail,
+        );
+        const passwordHash = await this.hashValue(input.password?.trim() || randomUUID());
+
+        const user = await this.repository.createUser({
+            firstName: input.firstName.trim(),
+            lastName: input.lastName.trim(),
+            email: generatedEmail,
+            normalizedEmail,
+            username: usernameData.username,
+            normalizedUsername: usernameData.normalizedUsername,
+            passwordHash,
+            phoneNumber: input.phoneNumber?.trim(),
+            emailConfirmed: false,
+            lockoutEnabled: true,
+            accessFailedCount: 0,
+            isActive: true,
+        });
+
+        const role = await this.repository.findRoleByNormalizedName(input.roleName);
+
+        if (role) {
+            await this.repository.assignRoleToUser(user.id, role.id);
+        }
+
+        const createdUser = await this.getExistingUserById(user.id);
+
+        return this.mapUser(createdUser);
     }
 
     private async createSession(user: UserWithRoles): Promise<AuthResponse> {
@@ -1101,6 +1161,14 @@ export class AuthService {
 
     private async hashValue(value: string): Promise<string> {
         return bcrypt.hash(value, env.bcryptSaltRounds);
+    }
+
+    private async updatePassword(userId: string, newPassword: string): Promise<void> {
+        await this.repository.updateUser(userId, {
+            passwordHash: await this.hashValue(newPassword),
+            accessFailedCount: 0,
+        });
+        await this.repository.revokeUserRefreshTokens(userId, new Date());
     }
 
     private async validateRoleIds(roleIds: string[]): Promise<void> {

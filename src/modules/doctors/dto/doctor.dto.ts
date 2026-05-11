@@ -5,6 +5,7 @@ import {
     IsString,
     Matches,
     MaxLength,
+    MinLength,
 } from 'class-validator';
 import { AppError } from '../../../shared/core/errors/app-error';
 import {
@@ -105,6 +106,12 @@ export class CreateDoctorDto {
         message: 'phoneNumber format is invalid',
     })
     phoneNumber!: string;
+
+    @OptionalField()
+    @IsString({ message: 'Password must be a string' })
+    @MinLength(6, { message: 'Password must be at least 6 characters' })
+    @MaxLength(255, { message: 'Password must not exceed 255 characters' })
+    password?: string;
 }
 
 export class UpdateDoctorDto {

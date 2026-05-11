@@ -234,6 +234,28 @@ export class SetUserStatusDto {
     isActive!: boolean;
 }
 
+export class ChangePasswordDto {
+    @IsDefined({ message: 'Current password is required' })
+    @IsString({ message: 'Current password is required' })
+    @MinLength(1, { message: 'Current password is required' })
+    @MaxLength(255, { message: 'Current password must not exceed 255 characters' })
+    currentPassword!: string;
+
+    @IsDefined({ message: 'New password is required' })
+    @IsString({ message: 'New password is required' })
+    @MinLength(6, { message: 'New password must be at least 6 characters' })
+    @MaxLength(255, { message: 'New password must not exceed 255 characters' })
+    newPassword!: string;
+}
+
+export class SetUserPasswordDto {
+    @IsDefined({ message: 'Password is required' })
+    @IsString({ message: 'Password is required' })
+    @MinLength(6, { message: 'Password must be at least 6 characters' })
+    @MaxLength(255, { message: 'Password must not exceed 255 characters' })
+    password!: string;
+}
+
 export class CreateRoleDto {
     @IsDefined({ message: 'Name is required' })
     @IsString({ message: 'Name is required' })
@@ -335,6 +357,14 @@ export function validateUpdateUserDto(input: unknown) {
 
 export function validateSetUserStatusDto(input: unknown) {
     return validateDto(SetUserStatusDto, input);
+}
+
+export function validateChangePasswordDto(input: unknown) {
+    return validateDto(ChangePasswordDto, input);
+}
+
+export function validateSetUserPasswordDto(input: unknown) {
+    return validateDto(SetUserPasswordDto, input);
 }
 
 export function validateCreateRoleDto(input: unknown) {

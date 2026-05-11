@@ -482,4 +482,84 @@ describe('AuthService', () => {
 
         expect(repository.createRole).not.toHaveBeenCalled();
     });
+
+    it('should change the current user password and revoke refresh tokens', async () => {
+        const passwordHash = await bcrypt.hash('old-password', 10);
+        const existingUser = createUser({
+            id: 'password-user-id',
+            passwordHash,
+        });
+        const existingUserWithRoles = createUserWithRoles(existingUser, [
+            createUserRoleWithRole(existingUser.id, userRole),
+        ]);
+
+        repository.findUserById.mockResolvedValue(existingUserWithRoles);
+
+        await service.changePassword(
+            'password-user-id',
+            'old-password',
+            'new-password-123',
+        );
+
+        expect(repository.updateUser).toHaveBeenCalledWith(
+            'password-user-id',
+            expect.objectContaining({
+                accessFailedCount: 0,
+                passwordHash: expect.any(String),
+            }),
+        );
+        expect(repository.revokeUserRefreshTokens).toHaveBeenCalledWith(
+            'password-user-id',
+            expect.any(Date),
+        );
+    });
+
+    it('should reject password change when current password is wrong', async () => {
+        const passwordHash = await bcrypt.hash('old-password', 10);
+        const existingUser = createUser({
+            id: 'password-user-id',
+            passwordHash,
+        });
+        const existingUserWithRoles = createUserWithRoles(existingUser, [
+            createUserRoleWithRole(existingUser.id, userRole),
+        ]);
+
+        repository.findUserById.mockResolvedValue(existingUserWithRoles);
+
+        await expect(
+            service.changePassword(
+                'password-user-id',
+                'wrong-password',
+                'new-password-123',
+            ),
+        ).rejects.toMatchObject({
+            message: 'Current password is incorrect',
+            statusCode: 401,
+        });
+    });
+
+    it('should let admin set a user password and revoke refresh tokens', async () => {
+        const existingUser = createUser({
+            id: 'target-user-id',
+        });
+        const existingUserWithRoles = createUserWithRoles(existingUser, [
+            createUserRoleWithRole(existingUser.id, userRole),
+        ]);
+
+        repository.findUserById.mockResolvedValue(existingUserWithRoles);
+
+        await service.setUserPassword('target-user-id', 'Doctor123!');
+
+        expect(repository.updateUser).toHaveBeenCalledWith(
+            'target-user-id',
+            expect.objectContaining({
+                accessFailedCount: 0,
+                passwordHash: expect.any(String),
+            }),
+        );
+        expect(repository.revokeUserRefreshTokens).toHaveBeenCalledWith(
+            'target-user-id',
+            expect.any(Date),
+        );
+    });
 });
