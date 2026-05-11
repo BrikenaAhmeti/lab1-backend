@@ -169,6 +169,7 @@ const doctorExample = {
     specialization: 'Cardiology',
     departmentId: 'department-1',
     phoneNumber: '+38344123456',
+    isActive: true,
     department: {
         id: 'department-1',
         name: 'Cardiology',
@@ -461,6 +462,7 @@ const swaggerDefinition = {
                     specialization: { type: 'string' },
                     departmentId: { type: 'string' },
                     phoneNumber: { type: 'string' },
+                    isActive: { type: 'boolean' },
                     department: {
                         type: 'object',
                         properties: {
@@ -1685,11 +1687,41 @@ const swaggerDefinition = {
             delete: {
                 tags: ['Doctors'],
                 summary: 'Delete doctor',
-                description: 'Deletes a doctor. Admin role required.',
+                description: 'Deletes a doctor. If historical appointments or medical records exist, the doctor is soft-disabled instead. Admin role required.',
                 security: bearerSecurity,
                 parameters: [idPathParameter('id', 'Doctor id')],
                 responses: {
                     '204': noContentResponse('Doctor deleted successfully'),
+                    '401': errorResponse(401, 'Unauthorized'),
+                    '403': errorResponse(403, 'Forbidden'),
+                    '404': errorResponse(404, 'Doctor not found'),
+                    '500': errorResponse(500, 'Internal server error'),
+                },
+            },
+        },
+        '/api/doctors/{id}/status': {
+            patch: {
+                tags: ['Doctors'],
+                summary: 'Set doctor status',
+                description: 'Enables or disables a doctor. Disabled doctors are hidden from normal doctor listing and cannot receive new appointments or medical records. Admin role required.',
+                security: bearerSecurity,
+                parameters: [idPathParameter('id', 'Doctor id')],
+                requestBody: requestBody(
+                    'Doctor status payload',
+                    {
+                        type: 'object',
+                        required: ['isActive'],
+                        properties: {
+                            isActive: { type: 'boolean' },
+                        },
+                    },
+                    {
+                        isActive: true,
+                    },
+                ),
+                responses: {
+                    '200': response('Doctor status updated successfully', { $ref: '#/components/schemas/Doctor' }, doctorExample),
+                    '400': errorResponse(400, 'Validation failed'),
                     '401': errorResponse(401, 'Unauthorized'),
                     '403': errorResponse(403, 'Forbidden'),
                     '404': errorResponse(404, 'Doctor not found'),

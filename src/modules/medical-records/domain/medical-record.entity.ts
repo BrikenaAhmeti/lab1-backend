@@ -13,6 +13,7 @@ export interface MedicalRecordDoctorEntity {
 
 export interface MedicalRecordReferenceEntity {
     id: string;
+    isActive?: boolean;
 }
 
 export interface MedicalRecordPrescriptionEntity {

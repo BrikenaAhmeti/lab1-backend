@@ -1,11 +1,13 @@
 import { AppError } from '../../src/shared/core/errors/app-error';
 import { CreateDoctorCommand } from '../../src/modules/doctors/application/commands/create-doctor.command';
 import { DeleteDoctorCommand } from '../../src/modules/doctors/application/commands/delete-doctor.command';
+import { SetDoctorStatusCommand } from '../../src/modules/doctors/application/commands/set-doctor-status.command';
 import { UpdateDoctorCommand } from '../../src/modules/doctors/application/commands/update-doctor.command';
 import { CreateDoctorHandler } from '../../src/modules/doctors/application/handlers/create-doctor.handler';
 import { DeleteDoctorHandler } from '../../src/modules/doctors/application/handlers/delete-doctor.handler';
 import { GetDoctorByIdHandler } from '../../src/modules/doctors/application/handlers/get-doctor-by-id.handler';
 import { GetDoctorsHandler } from '../../src/modules/doctors/application/handlers/get-doctors.handler';
+import { SetDoctorStatusHandler } from '../../src/modules/doctors/application/handlers/set-doctor-status.handler';
 import { UpdateDoctorHandler } from '../../src/modules/doctors/application/handlers/update-doctor.handler';
 import {
     DoctorDepartmentEntity,
@@ -45,6 +47,7 @@ function createDoctor(overrides: Partial<DoctorEntity> = {}): DoctorEntity {
         specialization: overrides.specialization ?? 'Cardiology',
         departmentId: overrides.departmentId ?? 'department-1',
         phoneNumber: overrides.phoneNumber ?? '+38344111222',
+        isActive: overrides.isActive ?? true,
         department: overrides.department ?? createDepartment(),
         createdAt: overrides.createdAt ?? new Date('2026-01-01T10:00:00.000Z'),
         updatedAt: overrides.updatedAt ?? new Date('2026-01-01T10:00:00.000Z'),
@@ -56,11 +59,15 @@ describe('Doctor handlers', () => {
         create: jest.fn(),
         findMany: jest.fn(),
         findById: jest.fn(),
+        findByIdIncludingInactive: jest.fn(),
         findByUserId: jest.fn(),
         findUserById: jest.fn(),
         findDepartmentById: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
+        countUsage: jest.fn(),
+        deactivate: jest.fn(),
+        setStatus: jest.fn(),
     };
     const userProvisioningService: jest.Mocked<DoctorUserProvisioningService> = {
         provisionDoctorUser: jest.fn(),
@@ -206,6 +213,30 @@ describe('Doctor handlers', () => {
         expect(result.id).toBe('doctor-1');
     });
 
+    it('should set doctor status including inactive doctors', async () => {
+        const inactiveDoctor = createDoctor({
+            isActive: false,
+        });
+        const activeDoctor = createDoctor({
+            isActive: true,
+        });
+
+        repository.findByIdIncludingInactive.mockResolvedValue(inactiveDoctor);
+        repository.setStatus.mockResolvedValue(activeDoctor);
+
+        const service = new DoctorService(repository, userProvisioningService);
+        const handler = new SetDoctorStatusHandler(service);
+        const result = await handler.execute(
+            new SetDoctorStatusCommand('doctor-1', true),
+        );
+
+        expect(repository.findByIdIncludingInactive).toHaveBeenCalledWith(
+            'doctor-1',
+        );
+        expect(repository.setStatus).toHaveBeenCalledWith('doctor-1', true);
+        expect(result.isActive).toBe(true);
+    });
+
     it('should update a doctor', async () => {
         const existingDoctor = createDoctor();
         const nextDepartment = createDepartment({
@@ -246,6 +277,10 @@ describe('Doctor handlers', () => {
         const doctor = createDoctor();
 
         repository.findById.mockResolvedValue(doctor);
+        repository.countUsage.mockResolvedValue({
+            appointments: 0,
+            medicalRecords: 0,
+        });
         repository.delete.mockResolvedValue(doctor);
 
         const service = new DoctorService(repository, userProvisioningService);
@@ -254,7 +289,30 @@ describe('Doctor handlers', () => {
         await handler.execute(new DeleteDoctorCommand('doctor-1'));
 
         expect(repository.findById).toHaveBeenCalledWith('doctor-1');
+        expect(repository.countUsage).toHaveBeenCalledWith('doctor-1');
         expect(repository.delete).toHaveBeenCalledWith('doctor-1');
+    });
+
+    it('should deactivate a doctor while it is in use', async () => {
+        const doctor = createDoctor();
+        const inactiveDoctor = createDoctor({
+            isActive: false,
+        });
+
+        repository.findById.mockResolvedValue(doctor);
+        repository.countUsage.mockResolvedValue({
+            appointments: 1,
+            medicalRecords: 0,
+        });
+        repository.deactivate.mockResolvedValue(inactiveDoctor);
+
+        const service = new DoctorService(repository, userProvisioningService);
+        const handler = new DeleteDoctorHandler(service);
+
+        await handler.execute(new DeleteDoctorCommand('doctor-1'));
+
+        expect(repository.delete).not.toHaveBeenCalled();
+        expect(repository.deactivate).toHaveBeenCalledWith('doctor-1');
     });
 
     it('should auto-provision a user when userId is not provided', async () => {

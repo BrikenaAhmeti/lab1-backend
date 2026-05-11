@@ -80,6 +80,7 @@ export class AppointmentPrismaRepository implements AppointmentRepository {
             where: { id },
             select: {
                 id: true,
+                isActive: true,
             },
         });
     }

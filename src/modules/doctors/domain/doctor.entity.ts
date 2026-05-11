@@ -16,6 +16,7 @@ export interface DoctorEntity {
     specialization: string;
     departmentId: string;
     phoneNumber: string;
+    isActive: boolean;
     department: DoctorDepartmentEntity;
     createdAt: Date;
     updatedAt: Date;

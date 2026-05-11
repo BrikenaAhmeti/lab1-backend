@@ -160,6 +160,10 @@ export class MedicalRecordService {
         if (!doctor) {
             throw new AppError('Doctor not found', 404);
         }
+
+        if (doctor.isActive === false) {
+            throw new AppError('Doctor is inactive', 409);
+        }
     }
 
     private toRecordDate(date: string): Date {

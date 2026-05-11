@@ -46,6 +46,7 @@ function createReference(
 ): MedicalRecordReferenceEntity {
     return {
         id: overrides.id ?? 'reference-1',
+        isActive: overrides.isActive,
     };
 }
 
@@ -155,6 +156,33 @@ describe('Medical record handlers', () => {
             message: 'Patient not found',
             statusCode: 404,
         });
+
+        expect(repository.create).not.toHaveBeenCalled();
+    });
+
+    it('should reject medical record creation for an inactive doctor', async () => {
+        repository.findPatientById.mockResolvedValue(createReference({
+            id: 'patient-1',
+        }));
+        repository.findDoctorById.mockResolvedValue(createReference({
+            id: 'doctor-1',
+            isActive: false,
+        }));
+
+        const service = new MedicalRecordService(repository);
+        const handler = new CreateMedicalRecordHandler(service);
+
+        await expect(
+            handler.execute(
+                new CreateMedicalRecordCommand({
+                    patientId: 'patient-1',
+                    doctorId: 'doctor-1',
+                    diagnosis: 'Hypertension',
+                    treatment: 'Rest',
+                    date: '2026-05-01',
+                }),
+            ),
+        ).rejects.toHaveProperty('message', 'Doctor is inactive');
 
         expect(repository.create).not.toHaveBeenCalled();
     });

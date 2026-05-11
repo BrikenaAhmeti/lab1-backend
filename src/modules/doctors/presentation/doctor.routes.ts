@@ -23,3 +23,8 @@ doctorRoutes.delete(
     authorizeRoles('ADMIN'),
     asyncHandler(controller.delete.bind(controller)),
 );
+doctorRoutes.patch(
+    '/:id/status',
+    authorizeRoles('ADMIN'),
+    asyncHandler(controller.setStatus.bind(controller)),
+);

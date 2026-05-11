@@ -75,6 +75,7 @@ export class MedicalRecordPrismaRepository implements MedicalRecordRepository {
             where: { id },
             select: {
                 id: true,
+                isActive: true,
             },
         });
     }

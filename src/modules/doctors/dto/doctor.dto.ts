@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+    IsBoolean,
     IsDefined,
     IsNotEmpty,
     IsString,
@@ -170,6 +171,12 @@ export class UpdateDoctorDto {
     phoneNumber?: string;
 }
 
+export class SetDoctorStatusDto {
+    @IsDefined({ message: 'isActive is required' })
+    @IsBoolean({ message: 'isActive must be a boolean' })
+    isActive!: boolean;
+}
+
 const getDoctorsQuerySchema = createPaginationQuerySchema(
     doctorSortByValues,
 ).extend({
@@ -225,4 +232,8 @@ export function validateDoctorId(input: unknown): string {
     }
 
     return result.data;
+}
+
+export function validateSetDoctorStatusDto(input: unknown): SetDoctorStatusDto {
+    return validateDto(SetDoctorStatusDto, input);
 }

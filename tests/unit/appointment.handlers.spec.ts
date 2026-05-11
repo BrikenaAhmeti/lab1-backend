@@ -44,6 +44,7 @@ function createReference(
 ): AppointmentReferenceEntity {
     return {
         id: overrides.id ?? 'reference-1',
+        isActive: overrides.isActive,
     };
 }
 
@@ -186,6 +187,43 @@ describe('Appointment handlers', () => {
             message: 'Appointment date cannot be in the past',
             statusCode: 400,
         });
+
+        expect(repository.findConflict).not.toHaveBeenCalled();
+        expect(repository.create).not.toHaveBeenCalled();
+    });
+
+    it('should reject appointment creation for an inactive doctor', async () => {
+        repository.findPatientById.mockResolvedValue(createReference({
+            id: 'patient-1',
+        }));
+        repository.findDoctorById.mockResolvedValue(createReference({
+            id: 'doctor-1',
+            isActive: false,
+        }));
+
+        const service = new AppointmentService(repository);
+        const handler = new CreateAppointmentHandler(service);
+
+        await expect(
+            handler.execute(
+                new CreateAppointmentCommand({
+                    patientId: 'patient-1',
+                    doctorId: 'doctor-1',
+                    date: '2026-05-05',
+                    time: '14:30',
+                }),
+            ),
+        ).rejects.toBeInstanceOf(AppError);
+        await expect(
+            handler.execute(
+                new CreateAppointmentCommand({
+                    patientId: 'patient-1',
+                    doctorId: 'doctor-1',
+                    date: '2026-05-05',
+                    time: '14:30',
+                }),
+            ),
+        ).rejects.toHaveProperty('message', 'Doctor is inactive');
 
         expect(repository.findConflict).not.toHaveBeenCalled();
         expect(repository.create).not.toHaveBeenCalled();

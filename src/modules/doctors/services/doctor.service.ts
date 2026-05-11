@@ -132,6 +132,15 @@ export class DoctorService {
         return this.ensureDoctorExists(id);
     }
 
+    async setDoctorStatus(
+        id: string,
+        isActive: boolean,
+    ): Promise<DoctorEntity> {
+        await this.ensureDoctorExistsIncludingInactive(id);
+
+        return this.doctorRepository.setStatus(id, isActive);
+    }
+
     async updateDoctor(
         id: string,
         data: UpdateDoctorDto,
@@ -182,11 +191,32 @@ export class DoctorService {
 
     async deleteDoctor(id: string): Promise<void> {
         await this.ensureDoctorExists(id);
+
+        const usage = await this.doctorRepository.countUsage(id);
+
+        if (usage.appointments > 0 || usage.medicalRecords > 0) {
+            await this.doctorRepository.deactivate(id);
+
+            return;
+        }
+
         await this.doctorRepository.delete(id);
     }
 
     private async ensureDoctorExists(id: string): Promise<DoctorEntity> {
         const doctor = await this.doctorRepository.findById(id);
+
+        if (!doctor) {
+            throw new AppError('Doctor not found', 404);
+        }
+
+        return doctor;
+    }
+
+    private async ensureDoctorExistsIncludingInactive(
+        id: string,
+    ): Promise<DoctorEntity> {
+        const doctor = await this.doctorRepository.findByIdIncludingInactive(id);
 
         if (!doctor) {
             throw new AppError('Doctor not found', 404);

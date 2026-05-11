@@ -15,6 +15,7 @@ export interface AppointmentDoctorEntity {
 
 export interface AppointmentReferenceEntity {
     id: string;
+    isActive?: boolean;
 }
 
 export interface AppointmentEntity {

@@ -21,6 +21,7 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
         specialization: string;
         departmentId: string;
         phoneNumber: string;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
     }
@@ -92,11 +93,12 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                 create: jest.fn(async ({
                     data,
                 }: {
-                    data: Omit<MockDoctor, 'id' | 'createdAt' | 'updatedAt'>;
+                    data: Omit<MockDoctor, 'id' | 'isActive' | 'createdAt' | 'updatedAt'>;
                 }) => {
                     const now = new Date();
                     const doctor: MockDoctor = {
                         id: `doctor-${doctorCount}`,
+                        isActive: true,
                         ...data,
                         createdAt: now,
                         updatedAt: now,
@@ -108,7 +110,36 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                     return buildDoctorEntity(doctor);
                 }),
                 findMany: jest.fn(async () => {
-                    return sortDoctors(doctorStore).map(buildDoctorEntity);
+                    return sortDoctors(
+                        doctorStore.filter((item) => item.isActive),
+                    ).map(buildDoctorEntity);
+                }),
+                findFirst: jest.fn(async ({
+                    where,
+                }: {
+                    where: { id?: string; userId?: string; isActive?: boolean };
+                }) => {
+                    if (where.id) {
+                        const doctor = doctorStore.find(
+                            (item) => item.id === where.id
+                                && (
+                                    where.isActive === undefined
+                                    || item.isActive === where.isActive
+                                ),
+                        );
+
+                        return doctor ? buildDoctorEntity(doctor) : null;
+                    }
+
+                    if (where.userId) {
+                        const doctor = doctorStore.find(
+                            (item) => item.userId === where.userId,
+                        );
+
+                        return doctor ? buildDoctorEntity(doctor) : null;
+                    }
+
+                    return null;
                 }),
                 findUnique: jest.fn(async ({
                     where,
@@ -165,6 +196,12 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
 
                     return buildDoctorEntity(doctor);
                 }),
+            },
+            appointment: {
+                count: jest.fn(async () => 0),
+            },
+            medicalRecord: {
+                count: jest.fn(async () => 0),
             },
         },
         __resetDoctors: () => {
