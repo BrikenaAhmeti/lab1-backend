@@ -182,6 +182,15 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                     }).length;
                 }),
             },
+            department: {
+                findUnique: jest.fn(async ({
+                    where,
+                }: {
+                    where: { id: string };
+                }) => {
+                    return departmentStore.find((item) => item.id === where.id) ?? null;
+                }),
+            },
             doctor: {
                 count: jest.fn(async () => doctorStore.length),
             },
@@ -198,6 +207,28 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
 
                         return true;
                     }).length;
+                }),
+                findMany: jest.fn(async ({
+                    where,
+                }: {
+                    where?: { departmentId?: string; type?: string };
+                }) => {
+                    return roomStore
+                        .filter((room) => {
+                            if (where?.departmentId && room.departmentId !== where.departmentId) {
+                                return false;
+                            }
+
+                            if (where?.type && room.type !== where.type) {
+                                return false;
+                            }
+
+                            return true;
+                        })
+                        .sort((left, right) => {
+                            return left.roomNumber.localeCompare(right.roomNumber);
+                        })
+                        .map(buildRoomEntity);
                 }),
             },
             appointment: {
@@ -267,6 +298,39 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                             return true;
                         }),
                     ).map(buildAdmissionEntity);
+                }),
+                groupBy: jest.fn(async ({
+                    where,
+                }: {
+                    where: {
+                        roomId: {
+                            in: string[];
+                        };
+                        status: string;
+                    };
+                }) => {
+                    return where.roomId.in
+                        .map((roomId) => {
+                            const count = admissionStore.filter((admission) => {
+                                return admission.roomId === roomId
+                                    && admission.status === where.status;
+                            }).length;
+
+                            if (count === 0) {
+                                return null;
+                            }
+
+                            return {
+                                roomId,
+                                _count: {
+                                    _all: count,
+                                },
+                            };
+                        })
+                        .filter((item): item is {
+                            roomId: string;
+                            _count: { _all: number };
+                        } => item !== null);
                 }),
             },
             invoice: {
@@ -690,6 +754,53 @@ describe('Dashboard routes', () => {
                     location: 'First Floor',
                 },
             },
+        });
+    });
+
+    it('should expose available rooms through the dashboard namespace', async () => {
+        const token = createAccessToken(['ADMIN']);
+        const department = prismaMock.__seedDepartment({
+            name: 'Emergency',
+            location: 'Block B',
+        });
+        const availableRoom = prismaMock.__seedRoom({
+            departmentId: department.id,
+            roomNumber: '201',
+            status: 'AVAILABLE',
+            type: 'GENERAL',
+            capacity: 2,
+        });
+        const fullRoom = prismaMock.__seedRoom({
+            departmentId: department.id,
+            roomNumber: '202',
+            status: 'AVAILABLE',
+            type: 'ICU',
+            capacity: 1,
+        });
+        const patient = prismaMock.__seedPatient({
+            firstName: 'Drita',
+            lastName: 'Berisha',
+        });
+
+        prismaMock.__seedAdmission({
+            patientId: patient.id,
+            roomId: fullRoom.id,
+            admissionDate: new Date(),
+            dischargeDate: null,
+            status: 'ACTIVE',
+        });
+
+        const response = await request(app)
+            .get('/api/dashboard/rooms/available')
+            .set('Authorization', `Bearer ${token}`);
+
+        expect(response.status).toBe(200);
+        expect(response.body.data).toHaveLength(1);
+        expect(response.body.data[0]).toMatchObject({
+            id: availableRoom.id,
+            roomNumber: '201',
+            status: 'AVAILABLE',
+            availableCapacity: 2,
         });
     });
 });

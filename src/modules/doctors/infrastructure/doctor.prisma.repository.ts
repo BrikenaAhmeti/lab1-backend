@@ -21,6 +21,22 @@ const doctorInclude = {
     },
 } as const;
 
+function isMissingDoctorActiveColumnError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+        return false;
+    }
+
+    const code = 'code' in error ? error.code : undefined;
+    const meta = 'meta' in error ? error.meta : undefined;
+    const column = meta && typeof meta === 'object' && 'column' in meta
+        ? meta.column
+        : undefined;
+
+    return code === 'P2022'
+        && typeof column === 'string'
+        && column.includes('isActive');
+}
+
 export class DoctorPrismaRepository implements DoctorRepository {
     async create(data: CreateDoctorData): Promise<DoctorEntity> {
         return prisma.doctor.create({
@@ -30,30 +46,59 @@ export class DoctorPrismaRepository implements DoctorRepository {
     }
 
     async findMany(): Promise<DoctorEntity[]> {
-        return prisma.doctor.findMany({
-            where: {
-                isActive: true,
-            },
-            include: doctorInclude,
-            orderBy: [
-                {
-                    lastName: 'asc',
+        try {
+            return await prisma.doctor.findMany({
+                where: {
+                    isActive: true,
                 },
-                {
-                    firstName: 'asc',
-                },
-            ],
-        });
+                include: doctorInclude,
+                orderBy: [
+                    {
+                        lastName: 'asc',
+                    },
+                    {
+                        firstName: 'asc',
+                    },
+                ],
+            });
+        } catch (error) {
+            if (!isMissingDoctorActiveColumnError(error)) {
+                throw error;
+            }
+
+            return prisma.doctor.findMany({
+                include: doctorInclude,
+                orderBy: [
+                    {
+                        lastName: 'asc',
+                    },
+                    {
+                        firstName: 'asc',
+                    },
+                ],
+            });
+        }
     }
 
     async findById(id: string): Promise<DoctorEntity | null> {
-        return prisma.doctor.findFirst({
-            where: {
-                id,
-                isActive: true,
-            },
-            include: doctorInclude,
-        });
+        try {
+            return await prisma.doctor.findFirst({
+                where: {
+                    id,
+                    isActive: true,
+                },
+                include: doctorInclude,
+            });
+        } catch (error) {
+            if (!isMissingDoctorActiveColumnError(error)) {
+                throw error;
+            }
+
+            return prisma.doctor.findUnique({
+                where: { id },
+                include: doctorInclude,
+            });
+        }
     }
 
     async findByIdIncludingInactive(id: string): Promise<DoctorEntity | null> {
