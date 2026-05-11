@@ -19,6 +19,8 @@ export interface NurseUserProvisioningService {
         lastName: string;
         password?: string;
     }): Promise<AuthUserResponse>;
+    ensureUserHasRole(userId: string, roleName: string): Promise<void>;
+    removeRoleFromUserByName(userId: string, roleName: string): Promise<void>;
     deleteUser(userId: string): Promise<void>;
 }
 
@@ -62,6 +64,8 @@ export class NurseService {
             if (existingNurse) {
                 throw new AppError('Nurse already exists for this user', 409);
             }
+
+            await this.userProvisioningService.ensureUserHasRole(userId, 'NURSE');
         } else {
             const provisionedUser = await this.userProvisioningService.provisionNurseUser({
                 firstName,
@@ -115,7 +119,8 @@ export class NurseService {
     }
 
     async updateNurse(id: string, data: UpdateNurseDto): Promise<NurseEntity> {
-        await this.ensureNurseExists(id);
+        const existingNurse = await this.ensureNurseExists(id);
+        let nextUserId = existingNurse.userId;
 
         if (data.departmentId !== undefined) {
             await this.ensureDepartmentExists(data.departmentId.trim());
@@ -131,6 +136,9 @@ export class NurseService {
             if (nurseWithSameUser && nurseWithSameUser.id !== id) {
                 throw new AppError('Nurse already exists for this user', 409);
             }
+
+            await this.userProvisioningService.ensureUserHasRole(userId, 'NURSE');
+            nextUserId = userId;
         }
 
         const updateData: UpdateNurseData = {
@@ -151,12 +159,19 @@ export class NurseService {
                 : {}),
         };
 
-        return this.nurseRepository.update(id, updateData);
+        const updatedNurse = await this.nurseRepository.update(id, updateData);
+
+        if (data.userId !== undefined && existingNurse.userId !== nextUserId) {
+            await this.removeNurseRoleFromUser(existingNurse.userId);
+        }
+
+        return updatedNurse;
     }
 
     async deleteNurse(id: string): Promise<void> {
-        await this.ensureNurseExists(id);
+        const nurse = await this.ensureNurseExists(id);
         await this.nurseRepository.delete(id);
+        await this.removeNurseRoleFromUser(nurse.userId);
     }
 
     private async ensureNurseExists(id: string): Promise<NurseEntity> {
@@ -185,5 +200,13 @@ export class NurseService {
         if (!user) {
             throw new AppError('User not found', 404);
         }
+    }
+
+    private async removeNurseRoleFromUser(userId: string | null): Promise<void> {
+        if (!userId) {
+            return;
+        }
+
+        await this.userProvisioningService.removeRoleFromUserByName(userId, 'NURSE');
     }
 }

@@ -5,6 +5,25 @@ import { env } from '../../src/config/env';
 jest.mock('../../src/infrastructure/db/prisma', () => {
     interface MockUser {
         id: string;
+        userRoles: MockUserRole[];
+    }
+
+    interface MockRole {
+        id: string;
+        name: string;
+        normalizedName: string;
+        description: string | null;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+    }
+
+    interface MockUserRole {
+        id: string;
+        userId: string;
+        roleId: string;
+        createdAt: Date;
+        role: MockRole;
     }
 
     interface MockDepartment {
@@ -26,10 +45,20 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
         updatedAt: Date;
     }
 
+    const doctorRole: MockRole = {
+        id: 'role-doctor-id',
+        name: 'Doctor',
+        normalizedName: 'DOCTOR',
+        description: 'Doctor access',
+        isActive: true,
+        createdAt: new Date('2026-01-01T10:00:00.000Z'),
+        updatedAt: new Date('2026-01-01T10:00:00.000Z'),
+    };
+
     const userStore: MockUser[] = [
-        { id: 'user-1' },
-        { id: 'user-2' },
-        { id: 'user-3' },
+        { id: 'user-1', userRoles: [] },
+        { id: 'user-2', userRoles: [] },
+        { id: 'user-3', userRoles: [] },
     ];
     const departmentStore: MockDepartment[] = [];
     const doctorStore: MockDoctor[] = [];
@@ -72,11 +101,71 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
             user: {
                 findUnique: jest.fn(async ({
                     where,
+                    include,
                 }: {
                     where: { id: string };
+                    include?: { userRoles?: { include: { role: true } } };
                 }) => {
-                    return userStore.find((item) => item.id === where.id) ?? null;
+                    const user = userStore.find((item) => item.id === where.id) ?? null;
+
+                    if (!user) {
+                        return null;
+                    }
+
+                    if (include?.userRoles) {
+                        return user;
+                    }
+
+                    return user;
                 }),
+            },
+            role: {
+                findUnique: jest.fn(async ({
+                    where,
+                }: {
+                    where: { normalizedName: string };
+                }) => {
+                    if (where.normalizedName === 'DOCTOR') {
+                        return doctorRole;
+                    }
+
+                    return null;
+                }),
+            },
+            userRole: {
+                findMany: jest.fn(async ({
+                    where,
+                }: {
+                    where: { userId: string };
+                }) => {
+                    const user = userStore.find((item) => item.id === where.userId);
+
+                    return user?.userRoles ?? [];
+                }),
+                create: jest.fn(async ({
+                    data,
+                }: {
+                    data: { userId: string; roleId: string };
+                }) => {
+                    const user = userStore.find((item) => item.id === data.userId);
+
+                    if (!user) {
+                        throw new Error('User not found');
+                    }
+
+                    const userRole: MockUserRole = {
+                        id: `user-role-${user.userRoles.length + 1}`,
+                        userId: data.userId,
+                        roleId: data.roleId,
+                        createdAt: new Date(),
+                        role: doctorRole,
+                    };
+
+                    user.userRoles.push(userRole);
+
+                    return userRole;
+                }),
+                deleteMany: jest.fn(async () => ({ count: 0 })),
             },
             department: {
                 findUnique: jest.fn(async ({
@@ -207,6 +296,9 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
         __resetDoctors: () => {
             departmentStore.length = 0;
             doctorStore.length = 0;
+            userStore.forEach((user) => {
+                user.userRoles = [];
+            });
             departmentCount = 1;
             doctorCount = 1;
         },

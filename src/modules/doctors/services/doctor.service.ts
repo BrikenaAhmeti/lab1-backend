@@ -20,6 +20,8 @@ export interface DoctorUserProvisioningService {
         phoneNumber?: string;
         password?: string;
     }): Promise<AuthUserResponse>;
+    ensureUserHasRole(userId: string, roleName: string): Promise<void>;
+    removeRoleFromUserByName(userId: string, roleName: string): Promise<void>;
     deleteUser(userId: string): Promise<void>;
 }
 
@@ -65,6 +67,8 @@ export class DoctorService {
             if (existingDoctor) {
                 throw new AppError('Doctor already exists for this user', 409);
             }
+
+            await this.userProvisioningService.ensureUserHasRole(userId, 'DOCTOR');
         } else {
             const provisionedUser = await this.userProvisioningService.provisionDoctorUser({
                 firstName,
@@ -145,7 +149,8 @@ export class DoctorService {
         id: string,
         data: UpdateDoctorDto,
     ): Promise<DoctorEntity> {
-        await this.ensureDoctorExists(id);
+        const existingDoctor = await this.ensureDoctorExists(id);
+        let nextUserId = existingDoctor.userId;
 
         if (data.userId !== undefined) {
             const userId = data.userId.trim();
@@ -159,6 +164,9 @@ export class DoctorService {
             if (doctorWithSameUser && doctorWithSameUser.id !== id) {
                 throw new AppError('Doctor already exists for this user', 409);
             }
+
+            await this.userProvisioningService.ensureUserHasRole(userId, 'DOCTOR');
+            nextUserId = userId;
         }
 
         if (data.departmentId !== undefined) {
@@ -186,21 +194,29 @@ export class DoctorService {
                 : {}),
         };
 
-        return this.doctorRepository.update(id, updateData);
+        const updatedDoctor = await this.doctorRepository.update(id, updateData);
+
+        if (data.userId !== undefined && existingDoctor.userId !== nextUserId) {
+            await this.removeDoctorRoleFromUser(existingDoctor.userId);
+        }
+
+        return updatedDoctor;
     }
 
     async deleteDoctor(id: string): Promise<void> {
-        await this.ensureDoctorExists(id);
+        const doctor = await this.ensureDoctorExists(id);
 
         const usage = await this.doctorRepository.countUsage(id);
 
         if (usage.appointments > 0 || usage.medicalRecords > 0) {
             await this.doctorRepository.deactivate(id);
+            await this.removeDoctorRoleFromUser(doctor.userId);
 
             return;
         }
 
         await this.doctorRepository.delete(id);
+        await this.removeDoctorRoleFromUser(doctor.userId);
     }
 
     private async ensureDoctorExists(id: string): Promise<DoctorEntity> {
@@ -241,5 +257,13 @@ export class DoctorService {
         if (!department) {
             throw new AppError('Department not found', 404);
         }
+    }
+
+    private async removeDoctorRoleFromUser(userId: string | null): Promise<void> {
+        if (!userId) {
+            return;
+        }
+
+        await this.userProvisioningService.removeRoleFromUserByName(userId, 'DOCTOR');
     }
 }

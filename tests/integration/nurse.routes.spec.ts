@@ -247,6 +247,15 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                 }) => data),
             },
             userRole: {
+                findMany: jest.fn(async ({
+                    where,
+                }: {
+                    where: { userId: string };
+                }) => {
+                    const user = userStore.find((item) => item.id === where.userId);
+
+                    return user?.userRoles ?? [];
+                }),
                 create: jest.fn(async ({
                     data,
                 }: {
@@ -269,6 +278,23 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                     user.userRoles.push(userRole);
 
                     return userRole;
+                }),
+                deleteMany: jest.fn(async ({
+                    where,
+                }: {
+                    where: { userId?: string; roleId?: string };
+                }) => {
+                    const user = where.userId
+                        ? userStore.find((item) => item.id === where.userId)
+                        : undefined;
+
+                    if (user?.userRoles && where.roleId) {
+                        user.userRoles = user.userRoles.filter(
+                            (userRole) => userRole.roleId !== where.roleId,
+                        );
+                    }
+
+                    return { count: 0 };
                 }),
             },
             nurse: {

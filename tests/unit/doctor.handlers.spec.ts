@@ -71,6 +71,8 @@ describe('Doctor handlers', () => {
     };
     const userProvisioningService: jest.Mocked<DoctorUserProvisioningService> = {
         provisionDoctorUser: jest.fn(),
+        ensureUserHasRole: jest.fn(),
+        removeRoleFromUserByName: jest.fn(),
         deleteUser: jest.fn(),
     };
 
@@ -108,6 +110,10 @@ describe('Doctor handlers', () => {
         expect(repository.findUserById).toHaveBeenCalledWith('user-1');
         expect(repository.findDepartmentById).toHaveBeenCalledWith('department-1');
         expect(repository.findByUserId).toHaveBeenCalledWith('user-1');
+        expect(userProvisioningService.ensureUserHasRole).toHaveBeenCalledWith(
+            'user-1',
+            'DOCTOR',
+        );
         expect(repository.create).toHaveBeenCalledWith({
             userId: 'user-1',
             firstName: 'Arben',
@@ -270,7 +276,41 @@ describe('Doctor handlers', () => {
             specialization: 'Neurology',
             departmentId: 'department-2',
         });
+        expect(userProvisioningService.ensureUserHasRole).not.toHaveBeenCalled();
         expect(result.department.name).toBe('Neurology');
+    });
+
+    it('should sync doctor role when reassigning to a new user', async () => {
+        const existingDoctor = createDoctor({
+            userId: 'user-1',
+        });
+        const newUser = createUser({
+            id: 'user-2',
+        });
+        const updatedDoctor = createDoctor({
+            userId: 'user-2',
+        });
+
+        repository.findById.mockResolvedValue(existingDoctor);
+        repository.findUserById.mockResolvedValue(newUser);
+        repository.findByUserId.mockResolvedValue(null);
+        repository.update.mockResolvedValue(updatedDoctor);
+
+        const service = new DoctorService(repository, userProvisioningService);
+
+        const result = await service.updateDoctor('doctor-1', {
+            userId: ' user-2 ',
+        });
+
+        expect(userProvisioningService.ensureUserHasRole).toHaveBeenCalledWith(
+            'user-2',
+            'DOCTOR',
+        );
+        expect(userProvisioningService.removeRoleFromUserByName).toHaveBeenCalledWith(
+            'user-1',
+            'DOCTOR',
+        );
+        expect(result.userId).toBe('user-2');
     });
 
     it('should delete a doctor', async () => {
@@ -291,6 +331,10 @@ describe('Doctor handlers', () => {
         expect(repository.findById).toHaveBeenCalledWith('doctor-1');
         expect(repository.countUsage).toHaveBeenCalledWith('doctor-1');
         expect(repository.delete).toHaveBeenCalledWith('doctor-1');
+        expect(userProvisioningService.removeRoleFromUserByName).toHaveBeenCalledWith(
+            'user-1',
+            'DOCTOR',
+        );
     });
 
     it('should deactivate a doctor while it is in use', async () => {
@@ -313,6 +357,10 @@ describe('Doctor handlers', () => {
 
         expect(repository.delete).not.toHaveBeenCalled();
         expect(repository.deactivate).toHaveBeenCalledWith('doctor-1');
+        expect(userProvisioningService.removeRoleFromUserByName).toHaveBeenCalledWith(
+            'user-1',
+            'DOCTOR',
+        );
     });
 
     it('should auto-provision a user when userId is not provided', async () => {

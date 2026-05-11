@@ -642,6 +642,39 @@ export class AuthService {
         await this.updatePassword(userId, newPassword);
     }
 
+    async ensureUserHasRole(userId: string, roleName: string): Promise<void> {
+        await this.getExistingUserById(userId);
+        const role = await this.repository.findRoleByNormalizedName(
+            this.normalizeRoleName(roleName),
+        );
+
+        if (!role) {
+            throw new AppError('Role not found', 404);
+        }
+
+        const existingUserRoles = await this.repository.listUserRoles(userId);
+        const alreadyAssigned = existingUserRoles.some(
+            (userRole) => userRole.roleId === role.id,
+        );
+
+        if (!alreadyAssigned) {
+            await this.repository.assignRoleToUser(userId, role.id);
+        }
+    }
+
+    async removeRoleFromUserByName(userId: string, roleName: string): Promise<void> {
+        await this.getExistingUserById(userId);
+        const role = await this.repository.findRoleByNormalizedName(
+            this.normalizeRoleName(roleName),
+        );
+
+        if (!role) {
+            return;
+        }
+
+        await this.repository.removeRoleFromUser(userId, role.id);
+    }
+
     async seedAdmin(input: SeedAdminInput): Promise<AuthUserResponse> {
         await this.ensureBaseRoles();
 
