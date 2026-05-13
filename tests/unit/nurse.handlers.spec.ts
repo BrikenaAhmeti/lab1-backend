@@ -299,12 +299,16 @@ describe('Nurse handlers', () => {
             lastName: 'Krasniqi',
             departmentId: department.id,
             shift: 'Morning',
+            email: 'sara.krasniqi@example.com',
+            username: 'sara.krasniqi',
             password: 'Nurse123!',
         });
 
         expect(userProvisioningService.provisionNurseUser).toHaveBeenCalledWith({
             firstName: 'Sara',
             lastName: 'Krasniqi',
+            email: 'sara.krasniqi@example.com',
+            username: 'sara.krasniqi',
             password: 'Nurse123!',
         });
         expect(repository.create).toHaveBeenCalledWith({
@@ -330,10 +334,11 @@ describe('Nurse handlers', () => {
                 lastName: 'Krasniqi',
                 departmentId: department.id,
                 shift: 'Morning' as NurseShift,
+                username: 'sara.krasniqi',
                 password: 'Nurse123!',
             }),
         ).rejects.toMatchObject({
-            message: 'Password can only be provided when creating a new linked user',
+            message: 'Email, username, and password can only be provided when creating a new linked user',
             statusCode: 400,
         });
     });

@@ -379,6 +379,10 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
         __resetNurses: () => {
             departmentStore.length = 0;
             nurseStore.length = 0;
+            userStore.splice(2);
+            userStore.forEach((user) => {
+                user.userRoles = [];
+            });
             departmentCount = 1;
             nurseCount = 1;
             userCount = 3;
@@ -579,5 +583,28 @@ describe('Nurse routes', () => {
         expect(response.body.userId).toBeTruthy();
         expect(response.body.firstName).toBe('Lina');
         expect(response.body.shift).toBe('Evening');
+    });
+
+    it('should auto-provision a nurse user with email and username', async () => {
+        const adminToken = createAccessToken(['ADMIN']);
+        const department = prismaMock.__seedDepartment('Cardiology');
+
+        const response = await request(app)
+            .post('/api/nurses')
+            .set('Authorization', `Bearer ${adminToken}`)
+            .send({
+                firstName: 'Lina',
+                lastName: 'Berisha',
+                departmentId: department.id,
+                shift: 'Night',
+                email: 'lina.berisha@example.com',
+                username: 'lina.berisha',
+                password: 'Nurse123!',
+            });
+
+        expect(response.status).toBe(201);
+        expect(response.body.userId).toBe('user-3');
+        expect(response.body.firstName).toBe('Lina');
+        expect(response.body.shift).toBe('Night');
     });
 });

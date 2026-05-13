@@ -65,6 +65,18 @@ export interface CreateUserInput {
     roleIds?: string[];
 }
 
+export interface CreateReceptionistInput {
+    firstName: string;
+    lastName: string;
+    email: string;
+    username?: string;
+    password: string;
+    phoneNumber?: string;
+    emailConfirmed?: boolean;
+    lockoutEnabled?: boolean;
+    isActive?: boolean;
+}
+
 export interface UpdateUserInput {
     firstName?: string;
     lastName?: string;
@@ -102,6 +114,8 @@ export interface SeedAdminInput {
 export interface ProvisionDoctorUserInput {
     firstName: string;
     lastName: string;
+    email?: string;
+    username?: string;
     phoneNumber?: string;
     password?: string;
 }
@@ -109,6 +123,8 @@ export interface ProvisionDoctorUserInput {
 export interface ProvisionNurseUserInput {
     firstName: string;
     lastName: string;
+    email?: string;
+    username?: string;
     password?: string;
 }
 
@@ -372,6 +388,25 @@ export class AuthService {
         const createdUser = await this.getExistingUserById(user.id);
 
         return this.mapUser(createdUser);
+    }
+
+    async createReceptionist(
+        input: CreateReceptionistInput,
+    ): Promise<AuthUserResponse> {
+        await this.ensureBaseRoles();
+
+        const receptionistRole = await this.repository.findRoleByNormalizedName(
+            'RECEPTIONIST',
+        );
+
+        if (!receptionistRole) {
+            throw new AppError('Receptionist role not found', 500);
+        }
+
+        return this.createUser({
+            ...input,
+            roleIds: [receptionistRole.id],
+        });
     }
 
     async updateUser(userId: string, input: UpdateUserInput): Promise<AuthUserResponse> {
@@ -752,6 +787,8 @@ export class AuthService {
         return this.provisionRoleBoundUser({
             firstName: input.firstName,
             lastName: input.lastName,
+            email: input.email,
+            username: input.username,
             phoneNumber: input.phoneNumber,
             password: input.password,
             roleName: 'DOCTOR',
@@ -765,6 +802,8 @@ export class AuthService {
         return this.provisionRoleBoundUser({
             firstName: input.firstName,
             lastName: input.lastName,
+            email: input.email,
+            username: input.username,
             password: input.password,
             roleName: 'NURSE',
             emailLabel: 'nurse',
@@ -819,6 +858,8 @@ export class AuthService {
     private async provisionRoleBoundUser(input: {
         firstName: string;
         lastName: string;
+        email?: string;
+        username?: string;
         phoneNumber?: string;
         password?: string;
         roleName: 'DOCTOR' | 'NURSE';
@@ -826,22 +867,29 @@ export class AuthService {
     }): Promise<AuthUserResponse> {
         await this.ensureBaseRoles();
 
-        const generatedEmail = await this.generateUniqueInternalEmail(
-            input.firstName,
-            input.lastName,
-            input.emailLabel,
-        );
-        const normalizedEmail = this.normalizeEmail(generatedEmail);
+        const email = input.email?.trim().toLowerCase()
+            ?? await this.generateUniqueInternalEmail(
+                input.firstName,
+                input.lastName,
+                input.emailLabel,
+            );
+        const normalizedEmail = this.normalizeEmail(email);
+        const existingUser = await this.repository.findUserByNormalizedEmail(normalizedEmail);
+
+        if (existingUser) {
+            throw new AppError('Email already exists', 409);
+        }
+
         const usernameData = await this.resolveUsernameForCreate(
-            undefined,
-            generatedEmail,
+            input.username,
+            email,
         );
         const passwordHash = await this.hashValue(input.password?.trim() || randomUUID());
 
         const user = await this.repository.createUser({
             firstName: input.firstName.trim(),
             lastName: input.lastName.trim(),
-            email: generatedEmail,
+            email,
             normalizedEmail,
             username: usernameData.username,
             normalizedUsername: usernameData.normalizedUsername,

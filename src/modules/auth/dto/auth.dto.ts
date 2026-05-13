@@ -163,6 +163,65 @@ export class CreateUserDto {
     roleIds?: string[];
 }
 
+export class CreateReceptionistDto {
+    @IsDefined({ message: 'First name is required' })
+    @IsString({ message: 'First name is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'First name is required' })
+    @MinLength(2, { message: 'First name must be at least 2 characters' })
+    @MaxLength(100, { message: 'First name must not exceed 100 characters' })
+    firstName!: string;
+
+    @IsDefined({ message: 'Last name is required' })
+    @IsString({ message: 'Last name is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Last name is required' })
+    @MinLength(2, { message: 'Last name must be at least 2 characters' })
+    @MaxLength(100, { message: 'Last name must not exceed 100 characters' })
+    lastName!: string;
+
+    @IsDefined({ message: 'Email is required' })
+    @IsString({ message: 'Email is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Email is required' })
+    @IsEmail({}, { message: 'Email must be a valid email address' })
+    email!: string;
+
+    @OptionalField()
+    @IsString({ message: 'Username must be a string' })
+    @NormalizeString()
+    @MinLength(3, { message: 'Username must be at least 3 characters' })
+    @MaxLength(30, { message: 'Username must not exceed 30 characters' })
+    @Matches(usernameRegex, {
+        message: 'Username can contain only letters, numbers, dots, underscores, and hyphens',
+    })
+    username?: string;
+
+    @IsDefined({ message: 'Password is required' })
+    @IsString({ message: 'Password is required' })
+    @MinLength(6, { message: 'Password must be at least 6 characters' })
+    @MaxLength(255, { message: 'Password must not exceed 255 characters' })
+    password!: string;
+
+    @OptionalField()
+    @IsString({ message: 'Phone number must be a string' })
+    @NormalizeString()
+    @MaxLength(30, { message: 'Phone number must not exceed 30 characters' })
+    phoneNumber?: string;
+
+    @OptionalField()
+    @IsBoolean({ message: 'emailConfirmed must be a boolean' })
+    emailConfirmed?: boolean;
+
+    @OptionalField()
+    @IsBoolean({ message: 'lockoutEnabled must be a boolean' })
+    lockoutEnabled?: boolean;
+
+    @OptionalField()
+    @IsBoolean({ message: 'isActive must be a boolean' })
+    isActive?: boolean;
+}
+
 export class UpdateUserDto {
     @OptionalField()
     @IsString({ message: 'First name is required' })
@@ -331,6 +390,10 @@ export function validateRefreshDto(input: unknown) {
 
 export function validateCreateUserDto(input: unknown) {
     return validateDto(CreateUserDto, input);
+}
+
+export function validateCreateReceptionistDto(input: unknown) {
+    return validateDto(CreateReceptionistDto, input);
 }
 
 export function validateUpdateUserDto(input: unknown) {

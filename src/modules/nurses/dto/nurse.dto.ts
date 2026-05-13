@@ -1,9 +1,11 @@
 import { z } from 'zod';
 import {
+    IsEmail,
     IsDefined,
     IsIn,
     IsNotEmpty,
     IsString,
+    Matches,
     MaxLength,
     MinLength,
 } from 'class-validator';
@@ -22,6 +24,7 @@ import {
 } from '../../../shared/validation/validate-dto';
 
 const nurseShiftValues = ['Morning', 'Evening', 'Night'] as const;
+const usernameRegex = /^[a-zA-Z0-9._-]+$/;
 const nurseSortByValues = [
     'created_at',
     'first_name',
@@ -101,6 +104,22 @@ export class CreateNurseDto {
         message: 'Shift must be Morning, Evening, or Night',
     })
     shift!: (typeof nurseShiftValues)[number];
+
+    @OptionalField()
+    @IsString({ message: 'Email must be a string' })
+    @NormalizeString()
+    @IsEmail({}, { message: 'Email must be a valid email address' })
+    email?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Username must be a string' })
+    @NormalizeString()
+    @MinLength(3, { message: 'Username must be at least 3 characters' })
+    @MaxLength(30, { message: 'Username must not exceed 30 characters' })
+    @Matches(usernameRegex, {
+        message: 'Username can contain only letters, numbers, dots, underscores, and hyphens',
+    })
+    username?: string;
 
     @OptionalField()
     @IsString({ message: 'Password must be a string' })

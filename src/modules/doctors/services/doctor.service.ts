@@ -17,6 +17,8 @@ export interface DoctorUserProvisioningService {
     provisionDoctorUser(input: {
         firstName: string;
         lastName: string;
+        email?: string;
+        username?: string;
         phoneNumber?: string;
         password?: string;
     }): Promise<AuthUserResponse>;
@@ -45,6 +47,8 @@ export class DoctorService {
         const lastName = data.lastName.trim();
         const specialization = data.specialization.trim();
         const phoneNumber = data.phoneNumber.trim();
+        const email = data.email?.trim();
+        const username = data.username?.trim();
         const password = data.password?.trim();
 
         await this.ensureDepartmentExists(departmentId);
@@ -53,9 +57,9 @@ export class DoctorService {
         let shouldCleanupProvisionedUser = false;
 
         if (userId) {
-            if (password) {
+            if (email || username || password) {
                 throw new AppError(
-                    'Password can only be provided when creating a new linked user',
+                    'Email, username, and password can only be provided when creating a new linked user',
                     400,
                 );
             }
@@ -73,6 +77,8 @@ export class DoctorService {
             const provisionedUser = await this.userProvisioningService.provisionDoctorUser({
                 firstName,
                 lastName,
+                email,
+                username,
                 phoneNumber,
                 password,
             });

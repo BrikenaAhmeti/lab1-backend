@@ -5,6 +5,20 @@ import { env } from '../../src/config/env';
 jest.mock('../../src/infrastructure/db/prisma', () => {
     interface MockUser {
         id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        normalizedEmail: string;
+        username: string;
+        normalizedUsername: string;
+        passwordHash: string;
+        phoneNumber: string | null;
+        emailConfirmed: boolean;
+        lockoutEnabled: boolean;
+        accessFailedCount: number;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
         userRoles: MockUserRole[];
     }
 
@@ -56,14 +70,66 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
     };
 
     const userStore: MockUser[] = [
-        { id: 'user-1', userRoles: [] },
-        { id: 'user-2', userRoles: [] },
-        { id: 'user-3', userRoles: [] },
+        {
+            id: 'user-1',
+            firstName: 'Admin',
+            lastName: 'User',
+            email: 'admin@example.com',
+            normalizedEmail: 'ADMIN@EXAMPLE.COM',
+            username: 'admin',
+            normalizedUsername: 'ADMIN',
+            passwordHash: 'hash',
+            phoneNumber: null,
+            emailConfirmed: true,
+            lockoutEnabled: true,
+            accessFailedCount: 0,
+            isActive: true,
+            createdAt: new Date('2026-01-01T10:00:00.000Z'),
+            updatedAt: new Date('2026-01-01T10:00:00.000Z'),
+            userRoles: [],
+        },
+        {
+            id: 'user-2',
+            firstName: 'Existing',
+            lastName: 'Doctor',
+            email: 'existing.doctor@example.com',
+            normalizedEmail: 'EXISTING.DOCTOR@EXAMPLE.COM',
+            username: 'existing.doctor',
+            normalizedUsername: 'EXISTING.DOCTOR',
+            passwordHash: 'hash',
+            phoneNumber: null,
+            emailConfirmed: true,
+            lockoutEnabled: true,
+            accessFailedCount: 0,
+            isActive: true,
+            createdAt: new Date('2026-01-01T10:00:00.000Z'),
+            updatedAt: new Date('2026-01-01T10:00:00.000Z'),
+            userRoles: [],
+        },
+        {
+            id: 'user-3',
+            firstName: 'Existing',
+            lastName: 'Doctor Two',
+            email: 'existing.doctor2@example.com',
+            normalizedEmail: 'EXISTING.DOCTOR2@EXAMPLE.COM',
+            username: 'existing.doctor2',
+            normalizedUsername: 'EXISTING.DOCTOR2',
+            passwordHash: 'hash',
+            phoneNumber: null,
+            emailConfirmed: true,
+            lockoutEnabled: true,
+            accessFailedCount: 0,
+            isActive: true,
+            createdAt: new Date('2026-01-01T10:00:00.000Z'),
+            updatedAt: new Date('2026-01-01T10:00:00.000Z'),
+            userRoles: [],
+        },
     ];
     const departmentStore: MockDepartment[] = [];
     const doctorStore: MockDoctor[] = [];
     let departmentCount = 1;
     let doctorCount = 1;
+    let userCount = 4;
 
     function buildDoctorEntity(doctor: MockDoctor) {
         const department = departmentStore.find(
@@ -101,20 +167,72 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
             user: {
                 findUnique: jest.fn(async ({
                     where,
+                    select,
                     include,
                 }: {
-                    where: { id: string };
+                    where: { id?: string; normalizedEmail?: string; normalizedUsername?: string };
+                    select?: { id?: boolean };
                     include?: { userRoles?: { include: { role: true } } };
                 }) => {
-                    const user = userStore.find((item) => item.id === where.id) ?? null;
+                    let user: MockUser | undefined;
+
+                    if (where.id) {
+                        user = userStore.find((item) => item.id === where.id);
+                    } else if (where.normalizedEmail) {
+                        user = userStore.find(
+                            (item) => item.normalizedEmail === where.normalizedEmail,
+                        );
+                    } else if (where.normalizedUsername) {
+                        user = userStore.find(
+                            (item) => item.normalizedUsername === where.normalizedUsername,
+                        );
+                    }
 
                     if (!user) {
                         return null;
                     }
 
+                    if (select?.id) {
+                        return { id: user.id };
+                    }
+
                     if (include?.userRoles) {
                         return user;
                     }
+
+                    return user;
+                }),
+                create: jest.fn(async ({
+                    data,
+                }: {
+                    data: Omit<MockUser, 'id' | 'createdAt' | 'updatedAt' | 'userRoles'>;
+                }) => {
+                    const now = new Date();
+                    const user: MockUser = {
+                        id: `user-${userCount}`,
+                        ...data,
+                        createdAt: now,
+                        updatedAt: now,
+                        userRoles: [],
+                    };
+
+                    userCount += 1;
+                    userStore.push(user);
+
+                    return user;
+                }),
+                delete: jest.fn(async ({
+                    where,
+                }: {
+                    where: { id: string };
+                }) => {
+                    const index = userStore.findIndex((item) => item.id === where.id);
+
+                    if (index === -1) {
+                        throw new Error('User not found');
+                    }
+
+                    const [user] = userStore.splice(index, 1);
 
                     return user;
                 }),
@@ -131,6 +249,11 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
 
                     return null;
                 }),
+                create: jest.fn(async ({
+                    data,
+                }: {
+                    data: MockRole;
+                }) => data),
             },
             userRole: {
                 findMany: jest.fn(async ({
@@ -296,11 +419,13 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
         __resetDoctors: () => {
             departmentStore.length = 0;
             doctorStore.length = 0;
+            userStore.splice(3);
             userStore.forEach((user) => {
                 user.userRoles = [];
             });
             departmentCount = 1;
             doctorCount = 1;
+            userCount = 4;
         },
         __seedDepartment: (name: string, location = 'Block A') => {
             const department: MockDepartment = {
@@ -466,5 +591,29 @@ describe('Doctor routes', () => {
 
         expect(getDeletedResponse.status).toBe(404);
         expect(getDeletedResponse.body.message).toBe('Doctor not found');
+    });
+
+    it('should auto-provision a doctor user with email and username', async () => {
+        const adminToken = createAccessToken(['ADMIN']);
+        const department = prismaMock.__seedDepartment('Cardiology', 'Block A');
+
+        const response = await request(app)
+            .post('/api/doctors')
+            .set('Authorization', `Bearer ${adminToken}`)
+            .send({
+                firstName: 'Elira',
+                lastName: 'Dema',
+                specialization: 'Pediatrics',
+                departmentId: department.id,
+                phoneNumber: '+38344123456',
+                email: 'elira.dema@example.com',
+                username: 'elira.dema',
+                password: 'Doctor123!',
+            });
+
+        expect(response.status).toBe(201);
+        expect(response.body.firstName).toBe('Elira');
+        expect(response.body.userId).toBe('user-4');
+        expect(response.body.departmentId).toBe(department.id);
     });
 });

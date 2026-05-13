@@ -514,6 +514,52 @@ describe('AuthService', () => {
         );
     });
 
+    it('should create a receptionist user with the receptionist role', async () => {
+        const createdUser = createUser({
+            id: 'receptionist-user-id',
+            firstName: 'Lira',
+            lastName: 'Gashi',
+            email: 'lira@example.com',
+            normalizedEmail: 'LIRA@EXAMPLE.COM',
+            username: 'lira.gashi',
+            normalizedUsername: 'LIRA.GASHI',
+        });
+        const createdUserWithRoles = createUserWithRoles(createdUser, [
+            createUserRoleWithRole(createdUser.id, receptionistRole),
+        ]);
+
+        repository.findUserByNormalizedEmail.mockResolvedValue(null);
+        repository.findUserByNormalizedUsername.mockResolvedValue(null);
+        repository.createUser.mockResolvedValue(createdUser);
+        repository.findUserById.mockResolvedValue(createdUserWithRoles);
+
+        const result = await service.createReceptionist({
+            firstName: 'Lira',
+            lastName: 'Gashi',
+            email: 'lira@example.com',
+            username: 'lira.gashi',
+            password: 'Reception123!',
+            phoneNumber: '+38344111222',
+        });
+
+        expect(repository.createUser).toHaveBeenCalledWith(
+            expect.objectContaining({
+                firstName: 'Lira',
+                lastName: 'Gashi',
+                email: 'lira@example.com',
+                normalizedEmail: 'LIRA@EXAMPLE.COM',
+                username: 'lira.gashi',
+                normalizedUsername: 'LIRA.GASHI',
+                phoneNumber: '+38344111222',
+            }),
+        );
+        expect(repository.assignRoleToUser).toHaveBeenCalledWith(
+            'receptionist-user-id',
+            receptionistRole.id,
+        );
+        expect(result.roles).toEqual(['RECEPTIONIST']);
+    });
+
     it('should reject password change when current password is wrong', async () => {
         const passwordHash = await bcrypt.hash('old-password', 10);
         const existingUser = createUser({

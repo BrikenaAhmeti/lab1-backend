@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+    IsEmail,
     IsBoolean,
     IsDefined,
     IsNotEmpty,
@@ -23,6 +24,7 @@ import {
 } from '../../../shared/validation/validate-dto';
 
 const phoneNumberRegex = /^\+?[0-9]{7,15}$/;
+const usernameRegex = /^[a-zA-Z0-9._-]+$/;
 const doctorSortByValues = [
     'created_at',
     'first_name',
@@ -107,6 +109,22 @@ export class CreateDoctorDto {
         message: 'phoneNumber format is invalid',
     })
     phoneNumber!: string;
+
+    @OptionalField()
+    @IsString({ message: 'Email must be a string' })
+    @NormalizeString()
+    @IsEmail({}, { message: 'Email must be a valid email address' })
+    email?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Username must be a string' })
+    @NormalizeString()
+    @MinLength(3, { message: 'Username must be at least 3 characters' })
+    @MaxLength(30, { message: 'Username must not exceed 30 characters' })
+    @Matches(usernameRegex, {
+        message: 'Username can contain only letters, numbers, dots, underscores, and hyphens',
+    })
+    username?: string;
 
     @OptionalField()
     @IsString({ message: 'Password must be a string' })

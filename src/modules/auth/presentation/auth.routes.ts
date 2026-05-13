@@ -43,6 +43,12 @@ authRoutes.post(
     authorizeRoles('ADMIN'),
     asyncHandler(controller.createUser.bind(controller)),
 );
+authRoutes.post(
+    '/users/receptionists',
+    authenticate,
+    authorizeRoles('ADMIN'),
+    asyncHandler(controller.createReceptionist.bind(controller)),
+);
 authRoutes.patch(
     '/users/:id',
     authenticate,

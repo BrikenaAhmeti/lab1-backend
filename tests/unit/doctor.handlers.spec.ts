@@ -399,12 +399,16 @@ describe('Doctor handlers', () => {
                 specialization: ' Neurolog ',
                 departmentId: ` ${department.id} `,
                 phoneNumber: ' +38349280810 ',
+                email: ' leo.doe@example.com ',
+                username: ' leo.doe ',
             }),
         );
 
         expect(userProvisioningService.provisionDoctorUser).toHaveBeenCalledWith({
             firstName: 'Leo',
             lastName: 'Doe',
+            email: 'leo.doe@example.com',
+            username: 'leo.doe',
             phoneNumber: '+38349280810',
             password: undefined,
         });
@@ -453,12 +457,16 @@ describe('Doctor handlers', () => {
             specialization: 'Pediatrics',
             departmentId: department.id,
             phoneNumber: '+38344111111',
+            email: 'mira.selimi@example.com',
+            username: 'mira.selimi',
             password: 'Doctor123!',
         });
 
         expect(userProvisioningService.provisionDoctorUser).toHaveBeenCalledWith({
             firstName: 'Mira',
             lastName: 'Selimi',
+            email: 'mira.selimi@example.com',
+            username: 'mira.selimi',
             phoneNumber: '+38344111111',
             password: 'Doctor123!',
         });
@@ -478,10 +486,11 @@ describe('Doctor handlers', () => {
                 specialization: 'Cardiology',
                 departmentId: department.id,
                 phoneNumber: '+38344111222',
+                email: 'arben.hoxha@example.com',
                 password: 'Doctor123!',
             }),
         ).rejects.toMatchObject({
-            message: 'Password can only be provided when creating a new linked user',
+            message: 'Email, username, and password can only be provided when creating a new linked user',
             statusCode: 400,
         });
     });

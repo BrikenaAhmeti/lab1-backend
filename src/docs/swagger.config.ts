@@ -964,6 +964,55 @@ const swaggerDefinition = {
                 },
             },
         },
+        '/api/auth/users/receptionists': {
+            post: {
+                tags: ['Auth'],
+                summary: 'Create receptionist',
+                description: 'Creates a receptionist user and automatically assigns the RECEPTIONIST role. Admin role required.',
+                security: bearerSecurity,
+                requestBody: requestBody(
+                    'Receptionist payload',
+                    {
+                        type: 'object',
+                        required: ['firstName', 'lastName', 'email', 'password'],
+                        properties: {
+                            firstName: { type: 'string' },
+                            lastName: { type: 'string' },
+                            email: { type: 'string', format: 'email' },
+                            username: { type: 'string' },
+                            password: { type: 'string' },
+                            phoneNumber: { type: 'string' },
+                            emailConfirmed: { type: 'boolean' },
+                            lockoutEnabled: { type: 'boolean' },
+                            isActive: { type: 'boolean' },
+                        },
+                    },
+                    {
+                        firstName: 'Lira',
+                        lastName: 'Gashi',
+                        email: 'lira@example.com',
+                        username: 'lira.gashi',
+                        password: 'Reception123!',
+                        phoneNumber: '+38344111222',
+                    },
+                ),
+                responses: {
+                    '201': response('Receptionist created successfully', { $ref: '#/components/schemas/AuthUser' }, {
+                        ...authUserExample,
+                        firstName: 'Lira',
+                        lastName: 'Gashi',
+                        email: 'lira@example.com',
+                        username: 'lira.gashi',
+                        roles: ['RECEPTIONIST'],
+                    }),
+                    '400': errorResponse(400, 'Validation failed'),
+                    '401': errorResponse(401, 'Unauthorized'),
+                    '403': errorResponse(403, 'Forbidden'),
+                    '409': errorResponse(409, 'Email already exists'),
+                    '500': errorResponse(500, 'Internal server error'),
+                },
+            },
+        },
         '/api/auth/users/{id}': {
             get: {
                 tags: ['Auth'],
@@ -1616,6 +1665,19 @@ const swaggerDefinition = {
                             specialization: { type: 'string' },
                             departmentId: { type: 'string' },
                             phoneNumber: { type: 'string' },
+                            email: {
+                                type: 'string',
+                                format: 'email',
+                                description: 'Optional email for the auto-created linked user.',
+                            },
+                            username: {
+                                type: 'string',
+                                description: 'Optional username for the auto-created linked user.',
+                            },
+                            password: {
+                                type: 'string',
+                                description: 'Optional initial password for the auto-created linked user.',
+                            },
                         },
                     },
                     {
@@ -1624,6 +1686,9 @@ const swaggerDefinition = {
                         specialization: 'Cardiology',
                         departmentId: 'department-1',
                         phoneNumber: '+38344123456',
+                        email: 'arben.hoxha@example.com',
+                        username: 'arben.hoxha',
+                        password: 'Doctor123!',
                     },
                 ),
                 responses: {
@@ -1762,10 +1827,27 @@ const swaggerDefinition = {
                         type: 'object',
                         required: ['firstName', 'lastName', 'departmentId', 'shift'],
                         properties: {
+                            userId: {
+                                type: 'string',
+                                description: 'Optional existing user id. If omitted, a linked nurse user is auto-created.',
+                            },
                             firstName: { type: 'string' },
                             lastName: { type: 'string' },
                             departmentId: { type: 'string' },
                             shift: { type: 'string', enum: ['Morning', 'Evening', 'Night'] },
+                            email: {
+                                type: 'string',
+                                format: 'email',
+                                description: 'Optional email for the auto-created linked user.',
+                            },
+                            username: {
+                                type: 'string',
+                                description: 'Optional username for the auto-created linked user.',
+                            },
+                            password: {
+                                type: 'string',
+                                description: 'Optional initial password for the auto-created linked user.',
+                            },
                         },
                     },
                     {
@@ -1773,6 +1855,9 @@ const swaggerDefinition = {
                         lastName: 'Krasniqi',
                         departmentId: 'department-1',
                         shift: 'Morning',
+                        email: 'sara.krasniqi@example.com',
+                        username: 'sara.krasniqi',
+                        password: 'Nurse123!',
                     },
                 ),
                 responses: {

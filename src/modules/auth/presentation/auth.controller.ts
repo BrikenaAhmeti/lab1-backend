@@ -8,6 +8,7 @@ import {
     validateChangePasswordDto,
     validateAssignRoleDto,
     validateCreateRoleDto,
+    validateCreateReceptionistDto,
     validateCreateUserDto,
     validateLoginDto,
     validateRegisterDto,
@@ -135,6 +136,13 @@ export class AuthController {
     async createUser(req: Request, res: Response) {
         const body = validateCreateUserDto(req.body);
         const result = await this.service.createUser(body);
+
+        return res.status(201).json(result);
+    }
+
+    async createReceptionist(req: Request, res: Response) {
+        const body = validateCreateReceptionistDto(req.body);
+        const result = await this.service.createReceptionist(body);
 
         return res.status(201).json(result);
     }

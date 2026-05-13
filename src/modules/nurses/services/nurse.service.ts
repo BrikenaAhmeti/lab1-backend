@@ -17,6 +17,8 @@ export interface NurseUserProvisioningService {
     provisionNurseUser(input: {
         firstName: string;
         lastName: string;
+        email?: string;
+        username?: string;
         password?: string;
     }): Promise<AuthUserResponse>;
     ensureUserHasRole(userId: string, roleName: string): Promise<void>;
@@ -42,6 +44,8 @@ export class NurseService {
         const departmentId = data.departmentId.trim();
         const firstName = data.firstName.trim();
         const lastName = data.lastName.trim();
+        const email = data.email?.trim();
+        const username = data.username?.trim();
         const password = data.password?.trim();
 
         await this.ensureDepartmentExists(departmentId);
@@ -50,9 +54,9 @@ export class NurseService {
         let shouldCleanupProvisionedUser = false;
 
         if (userId) {
-            if (password) {
+            if (email || username || password) {
                 throw new AppError(
-                    'Password can only be provided when creating a new linked user',
+                    'Email, username, and password can only be provided when creating a new linked user',
                     400,
                 );
             }
@@ -70,6 +74,8 @@ export class NurseService {
             const provisionedUser = await this.userProvisioningService.provisionNurseUser({
                 firstName,
                 lastName,
+                email,
+                username,
                 password,
             });
 
