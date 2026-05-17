@@ -315,6 +315,23 @@ export class SetUserPasswordDto {
     password!: string;
 }
 
+export class ConfirmEmailDto {
+    @IsDefined({ message: 'Token is required' })
+    @IsString({ message: 'Token is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Token is required' })
+    token!: string;
+}
+
+export class ResendConfirmationEmailDto {
+    @IsDefined({ message: 'Email is required' })
+    @IsString({ message: 'Email is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Email is required' })
+    @IsEmail({}, { message: 'Email must be a valid email address' })
+    email!: string;
+}
+
 export class CreateRoleDto {
     @IsDefined({ message: 'Name is required' })
     @IsString({ message: 'Name is required' })
@@ -428,6 +445,14 @@ export function validateChangePasswordDto(input: unknown) {
 
 export function validateSetUserPasswordDto(input: unknown) {
     return validateDto(SetUserPasswordDto, input);
+}
+
+export function validateConfirmEmailDto(input: unknown) {
+    return validateDto(ConfirmEmailDto, input);
+}
+
+export function validateResendConfirmationEmailDto(input: unknown) {
+    return validateDto(ResendConfirmationEmailDto, input);
 }
 
 export function validateCreateRoleDto(input: unknown) {

@@ -71,6 +71,16 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
         updatedAt: new Date('2026-01-01T10:00:00.000Z'),
     };
 
+    const adminRole: MockRole = {
+        id: 'role-admin-id',
+        name: 'Admin',
+        normalizedName: 'ADMIN',
+        description: 'Full access',
+        isActive: true,
+        createdAt: new Date('2026-01-01T10:00:00.000Z'),
+        updatedAt: new Date('2026-01-01T10:00:00.000Z'),
+    };
+
     const baseUser = () => {
         const now = new Date('2026-01-01T10:00:00.000Z');
 
@@ -102,7 +112,38 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
         } satisfies MockUser;
     };
 
-    const userStore: MockUser[] = [baseUser()];
+    const baseAdmin = () => {
+        const now = new Date('2026-01-01T10:00:00.000Z');
+
+        return {
+            id: 'admin-user-1',
+            firstName: 'Admin',
+            lastName: 'User',
+            email: 'admin@example.com',
+            normalizedEmail: 'ADMIN@EXAMPLE.COM',
+            username: 'admin',
+            normalizedUsername: 'ADMIN',
+            passwordHash: bcrypt.hashSync('admin-password', 12),
+            phoneNumber: null,
+            emailConfirmed: true,
+            lockoutEnabled: true,
+            accessFailedCount: 0,
+            isActive: true,
+            createdAt: now,
+            updatedAt: now,
+            userRoles: [
+                {
+                    id: 'admin-user-role-1',
+                    userId: 'admin-user-1',
+                    roleId: adminRole.id,
+                    createdAt: now,
+                    role: adminRole,
+                },
+            ],
+        } satisfies MockUser;
+    };
+
+    const userStore: MockUser[] = [baseUser(), baseAdmin()];
     const refreshTokenStore: MockRefreshToken[] = [];
     const userTokenStore: MockUserToken[] = [];
 
@@ -204,7 +245,7 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
             },
         },
         __resetAuthStore: () => {
-            userStore.splice(0, userStore.length, baseUser());
+            userStore.splice(0, userStore.length, baseUser(), baseAdmin());
             refreshTokenStore.length = 0;
             userTokenStore.length = 0;
         },
@@ -276,5 +317,21 @@ describe('Auth routes', () => {
             message: 'Too many login attempts, please try again in 15 minutes',
             statusCode: 429,
         });
+    });
+
+    it('should not rate limit repeated failed admin login attempts', async () => {
+        const app = createApp();
+
+        for (let attempt = 1; attempt <= 6; attempt += 1) {
+            const response = await request(app)
+                .post('/api/auth/login')
+                .send({
+                    identifier: 'admin@example.com',
+                    password: 'wrong-password',
+                });
+
+            expect(response.status).toBe(401);
+            expect(response.body.message).toBe('Invalid email or password');
+        }
     });
 });

@@ -26,4 +26,10 @@ export const env = {
     adminUsername: process.env.ADMIN_USERNAME || 'admin',
     adminPassword: process.env.ADMIN_PASSWORD || '',
     adminPhoneNumber: process.env.ADMIN_PHONE_NUMBER || '',
+    smtpHost: process.env.SMTP_HOST || '',
+    smtpPort: Number(process.env.SMTP_PORT || 587),
+    smtpUser: process.env.SMTP_USER || '',
+    smtpPass: process.env.SMTP_PASS || '',
+    mailFrom: process.env.MAIL_FROM || process.env.SMTP_USER || '',
+    appUrl: process.env.APP_URL || 'http://localhost:3000',
 };

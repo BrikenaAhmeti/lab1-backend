@@ -11,6 +11,11 @@ export const authRoutes = Router();
 authRoutes.post('/register', asyncHandler(controller.register.bind(controller)));
 authRoutes.post('/login', asyncHandler(controller.login.bind(controller)));
 authRoutes.post('/refresh', asyncHandler(controller.refresh.bind(controller)));
+authRoutes.post('/confirm-email', asyncHandler(controller.confirmEmail.bind(controller)));
+authRoutes.post(
+    '/resend-confirmation-email',
+    asyncHandler(controller.resendConfirmationEmail.bind(controller)),
+);
 authRoutes.post('/logout', asyncHandler(controller.logout.bind(controller)));
 authRoutes.post(
     '/change-password',

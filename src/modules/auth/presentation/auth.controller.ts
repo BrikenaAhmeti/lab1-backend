@@ -7,12 +7,14 @@ import { AppError } from '../../../shared/core/errors/app-error';
 import {
     validateChangePasswordDto,
     validateAssignRoleDto,
+    validateConfirmEmailDto,
     validateCreateRoleDto,
     validateCreateReceptionistDto,
     validateCreateUserDto,
     validateLoginDto,
     validateRegisterDto,
     validateReplaceRolesDto,
+    validateResendConfirmationEmailDto,
     validateSetUserPasswordDto,
     validateSetUserStatusDto,
     validateUpdateRoleDto,
@@ -23,6 +25,8 @@ import {
     readRefreshToken,
     setRefreshTokenCookie,
 } from './auth.cookies';
+import { MailService } from '../../../shared/mail/mail.service';
+import { env } from '../../../config/env';
 
 const paramsWithIdSchema = z.object({
     id: z.string().min(1),
@@ -43,7 +47,10 @@ const roleParamsSchema = z.object({
 
 export class AuthController {
     private readonly repository = new AuthPrismaRepository();
-    private readonly service = new AuthService(this.repository);
+    private readonly service = new AuthService(
+        this.repository,
+        env.nodeEnv === 'test' ? undefined : new MailService(),
+    );
 
     async register(req: Request, res: Response) {
         const body = validateRegisterDto(req.body);
@@ -75,6 +82,21 @@ export class AuthController {
         setRefreshTokenCookie(res, result.refreshToken);
 
         return res.status(200).json(result);
+    }
+
+    async confirmEmail(req: Request, res: Response) {
+        const body = validateConfirmEmailDto(req.body);
+        const result = await this.service.confirmEmail(body.token);
+
+        return res.status(200).json(result);
+    }
+
+    async resendConfirmationEmail(req: Request, res: Response) {
+        const body = validateResendConfirmationEmailDto(req.body);
+
+        await this.service.resendConfirmationEmail(body.email);
+
+        return res.status(204).send();
     }
 
     async logout(req: Request, res: Response) {

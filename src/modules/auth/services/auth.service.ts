@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
 import { env } from '../../../config/env';
 import { AppError } from '../../../shared/core/errors/app-error';
+import { MailService } from '../../../shared/mail/mail.service';
 import { RefreshToken, Role, User } from '../../../generated/prisma';
 import { AuthRepository, UserRoleWithRole, UserWithRoles } from '../domain/auth.repository';
 
@@ -133,8 +134,16 @@ interface RefreshTokenPayload extends jwt.JwtPayload {
     jti: string;
 }
 
+interface EmailConfirmationTokenPayload extends jwt.JwtPayload {
+    sub: string;
+    type: 'email-confirmation';
+}
+
 export class AuthService {
-    constructor(private readonly repository: AuthRepository) { }
+    constructor(
+        private readonly repository: AuthRepository,
+        private readonly mailService?: Pick<MailService, 'send'>,
+    ) { }
 
     async register(input: RegisterInput): Promise<AuthResponse> {
         await this.ensureBaseRoles();
@@ -176,6 +185,7 @@ export class AuthService {
         await this.repository.assignRoleToUser(user.id, userRole.id);
 
         const createdUser = await this.getExistingUserById(user.id);
+        await this.sendWelcomeEmail(createdUser, input.password);
 
         return this.createSession(createdUser);
     }
@@ -194,13 +204,19 @@ export class AuthService {
             throw new AppError('User is inactive', 403);
         }
 
-        if (this.isUserLocked(user)) {
+        const isAdmin = this.userHasRole(user, 'ADMIN');
+
+        if (!isAdmin && this.isUserLocked(user)) {
             throw new AppError('Account is locked', 423);
         }
 
         const isPasswordCorrect = await bcrypt.compare(input.password, user.passwordHash);
 
         if (!isPasswordCorrect) {
+            if (isAdmin) {
+                throw new AppError('Invalid email or password', 401);
+            }
+
             const updatedUser = await this.repository.incrementAccessFailedCount(user.id);
 
             if (this.isUserLocked(updatedUser)) {
@@ -212,6 +228,10 @@ export class AuthService {
 
         if (user.accessFailedCount > 0) {
             await this.repository.resetAccessFailedCount(user.id);
+        }
+
+        if (!user.emailConfirmed) {
+            throw new AppError('Email confirmation is required', 403);
         }
 
         const existingUser = await this.getExistingUserById(user.id);
@@ -386,6 +406,7 @@ export class AuthService {
         }
 
         const createdUser = await this.getExistingUserById(user.id);
+        await this.sendWelcomeEmail(createdUser, input.password);
 
         return this.mapUser(createdUser);
     }
@@ -673,8 +694,41 @@ export class AuthService {
     }
 
     async setUserPassword(userId: string, newPassword: string): Promise<void> {
-        await this.getExistingUserById(userId);
+        const user = await this.getExistingUserById(userId);
         await this.updatePassword(userId, newPassword);
+        await this.sendPasswordUpdatedEmail(user, newPassword);
+    }
+
+    async confirmEmail(token: string): Promise<AuthUserResponse> {
+        const payload = this.verifyEmailConfirmationToken(token);
+        const user = await this.getExistingUserById(payload.sub);
+
+        if (!user.emailConfirmed) {
+            await this.repository.updateUser(user.id, {
+                emailConfirmed: true,
+                accessFailedCount: 0,
+            });
+        }
+
+        const confirmedUser = await this.getExistingUserById(user.id);
+
+        return this.mapUser(confirmedUser);
+    }
+
+    async resendConfirmationEmail(email: string): Promise<void> {
+        const user = await this.repository.findUserByNormalizedEmail(
+            this.normalizeEmail(email),
+        );
+
+        if (!user) {
+            return;
+        }
+
+        if (user.emailConfirmed) {
+            return;
+        }
+
+        await this.sendConfirmationEmail(user);
     }
 
     async ensureUserHasRole(userId: string, roleName: string): Promise<void> {
@@ -884,7 +938,8 @@ export class AuthService {
             input.username,
             email,
         );
-        const passwordHash = await this.hashValue(input.password?.trim() || randomUUID());
+        const rawPassword = input.password?.trim() || randomUUID();
+        const passwordHash = await this.hashValue(rawPassword);
 
         const user = await this.repository.createUser({
             firstName: input.firstName.trim(),
@@ -908,6 +963,7 @@ export class AuthService {
         }
 
         const createdUser = await this.getExistingUserById(user.id);
+        await this.sendWelcomeEmail(createdUser, rawPassword);
 
         return this.mapUser(createdUser);
     }
@@ -980,6 +1036,19 @@ export class AuthService {
         };
     }
 
+    private generateEmailConfirmationToken(userId: string): string {
+        return jwt.sign(
+            {
+                type: 'email-confirmation',
+            },
+            env.jwtRefreshSecret,
+            {
+                subject: userId,
+                expiresIn: '7d',
+            },
+        );
+    }
+
     private verifyRefreshToken(
         token: string,
         ignoreExpiration = false,
@@ -997,6 +1066,162 @@ export class AuthService {
         } catch {
             throw new AppError('Invalid refresh token', 401);
         }
+    }
+
+    private verifyEmailConfirmationToken(token: string): EmailConfirmationTokenPayload {
+        try {
+            const payload = jwt.verify(token, env.jwtRefreshSecret) as EmailConfirmationTokenPayload;
+
+            if (!payload.sub || payload.type !== 'email-confirmation') {
+                throw new AppError('Invalid email confirmation token', 400);
+            }
+
+            return payload;
+        } catch {
+            throw new AppError('Invalid or expired email confirmation token', 400);
+        }
+    }
+
+    private async sendWelcomeEmail(user: UserWithRoles, password: string): Promise<void> {
+        if (!this.mailService || !this.canSendAccountEmail(user.email)) {
+            return;
+        }
+
+        const confirmationLink = this.buildConfirmationLink(user.id);
+        const roleLabel = this.getUserRoleLabel(user);
+        const subject = `Welcome to MedSphere${roleLabel ? ` - ${roleLabel}` : ''}`;
+        const lines = [
+            `Hello ${user.firstName},`,
+            '',
+            'Your MedSphere account has been created.',
+            '',
+            `Email: ${user.email}`,
+            `Username: ${user.username}`,
+            `Password: ${password}`,
+            '',
+            'Please confirm your email using this link:',
+            confirmationLink,
+            '',
+            'After confirming your email, you can log in with your username or email.',
+        ];
+
+        await this.mailService.send({
+            to: user.email,
+            subject,
+            text: lines.join('\n'),
+            html: this.buildWelcomeEmailHtml(user, password, confirmationLink),
+        });
+    }
+
+    private async sendPasswordUpdatedEmail(user: UserWithRoles, password: string): Promise<void> {
+        if (!this.mailService || !this.canSendAccountEmail(user.email)) {
+            return;
+        }
+
+        const confirmationLink = user.emailConfirmed ? undefined : this.buildConfirmationLink(user.id);
+        const lines = [
+            `Hello ${user.firstName},`,
+            '',
+            'Your MedSphere password has been updated.',
+            '',
+            `Email: ${user.email}`,
+            `Username: ${user.username}`,
+            `Password: ${password}`,
+        ];
+
+        if (confirmationLink) {
+            lines.push('', 'Please confirm your email using this link:', confirmationLink);
+        }
+
+        await this.mailService.send({
+            to: user.email,
+            subject: 'Your MedSphere password was updated',
+            text: lines.join('\n'),
+            html: this.buildPasswordUpdatedEmailHtml(user, password, confirmationLink),
+        });
+    }
+
+    private async sendConfirmationEmail(user: UserWithRoles): Promise<void> {
+        if (!this.mailService || !this.canSendAccountEmail(user.email)) {
+            return;
+        }
+
+        const confirmationLink = this.buildConfirmationLink(user.id);
+
+        await this.mailService.send({
+            to: user.email,
+            subject: 'Confirm your MedSphere email',
+            text: [
+                `Hello ${user.firstName},`,
+                '',
+                'Please confirm your MedSphere email using this link:',
+                confirmationLink,
+            ].join('\n'),
+            html: [
+                `<p>Hello ${this.escapeHtml(user.firstName)},</p>`,
+                '<p>Please confirm your MedSphere email using the button below.</p>',
+                `<p><a href="${confirmationLink}">Confirm email</a></p>`,
+            ].join(''),
+        });
+    }
+
+    private buildConfirmationLink(userId: string): string {
+        const token = this.generateEmailConfirmationToken(userId);
+        const appUrl = env.appUrl.replace(/\/$/, '');
+
+        return `${appUrl}/confirm-email?token=${encodeURIComponent(token)}`;
+    }
+
+    private buildWelcomeEmailHtml(
+        user: UserWithRoles,
+        password: string,
+        confirmationLink: string,
+    ): string {
+        return [
+            `<p>Hello ${this.escapeHtml(user.firstName)},</p>`,
+            '<p>Your MedSphere account has been created.</p>',
+            '<ul>',
+            `<li><strong>Email:</strong> ${this.escapeHtml(user.email)}</li>`,
+            `<li><strong>Username:</strong> ${this.escapeHtml(user.username)}</li>`,
+            `<li><strong>Password:</strong> ${this.escapeHtml(password)}</li>`,
+            '</ul>',
+            `<p><a href="${confirmationLink}">Confirm email</a></p>`,
+            '<p>After confirming your email, you can log in with your username or email.</p>',
+        ].join('');
+    }
+
+    private buildPasswordUpdatedEmailHtml(
+        user: UserWithRoles,
+        password: string,
+        confirmationLink?: string,
+    ): string {
+        return [
+            `<p>Hello ${this.escapeHtml(user.firstName)},</p>`,
+            '<p>Your MedSphere password has been updated.</p>',
+            '<ul>',
+            `<li><strong>Email:</strong> ${this.escapeHtml(user.email)}</li>`,
+            `<li><strong>Username:</strong> ${this.escapeHtml(user.username)}</li>`,
+            `<li><strong>Password:</strong> ${this.escapeHtml(password)}</li>`,
+            '</ul>',
+            confirmationLink ? `<p><a href="${confirmationLink}">Confirm email</a></p>` : '',
+        ].join('');
+    }
+
+    private getUserRoleLabel(user: UserWithRoles): string {
+        return user.userRoles[0]?.role.name ?? '';
+    }
+
+    private escapeHtml(value: string): string {
+        return value
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    private canSendAccountEmail(email: string): boolean {
+        return !email.trim().toLowerCase().endsWith('@medsphere.local');
     }
 
     private mapUser(user: UserWithRoles): AuthUserResponse {

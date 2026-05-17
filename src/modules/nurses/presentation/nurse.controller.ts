@@ -21,13 +21,18 @@ import { NursePrismaRepository } from '../infrastructure/nurse.prisma.repository
 import { NurseService } from '../services/nurse.service';
 import { AuthPrismaRepository } from '../../auth/infrastructure/auth.prisma.repository';
 import { AuthService } from '../../auth/services/auth.service';
+import { MailService } from '../../../shared/mail/mail.service';
+import { env } from '../../../config/env';
 
 export class NurseController {
     private readonly commandBus = new CommandBus();
     private readonly queryBus = new QueryBus();
     private readonly repository = new NursePrismaRepository();
     private readonly authRepository = new AuthPrismaRepository();
-    private readonly authService = new AuthService(this.authRepository);
+    private readonly authService = new AuthService(
+        this.authRepository,
+        env.nodeEnv === 'test' ? undefined : new MailService(),
+    );
     private readonly service = new NurseService(this.repository, this.authService);
 
     async create(req: Request, res: Response) {

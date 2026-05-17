@@ -66,7 +66,7 @@ function createUser(overrides: Partial<User> = {}): User {
         normalizedUsername: overrides.normalizedUsername ?? 'JOHN',
         passwordHash: overrides.passwordHash ?? '$2b$10$abcdefghijklmnopqrstuv',
         phoneNumber: overrides.phoneNumber ?? null,
-        emailConfirmed: overrides.emailConfirmed ?? false,
+        emailConfirmed: overrides.emailConfirmed ?? true,
         lockoutEnabled: overrides.lockoutEnabled ?? true,
         accessFailedCount: overrides.accessFailedCount ?? 0,
         isActive: overrides.isActive ?? true,
@@ -356,6 +356,32 @@ describe('AuthService', () => {
         expect(result.accessToken).toBeTruthy();
     });
 
+    it('should reject login when email is not confirmed', async () => {
+        const passwordHash = await bcrypt.hash('password123', 10);
+        const existingUser = createUser({
+            id: 'unconfirmed-user-id',
+            email: 'unconfirmed@example.com',
+            normalizedEmail: 'UNCONFIRMED@EXAMPLE.COM',
+            passwordHash,
+            emailConfirmed: false,
+        });
+        const existingUserWithRoles = createUserWithRoles(existingUser, [
+            createUserRoleWithRole(existingUser.id, userRole),
+        ]);
+
+        repository.findUserByNormalizedEmail.mockResolvedValue(existingUserWithRoles);
+
+        await expect(
+            service.login({
+                identifier: 'unconfirmed@example.com',
+                password: 'password123',
+            }),
+        ).rejects.toMatchObject({
+            message: 'Email confirmation is required',
+            statusCode: 403,
+        });
+    });
+
     it('should increase failed count when password is wrong', async () => {
         const passwordHash = await bcrypt.hash('password123', 10);
         const existingUser = createUser({
@@ -383,6 +409,32 @@ describe('AuthService', () => {
         ).rejects.toBeInstanceOf(AppError);
 
         expect(repository.incrementAccessFailedCount).toHaveBeenCalledWith(existingUser.id);
+        expect(repository.resetAccessFailedCount).not.toHaveBeenCalled();
+    });
+
+    it('should not increase failed count for admin login failures', async () => {
+        const passwordHash = await bcrypt.hash('password123', 10);
+        const existingUser = createUser({
+            id: 'admin-wrong-pass-user-id',
+            email: 'admin@example.com',
+            normalizedEmail: 'ADMIN@EXAMPLE.COM',
+            passwordHash,
+            accessFailedCount: env.maxAccessFailedCount,
+        });
+        const existingUserWithRoles = createUserWithRoles(existingUser, [
+            createUserRoleWithRole(existingUser.id, adminRole),
+        ]);
+
+        repository.findUserByNormalizedEmail.mockResolvedValue(existingUserWithRoles);
+
+        await expect(
+            service.login({
+                identifier: 'admin@example.com',
+                password: 'not-correct',
+            }),
+        ).rejects.toBeInstanceOf(AppError);
+
+        expect(repository.incrementAccessFailedCount).not.toHaveBeenCalled();
         expect(repository.resetAccessFailedCount).not.toHaveBeenCalled();
     });
 
