@@ -15,6 +15,7 @@ admissionRoutes.get(
     '/active',
     asyncHandler(controller.getActive.bind(controller)),
 );
+admissionRoutes.get('/:id', asyncHandler(controller.getById.bind(controller)));
 admissionRoutes.post(
     '/',
     authorizeRoles('ADMIN', 'RECEPTIONIST'),

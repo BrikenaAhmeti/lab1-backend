@@ -6,8 +6,10 @@ import { DischargeAdmissionCommand } from '../application/commands/discharge-adm
 import { CreateAdmissionHandler } from '../application/handlers/create-admission.handler';
 import { DischargeAdmissionHandler } from '../application/handlers/discharge-admission.handler';
 import { GetActiveAdmissionsHandler } from '../application/handlers/get-active-admissions.handler';
+import { GetAdmissionByIdHandler } from '../application/handlers/get-admission-by-id.handler';
 import { GetAdmissionsHandler } from '../application/handlers/get-admissions.handler';
 import { GetActiveAdmissionsQuery } from '../application/queries/get-active-admissions.query';
+import { GetAdmissionByIdQuery } from '../application/queries/get-admission-by-id.query';
 import { GetAdmissionsQuery } from '../application/queries/get-admissions.query';
 import {
     validateAdmissionId,
@@ -46,6 +48,15 @@ export class AdmissionController {
         const queryData = validateGetAdmissionsQueryDto(req.query);
         const handler = new GetActiveAdmissionsHandler(this.service);
         const query = new GetActiveAdmissionsQuery(queryData);
+        const result = await this.queryBus.execute(handler, query);
+
+        return res.status(200).json(result);
+    }
+
+    async getById(req: Request, res: Response) {
+        const id = validateAdmissionId(req.params.id);
+        const handler = new GetAdmissionByIdHandler(this.service);
+        const query = new GetAdmissionByIdQuery(id);
         const result = await this.queryBus.execute(handler, query);
 
         return res.status(200).json(result);

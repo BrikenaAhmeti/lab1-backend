@@ -2545,6 +2545,21 @@ const swaggerDefinition = {
                 },
             },
         },
+        '/api/admissions/{id}': {
+            get: {
+                tags: ['Admissions'],
+                summary: 'Get admission details',
+                description: 'Returns one admission by id.',
+                security: bearerSecurity,
+                parameters: [idPathParameter('id', 'Admission id')],
+                responses: {
+                    '200': response('Admission retrieved successfully', { $ref: '#/components/schemas/Admission' }, admissionExample),
+                    '401': errorResponse(401, 'Unauthorized'),
+                    '404': errorResponse(404, 'Admission not found'),
+                    '500': errorResponse(500, 'Internal server error'),
+                },
+            },
+        },
         '/api/admissions/{id}/discharge': {
             put: {
                 tags: ['Admissions'],

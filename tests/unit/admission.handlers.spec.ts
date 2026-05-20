@@ -3,6 +3,8 @@ import { CreateAdmissionCommand } from '../../src/modules/admissions/application
 import { DischargeAdmissionCommand } from '../../src/modules/admissions/application/commands/discharge-admission.command';
 import { CreateAdmissionHandler } from '../../src/modules/admissions/application/handlers/create-admission.handler';
 import { DischargeAdmissionHandler } from '../../src/modules/admissions/application/handlers/discharge-admission.handler';
+import { GetAdmissionByIdHandler } from '../../src/modules/admissions/application/handlers/get-admission-by-id.handler';
+import { GetAdmissionByIdQuery } from '../../src/modules/admissions/application/queries/get-admission-by-id.query';
 import {
     AdmissionEntity,
     AdmissionReferenceEntity,
@@ -182,6 +184,22 @@ describe('Admission handlers', () => {
 
         expect(repository.create).not.toHaveBeenCalled();
         expect(repository.updateRoomStatus).not.toHaveBeenCalled();
+    });
+
+    it('should get an admission by id', async () => {
+        repository.findById.mockResolvedValue(createAdmission());
+
+        const service = new AdmissionService(repository);
+        const handler = new GetAdmissionByIdHandler(service);
+        const result = await handler.execute(
+            new GetAdmissionByIdQuery('admission-1'),
+        );
+
+        expect(repository.findById).toHaveBeenCalledWith('admission-1');
+        expect(result).toMatchObject({
+            id: 'admission-1',
+            status: 'ACTIVE',
+        });
     });
 
     it('should discharge an active admission and free the room capacity', async () => {

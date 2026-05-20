@@ -454,6 +454,28 @@ describe('Admission routes', () => {
             status: 'ACTIVE',
         });
 
+        const admissionId = createResponse.body.id as string;
+        const detailResponse = await request(app)
+            .get(`/api/admissions/${admissionId}`)
+            .set('Authorization', `Bearer ${adminToken}`);
+
+        expect(detailResponse.status).toBe(200);
+        expect(detailResponse.body).toMatchObject({
+            id: admissionId,
+            patientId,
+            roomId,
+            status: 'ACTIVE',
+            patient: {
+                id: patientId,
+                firstName: 'Ana',
+                lastName: 'Berisha',
+            },
+            room: {
+                id: roomId,
+                roomNumber: '101',
+            },
+        });
+
         const activeResponse = await request(app)
             .get('/api/admissions/active')
             .set('Authorization', `Bearer ${adminToken}`);
@@ -461,7 +483,6 @@ describe('Admission routes', () => {
         expect(activeResponse.status).toBe(200);
         expect(activeResponse.body.data).toHaveLength(1);
 
-        const admissionId = createResponse.body.id as string;
         const dischargeResponse = await request(app)
             .put(`/api/admissions/${admissionId}/discharge`)
             .set('Authorization', `Bearer ${receptionistToken}`)
@@ -587,5 +608,18 @@ describe('Admission routes', () => {
         expect(response.body.message).toBe('Forbidden');
         expect(response.body.success).toBe(false);
         expect(response.body.statusCode).toBe(403);
+    });
+
+    it('should return 404 when admission details are missing', async () => {
+        const adminToken = createAccessToken(['ADMIN']);
+
+        const response = await request(app)
+            .get('/api/admissions/missing-admission')
+            .set('Authorization', `Bearer ${adminToken}`);
+
+        expect(response.status).toBe(404);
+        expect(response.body.message).toBe('Admission not found');
+        expect(response.body.success).toBe(false);
+        expect(response.body.statusCode).toBe(404);
     });
 });

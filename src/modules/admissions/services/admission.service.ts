@@ -113,6 +113,10 @@ export class AdmissionService {
         });
     }
 
+    async getAdmissionById(id: string): Promise<AdmissionEntity> {
+        return this.ensureAdmissionExists(id);
+    }
+
     async dischargeAdmission(
         id: string,
         data: DischargeAdmissionDto,
