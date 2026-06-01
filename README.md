@@ -35,7 +35,7 @@ Backend API for the Hospital Management System (Lenda Laboratorike 1), built wit
 Create `.env` (or copy from `.env.example`) with:
 
 ```env
-PORT=3006
+PORT=3005
 NODE_ENV=development
 DATABASE_URL=
 JWT_ACCESS_SECRET=your_access_secret
@@ -43,7 +43,7 @@ JWT_REFRESH_SECRET=your_refresh_secret
 JWT_ACCESS_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
 BCRYPT_SALT_ROUNDS=12
-CORS_ALLOWED_ORIGINS=
+CORS_ALLOWED_ORIGINS=http://localhost:3001,http://127.0.0.1:3001,http://localhost:3000,http://127.0.0.1:3000
 REFRESH_TOKEN_COOKIE_NAME=
 MAX_ACCESS_FAILED_COUNT=
 ADMIN_FIRST_NAME=
