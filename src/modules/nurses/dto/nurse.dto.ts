@@ -15,8 +15,10 @@ import {
     normalizeOptionalString,
 } from '../../../shared/core/pagination';
 import {
+    NormalizeNullableString,
     NormalizeString,
     OptionalField,
+    OptionalNullableField,
 } from '../../../shared/validation/decorators';
 import {
     assertAtLeastOneField,
@@ -60,14 +62,14 @@ const nurseShiftSchema = z.preprocess(
 );
 
 export class CreateNurseDto {
-    @OptionalField()
+    @OptionalNullableField()
     @IsString({ message: 'User id is required' })
-    @NormalizeString()
+    @NormalizeNullableString()
     @IsNotEmpty({ message: 'User id is required' })
     @MaxLength(255, {
         message: 'User id must not exceed 255 characters',
     })
-    userId?: string;
+    userId?: string | null;
 
     @IsDefined({ message: 'First name is required' })
     @IsString({ message: 'First name is required' })
@@ -129,14 +131,14 @@ export class CreateNurseDto {
 }
 
 export class UpdateNurseDto {
-    @OptionalField()
+    @OptionalNullableField()
     @IsString({ message: 'User id is required' })
-    @NormalizeString()
+    @NormalizeNullableString()
     @IsNotEmpty({ message: 'User id is required' })
     @MaxLength(255, {
         message: 'User id must not exceed 255 characters',
     })
-    userId?: string;
+    userId?: string | null;
 
     @OptionalField()
     @IsString({ message: 'First name is required' })

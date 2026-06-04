@@ -21,7 +21,8 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
         id: string;
         patientId: string;
         doctorId: string;
-        appointmentDateTime: Date;
+        appointmentDate: Date;
+        appointmentTime: Date;
         status: string;
         notes: string | null;
         createdAt: Date;
@@ -65,45 +66,43 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
 
     function sortAppointments(items: MockAppointment[]) {
         return [...items].sort((left, right) => {
-            return left.appointmentDateTime.getTime()
-                - right.appointmentDateTime.getTime();
+            const dateDiff = left.appointmentDate.getTime()
+                - right.appointmentDate.getTime();
+
+            if (dateDiff !== 0) {
+                return dateDiff;
+            }
+
+            return left.appointmentTime.getTime()
+                - right.appointmentTime.getTime();
         });
     }
 
-    function matchesDateTime(
+    function matchesDate(
         appointment: MockAppointment,
-        value?: Date | { gte?: Date; lt?: Date },
+        value?: Date,
     ) {
         if (!value) {
             return true;
         }
 
-        if (value instanceof Date) {
-            return sameDate(appointment.appointmentDateTime, value);
+        return sameDate(appointment.appointmentDate, value);
+    }
+
+    function matchesTime(appointment: MockAppointment, value?: Date) {
+        if (!value) {
+            return true;
         }
 
-        if (
-            value.gte
-            && appointment.appointmentDateTime.getTime() < value.gte.getTime()
-        ) {
-            return false;
-        }
-
-        if (
-            value.lt
-            && appointment.appointmentDateTime.getTime() >= value.lt.getTime()
-        ) {
-            return false;
-        }
-
-        return true;
+        return sameDate(appointment.appointmentTime, value);
     }
 
     function filterAppointments(where?: {
         id?: string;
         doctorId?: string;
         patientId?: string;
-        appointmentDateTime?: Date | { gte?: Date; lt?: Date };
+        appointmentDate?: Date;
+        appointmentTime?: Date;
         status?: string | { not: string };
     }) {
         return appointmentStore.filter((appointment) => {
@@ -119,7 +118,11 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                 return false;
             }
 
-            if (!matchesDateTime(appointment, where?.appointmentDateTime)) {
+            if (!matchesDate(appointment, where?.appointmentDate)) {
+                return false;
+            }
+
+            if (!matchesTime(appointment, where?.appointmentTime)) {
                 return false;
             }
 
@@ -196,7 +199,7 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                     where?: {
                         doctorId?: string;
                         patientId?: string;
-                        appointmentDateTime?: { gte?: Date; lt?: Date };
+                        appointmentDate?: Date;
                         status?: string;
                     };
                 }) => {
@@ -220,14 +223,16 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                 }: {
                     where: {
                         doctorId?: string;
-                        appointmentDateTime?: Date;
+                        appointmentDate?: Date;
+                        appointmentTime?: Date;
                         status?: { not: string };
                         id?: { not: string };
                     };
                 }) => {
                     return filterAppointments({
                         doctorId: where.doctorId,
-                        appointmentDateTime: where.appointmentDateTime,
+                        appointmentDate: where.appointmentDate,
+                        appointmentTime: where.appointmentTime,
                         status: where.status,
                     })
                         .filter((appointment) => {
@@ -344,14 +349,16 @@ const prismaMock = jest.requireMock('../../src/infrastructure/db/prisma') as {
     __seedAppointment: (data: {
         patientId: string;
         doctorId: string;
-        appointmentDateTime: Date;
+        appointmentDate: Date;
+        appointmentTime: Date;
         status: string;
         notes: string | null;
     }) => {
         id: string;
         patientId: string;
         doctorId: string;
-        appointmentDateTime: Date;
+        appointmentDate: Date;
+        appointmentTime: Date;
         status: string;
         notes: string | null;
         createdAt: Date;
@@ -430,7 +437,8 @@ describe('Appointment routes', () => {
         prismaMock.__seedAppointment({
             patientId: patientTwo.id,
             doctorId: doctor.id,
-            appointmentDateTime: new Date(`${todayDate}T16:00:00.000Z`),
+            appointmentDate: new Date(`${todayDate}T00:00:00.000Z`),
+            appointmentTime: new Date(`${todayDate}T16:00:00.000Z`),
             status: 'Scheduled',
             notes: 'Dashboard appointment',
         });

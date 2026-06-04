@@ -26,29 +26,18 @@ const appointmentInclude = {
     },
 } as const;
 
-function toAppointmentDate(appointmentDateTime: Date): Date {
-    return new Date(`${appointmentDateTime.toISOString().slice(0, 10)}T00:00:00.000Z`);
+type AppointmentRow = Omit<AppointmentEntity, 'appointmentTime'> & {
+    appointmentTime: Date;
+};
+
+function toAppointmentTime(appointmentTime: Date): string {
+    return appointmentTime.toISOString().slice(11, 16);
 }
 
-function toAppointmentTime(appointmentDateTime: Date): string {
-    return appointmentDateTime.toISOString().slice(11, 16);
-}
-
-function addUtcDay(date: Date): Date {
-    const nextDate = new Date(date);
-
-    nextDate.setUTCDate(nextDate.getUTCDate() + 1);
-
-    return nextDate;
-}
-
-function toAppointmentEntity(
-    appointment: Omit<AppointmentEntity, 'appointmentDate' | 'appointmentTime'>,
-): AppointmentEntity {
+function toAppointmentEntity(appointment: AppointmentRow): AppointmentEntity {
     return {
         ...appointment,
-        appointmentDate: toAppointmentDate(appointment.appointmentDateTime),
-        appointmentTime: toAppointmentTime(appointment.appointmentDateTime),
+        appointmentTime: toAppointmentTime(appointment.appointmentTime),
     };
 }
 
@@ -67,10 +56,7 @@ export class AppointmentPrismaRepository implements AppointmentRepository {
             where: {
                 ...(params.appointmentDate
                     ? {
-                        appointmentDateTime: {
-                            gte: params.appointmentDate,
-                            lt: addUtcDay(params.appointmentDate),
-                        },
+                        appointmentDate: params.appointmentDate,
                     }
                     : {}),
                 ...(params.doctorId ? { doctorId: params.doctorId } : {}),
@@ -80,7 +66,10 @@ export class AppointmentPrismaRepository implements AppointmentRepository {
             include: appointmentInclude,
             orderBy: [
                 {
-                    appointmentDateTime: 'asc',
+                    appointmentDate: 'asc',
+                },
+                {
+                    appointmentTime: 'asc',
                 },
             ],
         });
@@ -125,7 +114,8 @@ export class AppointmentPrismaRepository implements AppointmentRepository {
         return prisma.appointment.findFirst({
             where: {
                 doctorId: params.doctorId,
-                appointmentDateTime: params.appointmentDateTime,
+                appointmentDate: params.appointmentDate,
+                appointmentTime: params.appointmentTime,
                 status: {
                     not: 'Cancelled',
                 },

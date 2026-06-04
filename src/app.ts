@@ -27,7 +27,14 @@ export function createApp() {
     const app = express();
 
     app.use(helmet({
-        contentSecurityPolicy: false,
+        contentSecurityPolicy: {
+            useDefaults: true,
+            directives: {
+                'script-src': ["'self'", "'unsafe-inline'"],
+                'style-src': ["'self'", "'unsafe-inline'"],
+                'img-src': ["'self'", 'data:'],
+            },
+        },
     }));
     app.use(cors({
         origin(origin, callback) {

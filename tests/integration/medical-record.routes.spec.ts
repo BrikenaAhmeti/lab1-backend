@@ -23,6 +23,7 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
         doctorId: string;
         diagnosis: string;
         treatment: string;
+        prescriptionsText: string | null;
         recordDate: Date;
         createdAt: Date;
         updatedAt: Date;
@@ -343,6 +344,7 @@ const prismaMock = jest.requireMock('../../src/infrastructure/db/prisma') as {
         doctorId: string;
         diagnosis: string;
         treatment: string;
+        prescriptionsText: string | null;
         recordDate: Date;
     }) => {
         id: string;
@@ -350,6 +352,7 @@ const prismaMock = jest.requireMock('../../src/infrastructure/db/prisma') as {
         doctorId: string;
         diagnosis: string;
         treatment: string;
+        prescriptionsText: string | null;
         recordDate: Date;
         createdAt: Date;
         updatedAt: Date;
@@ -429,6 +432,7 @@ describe('Medical record routes', () => {
             doctorId: doctor.id,
             diagnosis: 'Older diagnosis',
             treatment: 'Older treatment',
+            prescriptionsText: 'Older summary',
             recordDate: new Date('2026-04-20T00:00:00.000Z'),
         });
 
@@ -454,11 +458,15 @@ describe('Medical record routes', () => {
                 doctor_id: doctor.id,
                 diagnoza: 'Flu',
                 trajtimi: 'Rest and hydration',
+                recetat: 'Summary only; detailed medicines stay in prescriptions.',
                 data: '2026-05-02',
             });
 
         expect(createResponse.status).toBe(201);
         expect(createResponse.body.diagnosis).toBe('Flu');
+        expect(createResponse.body.prescriptionsText).toBe(
+            'Summary only; detailed medicines stay in prescriptions.',
+        );
         expect(createResponse.body.patient.firstName).toBe('Ana');
 
         const medicalRecordId = createResponse.body.id as string;
@@ -493,10 +501,12 @@ describe('Medical record routes', () => {
             .set('Authorization', `Bearer ${adminToken}`)
             .send({
                 treatment: ' Updated treatment ',
+                prescriptionsText: ' Updated summary ',
             });
 
         expect(updateResponse.status).toBe(200);
         expect(updateResponse.body.treatment).toBe('Updated treatment');
+        expect(updateResponse.body.prescriptionsText).toBe('Updated summary');
 
         prismaMock.__seedPrescription({
             medicalRecordId,

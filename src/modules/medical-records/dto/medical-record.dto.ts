@@ -12,8 +12,10 @@ import {
 } from '../../../shared/core/pagination';
 import {
     IsDateOnlyString,
+    NormalizeNullableString,
     NormalizeString,
     OptionalField,
+    OptionalNullableField,
 } from '../../../shared/validation/decorators';
 import {
     assertAtLeastOneField,
@@ -54,6 +56,10 @@ function normalizeMedicalRecordInput(input: unknown) {
         doctorId: value.doctorId ?? value.doctor_id,
         diagnosis: value.diagnosis ?? value.diagnoza,
         treatment: value.treatment ?? value.trajtimi,
+        prescriptionsText:
+            value.prescriptionsText
+            ?? value.prescriptions_text
+            ?? value.recetat,
         date: value.date ?? value.data,
     };
 }
@@ -121,6 +127,14 @@ export class CreateMedicalRecordDto {
     })
     treatment!: string;
 
+    @OptionalNullableField()
+    @IsString({ message: 'Prescription summary must be a string' })
+    @NormalizeNullableString('prescriptions_text')
+    @MaxLength(4000, {
+        message: 'Prescription summary must not exceed 4000 characters',
+    })
+    prescriptionsText?: string | null;
+
     @IsDefined({ message: 'Date is required' })
     @IsString({ message: 'Date is required' })
     @NormalizeString('data')
@@ -172,6 +186,14 @@ export class UpdateMedicalRecordDto {
     })
     treatment?: string;
 
+    @OptionalNullableField()
+    @IsString({ message: 'Prescription summary must be a string' })
+    @NormalizeNullableString('prescriptions_text')
+    @MaxLength(4000, {
+        message: 'Prescription summary must not exceed 4000 characters',
+    })
+    prescriptionsText?: string | null;
+
     @OptionalField()
     @IsString({ message: 'Date is required' })
     @NormalizeString('data')
@@ -211,6 +233,7 @@ export function validateUpdateMedicalRecordDto(
             'doctorId',
             'diagnosis',
             'treatment',
+            'prescriptionsText',
             'date',
         ],
     );

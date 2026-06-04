@@ -398,6 +398,7 @@ const medicalRecords = [
         doctorKey: 'dr-mira',
         diagnosis: 'Acute respiratory infection',
         treatment: 'Observation, hydration, and follow-up if fever persists',
+        prescriptionsText: 'Fever relief and hydration support summary',
         recordDate: atDateTime(today, '09:35'),
         prescriptions: [
             ['seed-prescription-001', 'Paracetamol', '500mg', '3 days', 'Take after meals if temperature is above 38 C'],
@@ -409,6 +410,7 @@ const medicalRecords = [
         doctorKey: 'dr-arben',
         diagnosis: 'Hypertension follow-up',
         treatment: 'Continue therapy and repeat blood pressure log in two weeks',
+        prescriptionsText: 'Continue antihypertensive therapy as structured below',
         recordDate: atDateTime(today, '10:05'),
         prescriptions: [
             ['seed-prescription-002', 'Amlodipine', '5mg', '30 days', 'Take once every morning'],
@@ -420,6 +422,7 @@ const medicalRecords = [
         doctorKey: 'dr-elira',
         diagnosis: 'Viral gastroenteritis',
         treatment: 'Oral rehydration and light diet',
+        prescriptionsText: 'Hydration replacement summary',
         recordDate: atDateTime(today, '12:05'),
         prescriptions: [
             ['seed-prescription-003', 'ORS', '1 sachet', '2 days', 'Dissolve in clean water after each loose stool'],
@@ -431,6 +434,7 @@ const medicalRecords = [
         doctorKey: 'dr-ilir',
         diagnosis: 'Ankle sprain',
         treatment: 'Compression, elevation, and limited weight bearing',
+        prescriptionsText: 'Pain management summary',
         recordDate: atDateTime(tomorrow, '14:40'),
         prescriptions: [
             ['seed-prescription-004', 'Ibuprofen', '400mg', '5 days', 'Take with food, maximum three times daily'],
@@ -491,6 +495,10 @@ function atDate(date: string) {
 
 function atDateTime(date: string, time: string) {
     return new Date(`${date}T${time}:00.000Z`);
+}
+
+function atTime(time: string) {
+    return new Date(`1970-01-01T${time}:00.000Z`);
 }
 
 function buildAppointments(
@@ -816,7 +824,8 @@ async function seedHospitalData() {
             update: {
                 patientId: appointment.patientId,
                 doctorId,
-                appointmentDateTime: atDateTime(appointment.date, appointment.time),
+                appointmentDate: atDate(appointment.date),
+                appointmentTime: atTime(appointment.time),
                 status: 'Scheduled',
                 notes: appointment.notes,
             },
@@ -824,7 +833,8 @@ async function seedHospitalData() {
                 id: appointment.id,
                 patientId: appointment.patientId,
                 doctorId,
-                appointmentDateTime: atDateTime(appointment.date, appointment.time),
+                appointmentDate: atDate(appointment.date),
+                appointmentTime: atTime(appointment.time),
                 status: 'Scheduled',
                 notes: appointment.notes,
             },
@@ -876,6 +886,7 @@ async function seedHospitalData() {
                 doctorId,
                 diagnosis: record.diagnosis,
                 treatment: record.treatment,
+                prescriptionsText: record.prescriptionsText,
                 recordDate: record.recordDate,
             },
             create: {
@@ -884,6 +895,7 @@ async function seedHospitalData() {
                 doctorId,
                 diagnosis: record.diagnosis,
                 treatment: record.treatment,
+                prescriptionsText: record.prescriptionsText,
                 recordDate: record.recordDate,
             },
         });

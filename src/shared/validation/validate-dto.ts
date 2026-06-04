@@ -27,6 +27,16 @@ export function validateDto<T extends object>(
         throw new AppError(errors[0].message, 400, errors);
     }
 
+    const unsafeMarkupErrors = findUnsafeMarkupErrors(dto);
+
+    if (unsafeMarkupErrors.length > 0) {
+        throw new AppError(
+            unsafeMarkupErrors[0].message,
+            400,
+            unsafeMarkupErrors,
+        );
+    }
+
     return dto;
 }
 
@@ -89,4 +99,54 @@ function dedupeErrors(errors: AppErrorDetail[]) {
 
         return true;
     });
+}
+
+const unsafeMarkupPattern = /<\/?[a-z][^>]*>|(?:javascript|vbscript):|data:text\/html/i;
+const secretFieldPattern = /(?:password|token|secret|credential)/i;
+
+function findUnsafeMarkupErrors(
+    value: unknown,
+    path = 'body',
+): AppErrorDetail[] {
+    if (value === null || value === undefined) {
+        return [];
+    }
+
+    if (typeof value === 'string') {
+        if (isSecretField(path) || !unsafeMarkupPattern.test(value)) {
+            return [];
+        }
+
+        return [
+            {
+                field: path,
+                message: 'HTML or script content is not allowed',
+            },
+        ];
+    }
+
+    if (Array.isArray(value)) {
+        return value.flatMap((item, index) => findUnsafeMarkupErrors(
+            item,
+            `${path}[${index}]`,
+        ));
+    }
+
+    if (typeof value === 'object' && !(value instanceof Date)) {
+        return Object.entries(value as Record<string, unknown>).flatMap(
+            ([key, nestedValue]) => findUnsafeMarkupErrors(
+                nestedValue,
+                `${path}.${key}`,
+            ),
+        );
+    }
+
+    return [];
+}
+
+function isSecretField(path: string) {
+    const normalizedPath = path.replace(/\[\d+\]/g, '');
+    const fieldName = normalizedPath.split('.').pop() ?? normalizedPath;
+
+    return secretFieldPattern.test(fieldName);
 }

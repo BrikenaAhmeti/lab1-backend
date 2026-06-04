@@ -200,7 +200,6 @@ const appointmentExample = {
     id: 'appointment-1',
     patientId: 'patient-1',
     doctorId: 'doctor-1',
-    appointmentDateTime: '2026-05-09T10:30:00.000Z',
     appointmentDate: '2026-05-09T00:00:00.000Z',
     appointmentTime: '10:30',
     status: 'Scheduled',
@@ -226,6 +225,7 @@ const medicalRecordExample = {
     doctorId: 'doctor-1',
     diagnosis: 'Seasonal flu',
     treatment: 'Rest and hydration',
+    prescriptionsText: 'General prescription summary; detailed medicines are stored as prescriptions.',
     recordDate: '2026-05-08T00:00:00.000Z',
     patient: {
         id: 'patient-1',
@@ -485,7 +485,7 @@ const swaggerDefinition = {
                 type: 'object',
                 properties: {
                     id: { type: 'string' },
-                    userId: { type: 'string' },
+                    userId: { type: 'string', nullable: true },
                     firstName: { type: 'string' },
                     lastName: { type: 'string' },
                     departmentId: { type: 'string' },
@@ -508,9 +508,8 @@ const swaggerDefinition = {
                     id: { type: 'string' },
                     patientId: { type: 'string' },
                     doctorId: { type: 'string' },
-                    appointmentDateTime: { type: 'string', format: 'date-time' },
                     appointmentDate: { type: 'string', format: 'date-time' },
-                    appointmentTime: { type: 'string' },
+                    appointmentTime: { type: 'string', example: '10:30' },
                     status: { type: 'string', enum: ['Scheduled', 'Completed', 'Cancelled'] },
                     notes: { type: 'string', nullable: true },
                     patient: {
@@ -542,6 +541,7 @@ const swaggerDefinition = {
                     doctorId: { type: 'string' },
                     diagnosis: { type: 'string' },
                     treatment: { type: 'string' },
+                    prescriptionsText: { type: 'string', nullable: true },
                     recordDate: { type: 'string', format: 'date-time' },
                     patient: {
                         type: 'object',
@@ -1969,7 +1969,8 @@ const swaggerDefinition = {
                         properties: {
                             userId: {
                                 type: 'string',
-                                description: 'Optional existing user id. If omitted, a linked nurse user is auto-created.',
+                                nullable: true,
+                                description: 'Optional existing user id when the nurse needs portal login.',
                             },
                             firstName: { type: 'string' },
                             lastName: { type: 'string' },
@@ -1978,7 +1979,7 @@ const swaggerDefinition = {
                             email: {
                                 type: 'string',
                                 format: 'email',
-                                description: 'Optional email for the auto-created linked user.',
+                                description: 'Optional email when creating a new linked nurse user.',
                             },
                             username: {
                                 type: 'string',
@@ -2037,6 +2038,7 @@ const swaggerDefinition = {
                         properties: {
                             firstName: { type: 'string' },
                             lastName: { type: 'string' },
+                            userId: { type: 'string', nullable: true },
                             departmentId: { type: 'string' },
                             shift: { type: 'string', enum: ['Morning', 'Evening', 'Night'] },
                         },
@@ -2252,6 +2254,11 @@ const swaggerDefinition = {
                             doctorId: { type: 'string' },
                             diagnosis: { type: 'string' },
                             treatment: { type: 'string' },
+                            prescriptionsText: {
+                                type: 'string',
+                                nullable: true,
+                                description: 'General prescription summary only. Store each medicine in Prescription rows.',
+                            },
                             date: { type: 'string', example: '2026-05-08' },
                         },
                     },
@@ -2260,6 +2267,7 @@ const swaggerDefinition = {
                         doctorId: 'doctor-1',
                         diagnosis: 'Seasonal flu',
                         treatment: 'Rest and hydration',
+                        prescriptionsText: 'General prescription summary',
                         date: '2026-05-08',
                     },
                 ),
@@ -2302,6 +2310,11 @@ const swaggerDefinition = {
                             doctorId: { type: 'string' },
                             diagnosis: { type: 'string' },
                             treatment: { type: 'string' },
+                            prescriptionsText: {
+                                type: 'string',
+                                nullable: true,
+                                description: 'General prescription summary only. Store each medicine in Prescription rows.',
+                            },
                             date: { type: 'string', example: '2026-05-08' },
                         },
                     },

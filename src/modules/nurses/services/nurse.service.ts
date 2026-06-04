@@ -40,17 +40,18 @@ export class NurseService {
     ) { }
 
     async createNurse(data: CreateNurseDto): Promise<NurseEntity> {
-        const providedUserId = data.userId?.trim();
+        const providedUserId = data.userId === null ? null : data.userId?.trim();
         const departmentId = data.departmentId.trim();
         const firstName = data.firstName.trim();
         const lastName = data.lastName.trim();
         const email = data.email?.trim();
         const username = data.username?.trim();
         const password = data.password?.trim();
+        const shouldProvisionUser = !providedUserId && Boolean(email || username || password);
 
         await this.ensureDepartmentExists(departmentId);
 
-        let userId = providedUserId;
+        let userId = providedUserId ?? null;
         let shouldCleanupProvisionedUser = false;
 
         if (userId) {
@@ -70,7 +71,7 @@ export class NurseService {
             }
 
             await this.userProvisioningService.ensureUserHasRole(userId, 'NURSE');
-        } else {
+        } else if (shouldProvisionUser) {
             const provisionedUser = await this.userProvisioningService.provisionNurseUser({
                 firstName,
                 lastName,
@@ -133,23 +134,25 @@ export class NurseService {
         }
 
         if (data.userId !== undefined) {
-            const userId = data.userId.trim();
+            const userId = data.userId === null ? null : data.userId.trim();
 
-            await this.ensureUserExists(userId);
+            if (userId) {
+                await this.ensureUserExists(userId);
 
-            const nurseWithSameUser = await this.nurseRepository.findByUserId(userId);
+                const nurseWithSameUser = await this.nurseRepository.findByUserId(userId);
 
-            if (nurseWithSameUser && nurseWithSameUser.id !== id) {
-                throw new AppError('Nurse already exists for this user', 409);
+                if (nurseWithSameUser && nurseWithSameUser.id !== id) {
+                    throw new AppError('Nurse already exists for this user', 409);
+                }
+
+                await this.userProvisioningService.ensureUserHasRole(userId, 'NURSE');
             }
-
-            await this.userProvisioningService.ensureUserHasRole(userId, 'NURSE');
             nextUserId = userId;
         }
 
         const updateData: UpdateNurseData = {
             ...(data.userId !== undefined
-                ? { userId: data.userId.trim() }
+                ? { userId: nextUserId }
                 : {}),
             ...(data.firstName !== undefined
                 ? { firstName: data.firstName.trim() }

@@ -5,7 +5,7 @@ import {
 } from './nurse.entity';
 
 export interface CreateNurseData {
-    userId: string;
+    userId: string | null;
     firstName: string;
     lastName: string;
     departmentId: string;
@@ -13,7 +13,7 @@ export interface CreateNurseData {
 }
 
 export interface UpdateNurseData {
-    userId?: string;
+    userId?: string | null;
     firstName?: string;
     lastName?: string;
     departmentId?: string;

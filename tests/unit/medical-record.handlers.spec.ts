@@ -74,6 +74,7 @@ function createMedicalRecord(
         doctorId: overrides.doctorId ?? 'doctor-1',
         diagnosis: overrides.diagnosis ?? 'Hypertension',
         treatment: overrides.treatment ?? 'Lifestyle changes',
+        prescriptionsText: overrides.prescriptionsText ?? 'General prescription summary',
         recordDate: overrides.recordDate ?? new Date('2026-05-01T00:00:00.000Z'),
         patient: overrides.patient ?? createPatient(),
         doctor: overrides.doctor ?? createDoctor(),
@@ -116,6 +117,7 @@ describe('Medical record handlers', () => {
             doctorId: ' doctor-1 ',
             diagnosis: ' Hypertension ',
             treatment: ' Lifestyle changes ',
+            prescriptionsText: ' General summary ',
             date: '2026-05-01',
         });
 
@@ -128,6 +130,7 @@ describe('Medical record handlers', () => {
             doctorId: 'doctor-1',
             diagnosis: 'Hypertension',
             treatment: 'Lifestyle changes',
+            prescriptionsText: 'General summary',
             recordDate: new Date('2026-05-01T00:00:00.000Z'),
         });
         expect(result.id).toBe('medical-record-1');
@@ -249,6 +252,7 @@ describe('Medical record handlers', () => {
         const handler = new UpdateMedicalRecordHandler(service);
         const command = new UpdateMedicalRecordCommand('medical-record-1', {
             treatment: ' Updated treatment ',
+            prescriptionsText: ' Updated summary ',
         });
 
         const result = await handler.execute(command);
@@ -256,6 +260,7 @@ describe('Medical record handlers', () => {
         expect(repository.findById).toHaveBeenCalledWith('medical-record-1');
         expect(repository.update).toHaveBeenCalledWith('medical-record-1', {
             treatment: 'Updated treatment',
+            prescriptionsText: 'Updated summary',
         });
         expect(result.treatment).toBe('Updated treatment');
     });

@@ -28,14 +28,16 @@ Backend API for the Hospital Management System (Lenda Laboratorike 1), built wit
 
 ## ERD Requirements Coverage
 - Patients store `firstName`, `lastName`, `dateOfBirth`, `gender`, `phoneNumber`, `address`, `bloodType`, and optional `userId` for portal login. Patient deletion is soft delete through `isDeleted`.
-- Doctors and nurses each belong to one department and have required `userId` links to identity users.
+- Doctors and nurses each belong to one department. Doctor `userId` is required; nurse `userId` is optional for nurses who need portal login.
 - Departments connect to doctors, nurses, and rooms.
-- Appointments use `appointmentDateTime` as the canonical date/time field and keep API date/time aliases for frontend compatibility.
-- Medical records store diagnosis, treatment, doctor, patient, and record date. Detailed prescription data is stored only in `Prescription`.
+- Appointments keep the mandatory `appointmentDate` and `appointmentTime` fields; `appointmentTime` is stored with a database time type.
+- Medical records store diagnosis, treatment, doctor, patient, record date, and `prescriptionsText` as a general summary. Detailed medicine data is stored only in `Prescription`.
 - Prescriptions belong to medical records, with one medical record supporting many prescriptions.
 - Rooms have unique `roomNumber`, department, type, status, and positive capacity.
 - Admissions connect patients to rooms and enforce consistent admission/discharge status.
 - Invoices connect to patients and can optionally link to one appointment or one admission.
+- `InvoiceItem` stores optional normalized invoice line details.
+- `DoctorSchedule` stores optional normalized doctor availability windows.
 - Identity keeps users, roles, user roles, claims, tokens, refresh tokens, and base roles `ADMIN`, `DOCTOR`, `NURSE`, `RECEPTIONIST`, and `PATIENT`.
 - Dashboard queries support today's appointments, available rooms, active admissions, and basic module reporting.
 
@@ -43,7 +45,7 @@ Backend API for the Hospital Management System (Lenda Laboratorike 1), built wit
 - Unique room numbers and positive room capacity.
 - Discharge date cannot be earlier than admission date.
 - Active admissions must not have a discharge date; discharged admissions must have one.
-- A doctor cannot have two non-cancelled appointments at the same `appointmentDateTime`.
+- A doctor cannot have two non-cancelled appointments at the same `appointmentDate` and `appointmentTime`.
 - Invoice amount must be greater than zero.
 - Invoice appointment/admission links are validated against the same patient and only one care-event link can be set at a time.
 

@@ -63,29 +63,20 @@ function toAmount(value: { toNumber: () => number } | number | string): number {
     return value.toNumber();
 }
 
-function addUtcDay(date: Date): Date {
-    const nextDate = new Date(date);
+type DashboardAppointmentRow = Omit<DashboardTodayAppointmentEntity, 'appointmentTime'> & {
+    appointmentTime: Date;
+};
 
-    nextDate.setUTCDate(nextDate.getUTCDate() + 1);
-
-    return nextDate;
-}
-
-function toAppointmentDate(appointmentDateTime: Date): Date {
-    return new Date(`${appointmentDateTime.toISOString().slice(0, 10)}T00:00:00.000Z`);
-}
-
-function toAppointmentTime(appointmentDateTime: Date): string {
-    return appointmentDateTime.toISOString().slice(11, 16);
+function toAppointmentTime(appointmentTime: Date): string {
+    return appointmentTime.toISOString().slice(11, 16);
 }
 
 function toAppointmentEntity(
-    appointment: Omit<DashboardTodayAppointmentEntity, 'appointmentDate' | 'appointmentTime'>,
+    appointment: DashboardAppointmentRow,
 ): DashboardTodayAppointmentEntity {
     return {
         ...appointment,
-        appointmentDate: toAppointmentDate(appointment.appointmentDateTime),
-        appointmentTime: toAppointmentTime(appointment.appointmentDateTime),
+        appointmentTime: toAppointmentTime(appointment.appointmentTime),
     };
 }
 
@@ -122,7 +113,6 @@ function toAdmissionEntity(admission: {
 
 export class DashboardPrismaRepository implements DashboardRepository {
     async getStats(date: Date): Promise<DashboardStatsEntity> {
-        const nextDate = addUtcDay(date);
         const [
             appointmentsToday,
             availableRooms,
@@ -133,10 +123,7 @@ export class DashboardPrismaRepository implements DashboardRepository {
         ] = await Promise.all([
             prisma.appointment.count({
                 where: {
-                    appointmentDateTime: {
-                        gte: date,
-                        lt: nextDate,
-                    },
+                    appointmentDate: date,
                 },
             }),
             prisma.room.count({
@@ -187,15 +174,12 @@ export class DashboardPrismaRepository implements DashboardRepository {
     ): Promise<DashboardTodayAppointmentEntity[]> {
         const appointments = await prisma.appointment.findMany({
             where: {
-                appointmentDateTime: {
-                    gte: date,
-                    lt: addUtcDay(date),
-                },
+                appointmentDate: date,
             },
             include: appointmentInclude,
             orderBy: [
                 {
-                    appointmentDateTime: 'asc',
+                    appointmentTime: 'asc',
                 },
             ],
         });

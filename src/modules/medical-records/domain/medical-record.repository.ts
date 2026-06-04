@@ -9,6 +9,7 @@ export interface CreateMedicalRecordData {
     doctorId: string;
     diagnosis: string;
     treatment: string;
+    prescriptionsText: string | null;
     recordDate: Date;
 }
 
@@ -17,6 +18,7 @@ export interface UpdateMedicalRecordData {
     doctorId?: string;
     diagnosis?: string;
     treatment?: string;
+    prescriptionsText?: string | null;
     recordDate?: Date;
 }
 

@@ -42,6 +42,9 @@ export class MedicalRecordService {
             doctorId,
             diagnosis: data.diagnosis.trim(),
             treatment: data.treatment.trim(),
+            prescriptionsText: this.normalizePrescriptionsText(
+                data.prescriptionsText,
+            ),
             recordDate: this.toRecordDate(data.date),
         });
     }
@@ -96,6 +99,13 @@ export class MedicalRecordService {
                 : {}),
             ...(data.treatment !== undefined
                 ? { treatment: data.treatment.trim() }
+                : {}),
+            ...(data.prescriptionsText !== undefined
+                ? {
+                    prescriptionsText: this.normalizePrescriptionsText(
+                        data.prescriptionsText,
+                    ),
+                }
                 : {}),
             ...(data.date !== undefined
                 ? { recordDate: this.toRecordDate(data.date) }
@@ -158,5 +168,21 @@ export class MedicalRecordService {
 
     private toRecordDate(date: string): Date {
         return new Date(`${date}T00:00:00.000Z`);
+    }
+
+    private normalizePrescriptionsText(
+        prescriptionsText: string | null | undefined,
+    ): string | null {
+        if (prescriptionsText === null) {
+            return null;
+        }
+
+        const value = prescriptionsText?.trim();
+
+        if (!value) {
+            return null;
+        }
+
+        return value;
     }
 }
