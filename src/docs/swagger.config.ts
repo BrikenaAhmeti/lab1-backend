@@ -378,11 +378,12 @@ const swaggerDefinition = {
     },
     servers: [
         {
-            url: 'http://localhost:3005',
+            url: 'http://localhost:3011',
             description: 'Local development server',
         },
     ],
     tags: [
+        { name: 'Health' },
         { name: 'Auth' },
         { name: 'Patients' },
         { name: 'Departments' },
@@ -769,6 +770,25 @@ const swaggerDefinition = {
         },
     },
     paths: {
+        '/health': {
+            get: {
+                tags: ['Health'],
+                summary: 'Health check',
+                description: 'Returns a simple status response when the API process is running.',
+                responses: {
+                    '200': response('API is healthy', {
+                        type: 'object',
+                        properties: {
+                            status: { type: 'string', example: 'ok' },
+                        },
+                        required: ['status'],
+                    }, {
+                        status: 'ok',
+                    }),
+                    '500': errorResponse(500, 'Internal server error'),
+                },
+            },
+        },
         '/api/auth/register': {
             post: {
                 tags: ['Auth'],
@@ -859,6 +879,57 @@ const swaggerDefinition = {
                 },
             },
         },
+        '/api/auth/confirm-email': {
+            post: {
+                tags: ['Auth'],
+                summary: 'Confirm email',
+                description: 'Confirms a user email address using the email confirmation token.',
+                requestBody: requestBody(
+                    'Email confirmation payload',
+                    {
+                        type: 'object',
+                        required: ['token'],
+                        properties: {
+                            token: { type: 'string' },
+                        },
+                    },
+                    {
+                        token: 'email-confirmation-token',
+                    },
+                ),
+                responses: {
+                    '200': response('Email confirmed successfully', { $ref: '#/components/schemas/AuthUser' }, authUserExample),
+                    '400': errorResponse(400, 'Invalid or expired email confirmation token'),
+                    '404': errorResponse(404, 'User not found'),
+                    '500': errorResponse(500, 'Internal server error'),
+                },
+            },
+        },
+        '/api/auth/resend-confirmation-email': {
+            post: {
+                tags: ['Auth'],
+                summary: 'Resend confirmation email',
+                description: 'Sends a new confirmation email if the user exists and the email address is not already confirmed.',
+                requestBody: requestBody(
+                    'Resend confirmation email payload',
+                    {
+                        type: 'object',
+                        required: ['email'],
+                        properties: {
+                            email: { type: 'string', format: 'email' },
+                        },
+                    },
+                    {
+                        email: 'admin@example.com',
+                    },
+                ),
+                responses: {
+                    '204': noContentResponse('Confirmation email queued when applicable'),
+                    '400': errorResponse(400, 'Validation failed'),
+                    '500': errorResponse(500, 'Internal server error'),
+                },
+            },
+        },
         '/api/auth/logout': {
             post: {
                 tags: ['Auth'],
@@ -905,6 +976,35 @@ const swaggerDefinition = {
                 responses: {
                     '200': response('Authenticated user loaded successfully', { $ref: '#/components/schemas/AuthUser' }, authUserExample),
                     '401': errorResponse(401, 'Unauthorized'),
+                    '500': errorResponse(500, 'Internal server error'),
+                },
+            },
+        },
+        '/api/auth/change-password': {
+            post: {
+                tags: ['Auth'],
+                summary: 'Change password',
+                description: 'Changes the current authenticated user password and clears the refresh token cookie.',
+                security: bearerSecurity,
+                requestBody: requestBody(
+                    'Change password payload',
+                    {
+                        type: 'object',
+                        required: ['currentPassword', 'newPassword'],
+                        properties: {
+                            currentPassword: { type: 'string', minLength: 1, maxLength: 255 },
+                            newPassword: { type: 'string', minLength: 6, maxLength: 255 },
+                        },
+                    },
+                    {
+                        currentPassword: 'CurrentSecret123!',
+                        newPassword: 'NewSecret123!',
+                    },
+                ),
+                responses: {
+                    '204': noContentResponse('Password changed successfully'),
+                    '400': errorResponse(400, 'Validation failed'),
+                    '401': errorResponse(401, 'Current password is incorrect'),
                     '500': errorResponse(500, 'Internal server error'),
                 },
             },
@@ -1103,6 +1203,36 @@ const swaggerDefinition = {
                 ),
                 responses: {
                     '200': response('User status updated successfully', { $ref: '#/components/schemas/AuthUser' }, authUserExample),
+                    '400': errorResponse(400, 'Validation failed'),
+                    '401': errorResponse(401, 'Unauthorized'),
+                    '403': errorResponse(403, 'Forbidden'),
+                    '404': errorResponse(404, 'User not found'),
+                    '500': errorResponse(500, 'Internal server error'),
+                },
+            },
+        },
+        '/api/auth/users/{id}/password': {
+            patch: {
+                tags: ['Auth'],
+                summary: 'Set user password',
+                description: 'Sets a user password from the admin panel and emails the updated credentials when mail is configured. Admin role required.',
+                security: bearerSecurity,
+                parameters: [idPathParameter('id', 'User id')],
+                requestBody: requestBody(
+                    'Password payload',
+                    {
+                        type: 'object',
+                        required: ['password'],
+                        properties: {
+                            password: { type: 'string', minLength: 6, maxLength: 255 },
+                        },
+                    },
+                    {
+                        password: 'NewSecret123!',
+                    },
+                ),
+                responses: {
+                    '204': noContentResponse('Password updated successfully'),
                     '400': errorResponse(400, 'Validation failed'),
                     '401': errorResponse(401, 'Unauthorized'),
                     '403': errorResponse(403, 'Forbidden'),
@@ -2762,6 +2892,19 @@ const swaggerDefinition = {
                         totalDoctors: 18,
                         pendingInvoicesAmount: 1540.25,
                     }),
+                    '401': errorResponse(401, 'Unauthorized'),
+                    '500': errorResponse(500, 'Internal server error'),
+                },
+            },
+        },
+        '/api/dashboard/rooms/available': {
+            get: {
+                tags: ['Dashboard'],
+                summary: 'Get dashboard available rooms',
+                description: 'Returns currently available rooms for the dashboard.',
+                security: bearerSecurity,
+                responses: {
+                    '200': response('Dashboard available rooms retrieved successfully', { type: 'array', items: { $ref: '#/components/schemas/Room' } }, [roomExample]),
                     '401': errorResponse(401, 'Unauthorized'),
                     '500': errorResponse(500, 'Internal server error'),
                 },

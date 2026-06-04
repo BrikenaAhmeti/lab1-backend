@@ -8,42 +8,42 @@ Backend API for the Hospital Management System (Lenda Laboratorike 1), built wit
 - TypeScript
 - PostgreSQL
 - Prisma ORM
-- JWT + Refresh Tokens
+- JWT + refresh tokens
+- Swagger / OpenAPI
 - Jest
 
 ## Implemented Modules
 - Auth / Identity
+- Patients
 - Departments
-
-## Identity Features
-- JWT access tokens
-- Refresh token rotation
-- Hashed refresh token storage
-- Login with `identifier` (username or email)
-- Backward-compatible login with `email`
-- Role-based authorization (`ADMIN` routes)
-- Rate limiting on login
-- CORS allowlist + Helmet headers
-- Single-admin policy (only one user can hold `ADMIN` role)
-- Admin seed script
+- Doctors
+- Nurses
+- Appointments
+- Medical Records
+- Prescriptions
+- Rooms
+- Admissions
+- Invoices
+- Dashboard
 
 ## Prerequisites
 - Node.js 20+
-- PostgreSQL running locally
+- PostgreSQL
+- npm
 
 ## Environment Variables
-Create `.env` (or copy from `.env.example`) with:
+Create `.env` from `.env.example`, then fill the values that match your local setup. The variables are listed without values on purpose.
 
 ```env
-PORT=3005
-NODE_ENV=development
+PORT=
+NODE_ENV=
 DATABASE_URL=
-JWT_ACCESS_SECRET=your_access_secret
-JWT_REFRESH_SECRET=your_refresh_secret
-JWT_ACCESS_EXPIRES_IN=15m
-JWT_REFRESH_EXPIRES_IN=7d
-BCRYPT_SALT_ROUNDS=12
-CORS_ALLOWED_ORIGINS=http://localhost:3001,http://127.0.0.1:3001,http://localhost:3000,http://127.0.0.1:3000
+JWT_ACCESS_SECRET=
+JWT_REFRESH_SECRET=
+JWT_ACCESS_EXPIRES_IN=
+JWT_REFRESH_EXPIRES_IN=
+BCRYPT_SALT_ROUNDS=
+CORS_ALLOWED_ORIGINS=
 REFRESH_TOKEN_COOKIE_NAME=
 MAX_ACCESS_FAILED_COUNT=
 ADMIN_FIRST_NAME=
@@ -52,137 +52,225 @@ ADMIN_EMAIL=
 ADMIN_USERNAME=
 ADMIN_PASSWORD=
 ADMIN_PHONE_NUMBER=
+SMTP_HOST=
+SMTP_PORT=
+SMTP_USER=
+SMTP_PASS=
+MAIL_FROM=
+APP_URL=
+SEED_USER_PASSWORD=
+MAIL_TEST_TO=
 ```
 
+`ADMIN_EMAIL` and `ADMIN_PASSWORD` are required before running the seed. `SEED_USER_PASSWORD` is optional and controls the demo staff user password created by the seed script. `MAIL_TEST_TO` is only used by the test mail script.
+
 ## Commands
-### 0) Create `.env`
+### Create local env
 ```bash
 cp .env.example .env
 ```
 
-### 1) Install dependencies
+### Install
 ```bash
 npm install
 ```
 
-### 2) Generate Prisma client
+### Generate Prisma client
 ```bash
 npm run prisma:generate
 ```
 
-### 3) Run migrations
+### Run database migrations
 ```bash
 npm run prisma:migrate
 ```
-If you're creating a new migration after updating `prisma/schema.prisma`, you can name it:
+
+To name a new migration after changing `prisma/schema.prisma`:
+
 ```bash
 npm run prisma:migrate -- --name <migration_name>
 ```
 
-### 4) Seed default admin and base roles
+### Seed database
 ```bash
 npm run prisma:seed
 ```
 
-### (Optional) Open Prisma Studio
+Prisma can also run the configured seed command:
+
 ```bash
-npm run prisma:studio
+npx prisma db seed
 ```
 
-### 5) Run development server
+### Run development server
 ```bash
 npm run dev
 ```
 
-### 6) Build
+### Build
 ```bash
 npm run build
 ```
 
-### 7) Run production build locally (after `npm run build`)
+### Run production build
 ```bash
 npm start
 ```
 
-### 8) Run tests
+### Test
 ```bash
 npm test
 ```
 
+### Optional commands
+```bash
+npm run test:watch
+npm run prisma:studio
+npm run mail:verify
+npm run mail:test -- recipient@example.com
+```
+
 ## NPM Scripts
-- `npm run dev` start dev server with nodemon
-- `npm run build` compile TypeScript to `dist`
-- `npm start` run compiled build
-- `npm test` run jest tests
-- `npm run test:watch` run tests in watch mode
-- `npm run prisma:generate` generate Prisma client
-- `npm run prisma:migrate` run Prisma migrations
-- `npm run prisma:seed` seed admin and roles
-- `npm run prisma:studio` open Prisma Studio
+- `npm run dev` starts the TypeScript dev server with nodemon.
+- `npm run build` compiles TypeScript to `dist`.
+- `npm start` runs `dist/server.js` after a build.
+- `npm test` runs Jest in band.
+- `npm run test:watch` runs Jest in watch mode.
+- `npm run prisma:generate` generates the Prisma client.
+- `npm run prisma:migrate` runs Prisma development migrations.
+- `npm run prisma:seed` seeds admin, roles, and demo hospital data.
+- `npm run prisma:studio` opens Prisma Studio.
+- `npm run mail:verify` verifies mail configuration.
+- `npm run mail:test` sends a test email.
 
-## Default Admin Login
-After `npm run prisma:seed`, login with values from env:
-- Email: `admin@medsphere.local`
-- Username: `admin`
-- Password: `Admin123!`
+## CORS
+The backend default CORS allowlist accepts frontend origins on both `3001` and `3000`:
 
-If you changed env values, use your updated credentials.
+- `http://localhost:3001`
+- `http://127.0.0.1:3001`
+- `http://localhost:3000`
+- `http://127.0.0.1:3000`
 
-## API Base URL
-- Local: `http://localhost:3005`
+If you override `CORS_ALLOWED_ORIGINS`, include every frontend origin you want to allow as a comma-separated list.
 
-## Endpoints
+## API Docs
+- Swagger UI: `http://localhost:3011/api/docs`
+- OpenAPI JSON: `http://localhost:3011/api/docs.json`
+- Health check: `GET http://localhost:3011/health`
+
+Swagger documents the canonical `/api/*` routes. The app also keeps legacy aliases for `/auth/*` and `/departments/*`.
+
+## Main Endpoints
 ### Health
 - `GET /health`
 
 ### Auth
-- `POST /auth/register`
-- `POST /auth/login`
-- `POST /auth/refresh`
-- `POST /auth/logout`
-- `POST /auth/change-password`
-- `POST /auth/logout-all`
-- `GET /auth/me` (Bearer token)
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/auth/refresh`
+- `POST /api/auth/confirm-email`
+- `POST /api/auth/resend-confirmation-email`
+- `POST /api/auth/logout`
+- `POST /api/auth/change-password`
+- `POST /api/auth/logout-all`
+- `GET /api/auth/me`
 
-### Users (Admin)
-- `GET /auth/users`
-- `GET /auth/users/:id`
-- `POST /auth/users`
-- `PATCH /auth/users/:id`
-- `DELETE /auth/users/:id`
-- `PATCH /auth/users/:id/status`
-- `PATCH /auth/users/:id/password`
+### Users and Roles
+- `GET /api/auth/users`
+- `POST /api/auth/users`
+- `POST /api/auth/users/receptionists`
+- `GET /api/auth/users/:id`
+- `PATCH /api/auth/users/:id`
+- `DELETE /api/auth/users/:id`
+- `PATCH /api/auth/users/:id/status`
+- `PATCH /api/auth/users/:id/password`
+- `GET /api/auth/roles`
+- `POST /api/auth/roles`
+- `PATCH /api/auth/roles/:roleId`
+- `DELETE /api/auth/roles/:roleId`
+- `GET /api/auth/users/:userId/roles`
+- `POST /api/auth/users/:userId/roles`
+- `PUT /api/auth/users/:userId/roles`
+- `DELETE /api/auth/users/:userId/roles/:roleId`
+- `GET /api/auth/users/:userId/refresh-tokens`
+- `DELETE /api/auth/users/:userId/refresh-tokens`
 
-### Roles (Admin)
-- `GET /auth/roles`
-- `POST /auth/roles`
-- `PATCH /auth/roles/:roleId`
-- `DELETE /auth/roles/:roleId`
+### Hospital Modules
+- `GET /api/patients`
+- `POST /api/patients`
+- `GET /api/patients/:id`
+- `PUT /api/patients/:id`
+- `DELETE /api/patients/:id`
+- `GET /api/departments`
+- `GET /api/departments/all`
+- `POST /api/departments`
+- `GET /api/departments/:id`
+- `PUT /api/departments/:id`
+- `DELETE /api/departments/:id`
+- `GET /api/departments/:id/doctors`
+- `GET /api/departments/:id/rooms`
+- `GET /api/departments/:id/nurses`
+- `GET /api/doctors`
+- `POST /api/doctors`
+- `GET /api/doctors/:id`
+- `PUT /api/doctors/:id`
+- `DELETE /api/doctors/:id`
+- `PATCH /api/doctors/:id/status`
+- `GET /api/nurses`
+- `POST /api/nurses`
+- `GET /api/nurses/:id`
+- `PUT /api/nurses/:id`
+- `DELETE /api/nurses/:id`
+- `GET /api/appointments`
+- `GET /api/appointments/today`
+- `POST /api/appointments`
+- `GET /api/appointments/:id`
+- `PUT /api/appointments/:id`
+- `DELETE /api/appointments/:id`
+- `GET /api/medical-records`
+- `POST /api/medical-records`
+- `GET /api/medical-records/:id`
+- `PUT /api/medical-records/:id`
+- `DELETE /api/medical-records/:id`
+- `GET /api/medical-records/:id/prescriptions`
+- `GET /api/prescriptions`
+- `POST /api/prescriptions`
+- `GET /api/prescriptions/:id`
+- `PUT /api/prescriptions/:id`
+- `DELETE /api/prescriptions/:id`
+- `GET /api/rooms`
+- `GET /api/rooms/available`
+- `POST /api/rooms`
+- `GET /api/rooms/:id`
+- `PUT /api/rooms/:id`
+- `DELETE /api/rooms/:id`
+- `GET /api/admissions`
+- `GET /api/admissions/active`
+- `POST /api/admissions`
+- `GET /api/admissions/:id`
+- `PUT /api/admissions/:id/discharge`
+- `GET /api/invoices`
+- `GET /api/invoices/stats`
+- `POST /api/invoices`
+- `GET /api/invoices/:id`
+- `PUT /api/invoices/:id`
+- `DELETE /api/invoices/:id`
+- `PUT /api/invoices/:id/pay`
+- `GET /api/dashboard/stats`
+- `GET /api/dashboard/rooms/available`
+- `GET /api/dashboard/appointments/today`
+- `GET /api/dashboard/admissions/active`
 
-### User Role Assignment (Admin)
-- `GET /auth/users/:userId/roles`
-- `POST /auth/users/:userId/roles`
-- `PUT /auth/users/:userId/roles`
-- `DELETE /auth/users/:userId/roles/:roleId`
-
-### Refresh Token Management (Admin)
-- `GET /auth/users/:userId/refresh-tokens`
-- `DELETE /auth/users/:userId/refresh-tokens`
-
-### Departments
-- `POST /departments`
-- `GET /departments/:id`
-
-## Login Payload Example
-Use either username or email:
-
+## Seed Login
+After `npm run prisma:seed`, sign in with the admin email or username and password from your `.env`.
 
 ## Notes
-- If Prisma reports migration drift on your local DB, use a clean local DB or reset dev schema before re-running migrations.
 - Seed enforces one active admin role owner.
+- If Prisma reports migration drift on your local DB, use a clean local DB or reset the dev schema before re-running migrations.
 
-### Reset local database (destructive)
-This will drop and recreate your DB schema, then re-apply migrations:
+### Reset local database
+This is destructive. It drops and recreates your local DB schema, re-applies migrations, and can run the seed again.
+
 ```bash
 npx prisma migrate reset
 ```
