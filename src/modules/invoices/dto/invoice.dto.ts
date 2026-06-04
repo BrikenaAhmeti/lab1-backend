@@ -58,8 +58,10 @@ function normalizeInvoiceInput(input: unknown) {
 
     return {
         patientId: value.patientId ?? value.patient_id,
+        appointmentId: value.appointmentId ?? value.appointment_id,
+        admissionId: value.admissionId ?? value.admission_id,
         amount: value.amount ?? value.shuma,
-        date: value.date ?? value.data,
+        date: value.date ?? value.invoiceDate ?? value.invoice_date ?? value.data,
         description: value.description ?? value.pershkrimi,
     };
 }
@@ -153,6 +155,24 @@ export class CreateInvoiceDto {
     })
     patientId!: string;
 
+    @OptionalNullableField()
+    @IsString({ message: 'Appointment id is required' })
+    @NormalizeNullableString('appointment_id')
+    @IsNotEmpty({ message: 'Appointment id is required' })
+    @MaxLength(255, {
+        message: 'Appointment id must not exceed 255 characters',
+    })
+    appointmentId?: string | null;
+
+    @OptionalNullableField()
+    @IsString({ message: 'Admission id is required' })
+    @NormalizeNullableString('admission_id')
+    @IsNotEmpty({ message: 'Admission id is required' })
+    @MaxLength(255, {
+        message: 'Admission id must not exceed 255 characters',
+    })
+    admissionId?: string | null;
+
     @IsDefined({ message: 'Amount is required' })
     @NormalizeNumber('shuma')
     @IsPositive({
@@ -194,6 +214,24 @@ export class UpdateInvoiceDto {
         message: 'Patient id must not exceed 255 characters',
     })
     patientId?: string;
+
+    @OptionalNullableField()
+    @IsString({ message: 'Appointment id is required' })
+    @NormalizeNullableString('appointment_id')
+    @IsNotEmpty({ message: 'Appointment id is required' })
+    @MaxLength(255, {
+        message: 'Appointment id must not exceed 255 characters',
+    })
+    appointmentId?: string | null;
+
+    @OptionalNullableField()
+    @IsString({ message: 'Admission id is required' })
+    @NormalizeNullableString('admission_id')
+    @IsNotEmpty({ message: 'Admission id is required' })
+    @MaxLength(255, {
+        message: 'Admission id must not exceed 255 characters',
+    })
+    admissionId?: string | null;
 
     @OptionalField()
     @NormalizeNumber('shuma')
@@ -246,7 +284,14 @@ export function validateCreateInvoiceDto(input: unknown): CreateInvoiceDto {
 export function validateUpdateInvoiceDto(input: unknown): UpdateInvoiceDto {
     const dto = validateDto(UpdateInvoiceDto, input);
 
-    assertAtLeastOneField(dto, ['patientId', 'amount', 'date', 'description']);
+    assertAtLeastOneField(dto, [
+        'patientId',
+        'appointmentId',
+        'admissionId',
+        'amount',
+        'date',
+        'description',
+    ]);
 
     return dto;
 }

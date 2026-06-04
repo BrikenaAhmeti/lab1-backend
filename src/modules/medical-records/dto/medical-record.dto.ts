@@ -12,10 +12,8 @@ import {
 } from '../../../shared/core/pagination';
 import {
     IsDateOnlyString,
-    NormalizeNullableString,
     NormalizeString,
     OptionalField,
-    OptionalNullableField,
 } from '../../../shared/validation/decorators';
 import {
     assertAtLeastOneField,
@@ -56,10 +54,6 @@ function normalizeMedicalRecordInput(input: unknown) {
         doctorId: value.doctorId ?? value.doctor_id,
         diagnosis: value.diagnosis ?? value.diagnoza,
         treatment: value.treatment ?? value.trajtimi,
-        prescriptionsText:
-            value.prescriptionsText
-            ?? value.prescriptions_text
-            ?? value.recetat,
         date: value.date ?? value.data,
     };
 }
@@ -84,21 +78,6 @@ const medicalRecordDateSchema = z.preprocess(
         .refine(isValidMedicalRecordDate, {
             message: 'Date must be in YYYY-MM-DD format',
         }),
-);
-
-const prescriptionsTextSchema = z.preprocess(
-    (value) => {
-        if (value === null) {
-            return null;
-        }
-
-        if (typeof value === 'string') {
-            return value;
-        }
-
-        return undefined;
-    },
-    z.union([z.string().trim().max(4000), z.null()]).optional(),
 );
 
 export class CreateMedicalRecordDto {
@@ -141,14 +120,6 @@ export class CreateMedicalRecordDto {
         message: 'Treatment must not exceed 4000 characters',
     })
     treatment!: string;
-
-    @OptionalNullableField()
-    @IsString({ message: 'Prescriptions text must be a string' })
-    @NormalizeNullableString('prescriptions_text', 'recetat')
-    @MaxLength(4000, {
-        message: 'Prescriptions text must not exceed 4000 characters',
-    })
-    prescriptionsText?: string | null;
 
     @IsDefined({ message: 'Date is required' })
     @IsString({ message: 'Date is required' })
@@ -201,14 +172,6 @@ export class UpdateMedicalRecordDto {
     })
     treatment?: string;
 
-    @OptionalNullableField()
-    @IsString({ message: 'Prescriptions text must be a string' })
-    @NormalizeNullableString('prescriptions_text', 'recetat')
-    @MaxLength(4000, {
-        message: 'Prescriptions text must not exceed 4000 characters',
-    })
-    prescriptionsText?: string | null;
-
     @OptionalField()
     @IsString({ message: 'Date is required' })
     @NormalizeString('data')
@@ -248,7 +211,6 @@ export function validateUpdateMedicalRecordDto(
             'doctorId',
             'diagnosis',
             'treatment',
-            'prescriptionsText',
             'date',
         ],
     );

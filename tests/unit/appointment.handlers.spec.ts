@@ -55,6 +55,9 @@ function createAppointment(
         id: overrides.id ?? 'appointment-1',
         patientId: overrides.patientId ?? 'patient-1',
         doctorId: overrides.doctorId ?? 'doctor-1',
+        appointmentDateTime:
+            overrides.appointmentDateTime
+            ?? new Date('2026-05-05T14:30:00.000Z'),
         appointmentDate:
             overrides.appointmentDate ?? new Date('2026-05-05T00:00:00.000Z'),
         appointmentTime: overrides.appointmentTime ?? '14:30',
@@ -117,15 +120,13 @@ describe('Appointment handlers', () => {
         expect(repository.findDoctorById).toHaveBeenCalledWith('doctor-1');
         expect(repository.findConflict).toHaveBeenCalledWith({
             doctorId: 'doctor-1',
-            appointmentDate: new Date('2026-05-05T00:00:00.000Z'),
-            appointmentTime: '14:30',
+            appointmentDateTime: new Date('2026-05-05T14:30:00.000Z'),
             excludeAppointmentId: undefined,
         });
         expect(repository.create).toHaveBeenCalledWith({
             patientId: 'patient-1',
             doctorId: 'doctor-1',
-            appointmentDate: new Date('2026-05-05T00:00:00.000Z'),
-            appointmentTime: '14:30',
+            appointmentDateTime: new Date('2026-05-05T14:30:00.000Z'),
             status: 'Scheduled',
             notes: 'Initial consultation',
         });
@@ -255,8 +256,7 @@ describe('Appointment handlers', () => {
 
         expect(repository.findConflict).toHaveBeenCalledWith({
             doctorId: 'doctor-1',
-            appointmentDate: new Date('2026-05-06T00:00:00.000Z'),
-            appointmentTime: '15:00',
+            appointmentDateTime: new Date('2026-05-06T15:00:00.000Z'),
             excludeAppointmentId: 'appointment-1',
         });
         expect(repository.update).not.toHaveBeenCalled();

@@ -7,8 +7,7 @@ import {
 export interface CreateAppointmentData {
     patientId: string;
     doctorId: string;
-    appointmentDate: Date;
-    appointmentTime: string;
+    appointmentDateTime: Date;
     status: AppointmentStatus;
     notes: string | null;
 }
@@ -16,8 +15,7 @@ export interface CreateAppointmentData {
 export interface UpdateAppointmentData {
     patientId?: string;
     doctorId?: string;
-    appointmentDate?: Date;
-    appointmentTime?: string;
+    appointmentDateTime?: Date;
     status?: AppointmentStatus;
     notes?: string | null;
 }
@@ -31,8 +29,7 @@ export interface FindAppointmentsParams {
 
 export interface FindAppointmentConflictParams {
     doctorId: string;
-    appointmentDate: Date;
-    appointmentTime: string;
+    appointmentDateTime: Date;
     excludeAppointmentId?: string;
 }
 

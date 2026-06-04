@@ -13,6 +13,8 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
     interface MockInvoice {
         id: string;
         patientId: string;
+        appointmentId: string | null;
+        admissionId: string | null;
         amount: number;
         invoiceDate: Date;
         status: string;
@@ -112,6 +114,8 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                     const invoice: MockInvoice = {
                         id: `invoice-${invoiceCount}`,
                         ...data,
+                        appointmentId: data.appointmentId ?? null,
+                        admissionId: data.admissionId ?? null,
                         createdAt: now,
                         updatedAt: now,
                     };
@@ -205,6 +209,8 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
         },
         __seedInvoice: (data: {
             patientId: string;
+            appointmentId?: string | null;
+            admissionId?: string | null;
             amount: number;
             invoiceDate: Date;
             status?: string;
@@ -214,6 +220,8 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
             const invoice: MockInvoice = {
                 id: `invoice-${invoiceCount}`,
                 patientId: data.patientId,
+                appointmentId: data.appointmentId ?? null,
+                admissionId: data.admissionId ?? null,
                 amount: data.amount,
                 invoiceDate: data.invoiceDate,
                 status: data.status ?? 'PENDING',
@@ -242,6 +250,8 @@ const prismaMock = jest.requireMock('../../src/infrastructure/db/prisma') as {
     }) => string;
     __seedInvoice: (data: {
         patientId: string;
+        appointmentId?: string | null;
+        admissionId?: string | null;
         amount: number;
         invoiceDate: Date;
         status?: string;
@@ -249,6 +259,8 @@ const prismaMock = jest.requireMock('../../src/infrastructure/db/prisma') as {
     }) => {
         id: string;
         patientId: string;
+        appointmentId: string | null;
+        admissionId: string | null;
         amount: number;
         invoiceDate: Date;
         status: string;

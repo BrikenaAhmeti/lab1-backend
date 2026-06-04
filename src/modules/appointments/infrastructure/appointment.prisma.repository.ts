@@ -26,19 +26,52 @@ const appointmentInclude = {
     },
 } as const;
 
+function toAppointmentDate(appointmentDateTime: Date): Date {
+    return new Date(`${appointmentDateTime.toISOString().slice(0, 10)}T00:00:00.000Z`);
+}
+
+function toAppointmentTime(appointmentDateTime: Date): string {
+    return appointmentDateTime.toISOString().slice(11, 16);
+}
+
+function addUtcDay(date: Date): Date {
+    const nextDate = new Date(date);
+
+    nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+
+    return nextDate;
+}
+
+function toAppointmentEntity(
+    appointment: Omit<AppointmentEntity, 'appointmentDate' | 'appointmentTime'>,
+): AppointmentEntity {
+    return {
+        ...appointment,
+        appointmentDate: toAppointmentDate(appointment.appointmentDateTime),
+        appointmentTime: toAppointmentTime(appointment.appointmentDateTime),
+    };
+}
+
 export class AppointmentPrismaRepository implements AppointmentRepository {
     async create(data: CreateAppointmentData): Promise<AppointmentEntity> {
-        return prisma.appointment.create({
+        const appointment = await prisma.appointment.create({
             data,
             include: appointmentInclude,
         });
+
+        return toAppointmentEntity(appointment);
     }
 
     async findMany(params: FindAppointmentsParams): Promise<AppointmentEntity[]> {
-        return prisma.appointment.findMany({
+        const appointments = await prisma.appointment.findMany({
             where: {
                 ...(params.appointmentDate
-                    ? { appointmentDate: params.appointmentDate }
+                    ? {
+                        appointmentDateTime: {
+                            gte: params.appointmentDate,
+                            lt: addUtcDay(params.appointmentDate),
+                        },
+                    }
                     : {}),
                 ...(params.doctorId ? { doctorId: params.doctorId } : {}),
                 ...(params.patientId ? { patientId: params.patientId } : {}),
@@ -47,20 +80,21 @@ export class AppointmentPrismaRepository implements AppointmentRepository {
             include: appointmentInclude,
             orderBy: [
                 {
-                    appointmentDate: 'asc',
-                },
-                {
-                    appointmentTime: 'asc',
+                    appointmentDateTime: 'asc',
                 },
             ],
         });
+
+        return appointments.map(toAppointmentEntity);
     }
 
     async findById(id: string): Promise<AppointmentEntity | null> {
-        return prisma.appointment.findUnique({
+        const appointment = await prisma.appointment.findUnique({
             where: { id },
             include: appointmentInclude,
         });
+
+        return appointment ? toAppointmentEntity(appointment) : null;
     }
 
     async findPatientById(id: string): Promise<AppointmentReferenceEntity | null> {
@@ -91,8 +125,7 @@ export class AppointmentPrismaRepository implements AppointmentRepository {
         return prisma.appointment.findFirst({
             where: {
                 doctorId: params.doctorId,
-                appointmentDate: params.appointmentDate,
-                appointmentTime: params.appointmentTime,
+                appointmentDateTime: params.appointmentDateTime,
                 status: {
                     not: 'Cancelled',
                 },
@@ -105,17 +138,19 @@ export class AppointmentPrismaRepository implements AppointmentRepository {
                     : {}),
             },
             include: appointmentInclude,
-        });
+        }).then((appointment) => appointment ? toAppointmentEntity(appointment) : null);
     }
 
     async update(
         id: string,
         data: UpdateAppointmentData,
     ): Promise<AppointmentEntity> {
-        return prisma.appointment.update({
+        const appointment = await prisma.appointment.update({
             where: { id },
             data,
             include: appointmentInclude,
         });
+
+        return toAppointmentEntity(appointment);
     }
 }

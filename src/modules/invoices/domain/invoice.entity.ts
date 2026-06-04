@@ -4,6 +4,10 @@ export interface InvoiceReferenceEntity {
     id: string;
 }
 
+export interface InvoiceCareEventReferenceEntity extends InvoiceReferenceEntity {
+    patientId: string;
+}
+
 export interface InvoicePatientEntity extends InvoiceReferenceEntity {
     firstName: string;
     lastName: string;
@@ -11,6 +15,8 @@ export interface InvoicePatientEntity extends InvoiceReferenceEntity {
 
 export interface InvoiceEntity extends InvoiceReferenceEntity {
     patientId: string;
+    appointmentId: string | null;
+    admissionId: string | null;
     amount: number;
     invoiceDate: Date;
     status: InvoiceStatus;

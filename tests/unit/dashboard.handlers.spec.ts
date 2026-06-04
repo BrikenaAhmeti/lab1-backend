@@ -32,6 +32,9 @@ function createTodayAppointment(
         id: overrides.id ?? 'appointment-1',
         patientId: overrides.patientId ?? 'patient-1',
         doctorId: overrides.doctorId ?? 'doctor-1',
+        appointmentDateTime:
+            overrides.appointmentDateTime
+            ?? new Date('2026-05-08T09:30:00.000Z'),
         appointmentDate:
             overrides.appointmentDate ?? new Date('2026-05-08T00:00:00.000Z'),
         appointmentTime: overrides.appointmentTime ?? '09:30',

@@ -26,6 +26,27 @@ Backend API for the Hospital Management System (Lenda Laboratorike 1), built wit
 - Invoices
 - Dashboard
 
+## ERD Requirements Coverage
+- Patients store `firstName`, `lastName`, `dateOfBirth`, `gender`, `phoneNumber`, `address`, `bloodType`, and optional `userId` for portal login. Patient deletion is soft delete through `isDeleted`.
+- Doctors and nurses each belong to one department and have required `userId` links to identity users.
+- Departments connect to doctors, nurses, and rooms.
+- Appointments use `appointmentDateTime` as the canonical date/time field and keep API date/time aliases for frontend compatibility.
+- Medical records store diagnosis, treatment, doctor, patient, and record date. Detailed prescription data is stored only in `Prescription`.
+- Prescriptions belong to medical records, with one medical record supporting many prescriptions.
+- Rooms have unique `roomNumber`, department, type, status, and positive capacity.
+- Admissions connect patients to rooms and enforce consistent admission/discharge status.
+- Invoices connect to patients and can optionally link to one appointment or one admission.
+- Identity keeps users, roles, user roles, claims, tokens, refresh tokens, and base roles `ADMIN`, `DOCTOR`, `NURSE`, `RECEPTIONIST`, and `PATIENT`.
+- Dashboard queries support today's appointments, available rooms, active admissions, and basic module reporting.
+
+## Database Validations
+- Unique room numbers and positive room capacity.
+- Discharge date cannot be earlier than admission date.
+- Active admissions must not have a discharge date; discharged admissions must have one.
+- A doctor cannot have two non-cancelled appointments at the same `appointmentDateTime`.
+- Invoice amount must be greater than zero.
+- Invoice appointment/admission links are validated against the same patient and only one care-event link can be set at a time.
+
 ## Prerequisites
 - Node.js 20+
 - PostgreSQL

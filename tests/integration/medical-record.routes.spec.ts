@@ -23,7 +23,6 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
         doctorId: string;
         diagnosis: string;
         treatment: string;
-        prescriptionsText: string | null;
         recordDate: Date;
         createdAt: Date;
         updatedAt: Date;
@@ -344,7 +343,6 @@ const prismaMock = jest.requireMock('../../src/infrastructure/db/prisma') as {
         doctorId: string;
         diagnosis: string;
         treatment: string;
-        prescriptionsText: string | null;
         recordDate: Date;
     }) => {
         id: string;
@@ -352,7 +350,6 @@ const prismaMock = jest.requireMock('../../src/infrastructure/db/prisma') as {
         doctorId: string;
         diagnosis: string;
         treatment: string;
-        prescriptionsText: string | null;
         recordDate: Date;
         createdAt: Date;
         updatedAt: Date;
@@ -413,7 +410,6 @@ describe('Medical record routes', () => {
                 patient_id: patient.id,
                 doctor_id: doctor.id,
                 trajtimi: 'Rest',
-                recetat: 'Tea',
                 data: '2026-05-01',
             });
 
@@ -433,7 +429,6 @@ describe('Medical record routes', () => {
             doctorId: doctor.id,
             diagnosis: 'Older diagnosis',
             treatment: 'Older treatment',
-            prescriptionsText: 'Older prescription',
             recordDate: new Date('2026-04-20T00:00:00.000Z'),
         });
 
@@ -445,7 +440,6 @@ describe('Medical record routes', () => {
                 doctor_id: doctor.id,
                 diagnoza: 'Flu',
                 trajtimi: 'Rest',
-                recetat: 'Vitamin C',
                 data: '2026-05-02',
             });
 
@@ -460,7 +454,6 @@ describe('Medical record routes', () => {
                 doctor_id: doctor.id,
                 diagnoza: 'Flu',
                 trajtimi: 'Rest and hydration',
-                recetat: 'Vitamin C',
                 data: '2026-05-02',
             });
 
@@ -500,12 +493,10 @@ describe('Medical record routes', () => {
             .set('Authorization', `Bearer ${adminToken}`)
             .send({
                 treatment: ' Updated treatment ',
-                recetat: null,
             });
 
         expect(updateResponse.status).toBe(200);
         expect(updateResponse.body.treatment).toBe('Updated treatment');
-        expect(updateResponse.body.prescriptionsText).toBeNull();
 
         prismaMock.__seedPrescription({
             medicalRecordId,

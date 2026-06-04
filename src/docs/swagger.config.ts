@@ -139,6 +139,7 @@ function departmentListSchema(ref: string) {
 
 const patientExample = {
     id: 'patient-1',
+    userId: null,
     firstName: 'Ana',
     lastName: 'Krasniqi',
     dateOfBirth: '1998-03-10T00:00:00.000Z',
@@ -181,6 +182,7 @@ const doctorExample = {
 
 const nurseExample = {
     id: 'nurse-1',
+    userId: 'user-3',
     firstName: 'Sara',
     lastName: 'Krasniqi',
     departmentId: 'department-1',
@@ -198,6 +200,7 @@ const appointmentExample = {
     id: 'appointment-1',
     patientId: 'patient-1',
     doctorId: 'doctor-1',
+    appointmentDateTime: '2026-05-09T10:30:00.000Z',
     appointmentDate: '2026-05-09T00:00:00.000Z',
     appointmentTime: '10:30',
     status: 'Scheduled',
@@ -223,7 +226,6 @@ const medicalRecordExample = {
     doctorId: 'doctor-1',
     diagnosis: 'Seasonal flu',
     treatment: 'Rest and hydration',
-    prescriptionsText: 'Paracetamol as needed',
     recordDate: '2026-05-08T00:00:00.000Z',
     patient: {
         id: 'patient-1',
@@ -306,6 +308,8 @@ const admissionExample = {
 const invoiceExample = {
     id: 'invoice-1',
     patientId: 'patient-1',
+    appointmentId: null,
+    admissionId: null,
     amount: 120.5,
     invoiceDate: '2026-05-08T00:00:00.000Z',
     status: 'PENDING',
@@ -429,6 +433,7 @@ const swaggerDefinition = {
                 type: 'object',
                 properties: {
                     id: { type: 'string' },
+                    userId: { type: 'string', nullable: true },
                     firstName: { type: 'string' },
                     lastName: { type: 'string' },
                     dateOfBirth: { type: 'string', format: 'date-time' },
@@ -457,7 +462,7 @@ const swaggerDefinition = {
                 type: 'object',
                 properties: {
                     id: { type: 'string' },
-                    userId: { type: 'string', nullable: true },
+                    userId: { type: 'string' },
                     firstName: { type: 'string' },
                     lastName: { type: 'string' },
                     specialization: { type: 'string' },
@@ -480,6 +485,7 @@ const swaggerDefinition = {
                 type: 'object',
                 properties: {
                     id: { type: 'string' },
+                    userId: { type: 'string' },
                     firstName: { type: 'string' },
                     lastName: { type: 'string' },
                     departmentId: { type: 'string' },
@@ -502,6 +508,7 @@ const swaggerDefinition = {
                     id: { type: 'string' },
                     patientId: { type: 'string' },
                     doctorId: { type: 'string' },
+                    appointmentDateTime: { type: 'string', format: 'date-time' },
                     appointmentDate: { type: 'string', format: 'date-time' },
                     appointmentTime: { type: 'string' },
                     status: { type: 'string', enum: ['Scheduled', 'Completed', 'Cancelled'] },
@@ -535,7 +542,6 @@ const swaggerDefinition = {
                     doctorId: { type: 'string' },
                     diagnosis: { type: 'string' },
                     treatment: { type: 'string' },
-                    prescriptionsText: { type: 'string', nullable: true },
                     recordDate: { type: 'string', format: 'date-time' },
                     patient: {
                         type: 'object',
@@ -671,6 +677,8 @@ const swaggerDefinition = {
                 properties: {
                     id: { type: 'string' },
                     patientId: { type: 'string' },
+                    appointmentId: { type: 'string', nullable: true },
+                    admissionId: { type: 'string', nullable: true },
                     amount: { type: 'number' },
                     invoiceDate: { type: 'string', format: 'date-time' },
                     status: { type: 'string', enum: ['PENDING', 'PAID', 'CANCELLED'] },
@@ -1494,6 +1502,7 @@ const swaggerDefinition = {
                         type: 'object',
                         required: ['firstName', 'lastName', 'dateOfBirth', 'gender', 'phoneNumber', 'address', 'bloodType'],
                         properties: {
+                            userId: { type: 'string', nullable: true },
                             firstName: { type: 'string' },
                             lastName: { type: 'string' },
                             dateOfBirth: { type: 'string', example: '1998-03-10' },
@@ -1546,6 +1555,7 @@ const swaggerDefinition = {
                     {
                         type: 'object',
                         properties: {
+                            userId: { type: 'string', nullable: true },
                             firstName: { type: 'string' },
                             lastName: { type: 'string' },
                             dateOfBirth: { type: 'string', example: '1998-03-10' },
@@ -2242,7 +2252,6 @@ const swaggerDefinition = {
                             doctorId: { type: 'string' },
                             diagnosis: { type: 'string' },
                             treatment: { type: 'string' },
-                            prescriptionsText: { type: 'string', nullable: true },
                             date: { type: 'string', example: '2026-05-08' },
                         },
                     },
@@ -2251,7 +2260,6 @@ const swaggerDefinition = {
                         doctorId: 'doctor-1',
                         diagnosis: 'Seasonal flu',
                         treatment: 'Rest and hydration',
-                        prescriptionsText: 'Paracetamol as needed',
                         date: '2026-05-08',
                     },
                 ),
@@ -2294,7 +2302,6 @@ const swaggerDefinition = {
                             doctorId: { type: 'string' },
                             diagnosis: { type: 'string' },
                             treatment: { type: 'string' },
-                            prescriptionsText: { type: 'string', nullable: true },
                             date: { type: 'string', example: '2026-05-08' },
                         },
                     },
@@ -2760,6 +2767,8 @@ const swaggerDefinition = {
                         required: ['patientId', 'amount', 'date'],
                         properties: {
                             patientId: { type: 'string' },
+                            appointmentId: { type: 'string', nullable: true },
+                            admissionId: { type: 'string', nullable: true },
                             amount: { type: 'number' },
                             date: { type: 'string', example: '2026-05-08' },
                             description: { type: 'string', nullable: true },
@@ -2823,6 +2832,8 @@ const swaggerDefinition = {
                         type: 'object',
                         properties: {
                             patientId: { type: 'string' },
+                            appointmentId: { type: 'string', nullable: true },
+                            admissionId: { type: 'string', nullable: true },
                             amount: { type: 'number' },
                             date: { type: 'string', example: '2026-05-08' },
                             description: { type: 'string', nullable: true },

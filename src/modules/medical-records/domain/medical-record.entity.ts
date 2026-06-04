@@ -33,7 +33,6 @@ export interface MedicalRecordEntity {
     doctorId: string;
     diagnosis: string;
     treatment: string;
-    prescriptionsText: string | null;
     recordDate: Date;
     patient: MedicalRecordPatientEntity;
     doctor: MedicalRecordDoctorEntity;

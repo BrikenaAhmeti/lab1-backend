@@ -8,7 +8,7 @@ export type NurseShift = 'Morning' | 'Evening' | 'Night';
 
 export interface NurseEntity {
     id: string;
-    userId: string | null;
+    userId: string;
     firstName: string;
     lastName: string;
     departmentId: string;

@@ -74,7 +74,6 @@ function createMedicalRecord(
         doctorId: overrides.doctorId ?? 'doctor-1',
         diagnosis: overrides.diagnosis ?? 'Hypertension',
         treatment: overrides.treatment ?? 'Lifestyle changes',
-        prescriptionsText: overrides.prescriptionsText ?? 'Paracetamol 500mg',
         recordDate: overrides.recordDate ?? new Date('2026-05-01T00:00:00.000Z'),
         patient: overrides.patient ?? createPatient(),
         doctor: overrides.doctor ?? createDoctor(),
@@ -117,7 +116,6 @@ describe('Medical record handlers', () => {
             doctorId: ' doctor-1 ',
             diagnosis: ' Hypertension ',
             treatment: ' Lifestyle changes ',
-            prescriptionsText: ' Paracetamol 500mg ',
             date: '2026-05-01',
         });
 
@@ -130,7 +128,6 @@ describe('Medical record handlers', () => {
             doctorId: 'doctor-1',
             diagnosis: 'Hypertension',
             treatment: 'Lifestyle changes',
-            prescriptionsText: 'Paracetamol 500mg',
             recordDate: new Date('2026-05-01T00:00:00.000Z'),
         });
         expect(result.id).toBe('medical-record-1');
@@ -242,7 +239,6 @@ describe('Medical record handlers', () => {
         const medicalRecord = createMedicalRecord();
         const updatedMedicalRecord = createMedicalRecord({
             treatment: 'Updated treatment',
-            prescriptionsText: null,
             updatedAt: new Date('2026-05-02T10:00:00.000Z'),
         });
 
@@ -253,7 +249,6 @@ describe('Medical record handlers', () => {
         const handler = new UpdateMedicalRecordHandler(service);
         const command = new UpdateMedicalRecordCommand('medical-record-1', {
             treatment: ' Updated treatment ',
-            prescriptionsText: '   ',
         });
 
         const result = await handler.execute(command);
@@ -261,7 +256,6 @@ describe('Medical record handlers', () => {
         expect(repository.findById).toHaveBeenCalledWith('medical-record-1');
         expect(repository.update).toHaveBeenCalledWith('medical-record-1', {
             treatment: 'Updated treatment',
-            prescriptionsText: null,
         });
         expect(result.treatment).toBe('Updated treatment');
     });

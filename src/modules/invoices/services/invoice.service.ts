@@ -26,9 +26,21 @@ export class InvoiceService {
         const patientId = data.patientId.trim();
 
         await this.ensurePatientExists(patientId);
+        this.ensureSingleCareEventLink(data.appointmentId, data.admissionId);
+
+        const appointmentId = await this.resolveAppointmentId(
+            data.appointmentId,
+            patientId,
+        );
+        const admissionId = await this.resolveAdmissionId(
+            data.admissionId,
+            patientId,
+        );
 
         return this.invoiceRepository.create({
             patientId,
+            appointmentId,
+            admissionId,
             amount: data.amount,
             invoiceDate: this.toInvoiceDate(data.date),
             status: 'PENDING',
@@ -75,14 +87,41 @@ export class InvoiceService {
         }
 
         let patientId = invoice.patientId;
+        const nextAppointmentId = data.appointmentId !== undefined
+            ? data.appointmentId
+            : invoice.appointmentId;
+        const nextAdmissionId = data.admissionId !== undefined
+            ? data.admissionId
+            : invoice.admissionId;
 
         if (data.patientId !== undefined) {
             patientId = data.patientId.trim();
             await this.ensurePatientExists(patientId);
         }
 
+        this.ensureSingleCareEventLink(nextAppointmentId, nextAdmissionId);
+
+        const appointmentId = data.appointmentId !== undefined
+            ? await this.resolveAppointmentId(data.appointmentId, patientId)
+            : undefined;
+        const admissionId = data.admissionId !== undefined
+            ? await this.resolveAdmissionId(data.admissionId, patientId)
+            : undefined;
+
+        if (data.patientId !== undefined) {
+            if (nextAppointmentId) {
+                await this.resolveAppointmentId(nextAppointmentId, patientId);
+            }
+
+            if (nextAdmissionId) {
+                await this.resolveAdmissionId(nextAdmissionId, patientId);
+            }
+        }
+
         const updateData: UpdateInvoiceData = {
             ...(data.patientId !== undefined ? { patientId } : {}),
+            ...(data.appointmentId !== undefined ? { appointmentId } : {}),
+            ...(data.admissionId !== undefined ? { admissionId } : {}),
             ...(data.amount !== undefined ? { amount: data.amount } : {}),
             ...(data.date !== undefined
                 ? { invoiceDate: this.toInvoiceDate(data.date) }
@@ -152,6 +191,66 @@ export class InvoiceService {
 
         if (!patient) {
             throw new AppError('Patient not found', 404);
+        }
+    }
+
+    private async resolveAppointmentId(
+        appointmentId: string | null | undefined,
+        patientId: string,
+    ): Promise<string | null> {
+        if (appointmentId === undefined || appointmentId === null) {
+            return null;
+        }
+
+        const normalizedAppointmentId = appointmentId.trim();
+        const appointment = await this.invoiceRepository.findAppointmentById(
+            normalizedAppointmentId,
+        );
+
+        if (!appointment) {
+            throw new AppError('Appointment not found', 404);
+        }
+
+        if (appointment.patientId !== patientId) {
+            throw new AppError('Appointment does not belong to patient', 400);
+        }
+
+        return normalizedAppointmentId;
+    }
+
+    private async resolveAdmissionId(
+        admissionId: string | null | undefined,
+        patientId: string,
+    ): Promise<string | null> {
+        if (admissionId === undefined || admissionId === null) {
+            return null;
+        }
+
+        const normalizedAdmissionId = admissionId.trim();
+        const admission = await this.invoiceRepository.findAdmissionById(
+            normalizedAdmissionId,
+        );
+
+        if (!admission) {
+            throw new AppError('Admission not found', 404);
+        }
+
+        if (admission.patientId !== patientId) {
+            throw new AppError('Admission does not belong to patient', 400);
+        }
+
+        return normalizedAdmissionId;
+    }
+
+    private ensureSingleCareEventLink(
+        appointmentId: string | null | undefined,
+        admissionId: string | null | undefined,
+    ): void {
+        if (appointmentId && admissionId) {
+            throw new AppError(
+                'Invoice can be linked to either an appointment or an admission',
+                400,
+            );
         }
     }
 

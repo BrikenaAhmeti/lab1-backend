@@ -41,6 +41,8 @@ function createInvoice(
     return {
         id: overrides.id ?? 'invoice-1',
         patientId: overrides.patientId ?? 'patient-1',
+        appointmentId: overrides.appointmentId ?? null,
+        admissionId: overrides.admissionId ?? null,
         amount: overrides.amount ?? 150.75,
         invoiceDate: overrides.invoiceDate ?? new Date('2026-05-07T00:00:00.000Z'),
         status: overrides.status ?? 'PENDING',
@@ -57,6 +59,8 @@ describe('Invoice handlers', () => {
         findMany: jest.fn(),
         findById: jest.fn(),
         findPatientById: jest.fn(),
+        findAppointmentById: jest.fn(),
+        findAdmissionById: jest.fn(),
         update: jest.fn(),
         getPaidRevenueTotal: jest.fn(),
     };
@@ -83,6 +87,8 @@ describe('Invoice handlers', () => {
         expect(repository.findPatientById).toHaveBeenCalledWith('patient-1');
         expect(repository.create).toHaveBeenCalledWith({
             patientId: 'patient-1',
+            appointmentId: null,
+            admissionId: null,
             amount: 150.75,
             invoiceDate: new Date('2026-05-07T00:00:00.000Z'),
             status: 'PENDING',

@@ -22,7 +22,12 @@ export class PatientService {
     constructor(private readonly patientRepository: PatientRepository) { }
 
     async createPatient(data: CreatePatientDto): Promise<PatientEntity> {
+        const userId = data.userId !== undefined
+            ? await this.resolveUserId(data.userId)
+            : undefined;
+
         return this.patientRepository.create({
+            ...(userId !== undefined ? { userId } : {}),
             firstName: data.firstName.trim(),
             lastName: data.lastName.trim(),
             dateOfBirth: new Date(`${data.dateOfBirth}T00:00:00.000Z`),
@@ -80,8 +85,14 @@ export class PatientService {
         data: UpdatePatientDto,
     ): Promise<PatientEntity> {
         await this.ensurePatientExists(id);
+        let userId: string | null | undefined;
+
+        if (data.userId !== undefined) {
+            userId = await this.resolveUserId(data.userId, id);
+        }
 
         const updateData: UpdatePatientData = {
+            ...(data.userId !== undefined ? { userId } : {}),
             ...(data.firstName !== undefined
                 ? { firstName: data.firstName.trim() }
                 : {}),
@@ -113,11 +124,39 @@ export class PatientService {
         await this.patientRepository.softDelete(id);
     }
 
-    private async ensurePatientExists(id: string): Promise<void> {
+    private async ensurePatientExists(id: string): Promise<PatientEntity> {
         const patient = await this.patientRepository.findById(id);
 
         if (!patient) {
             throw new AppError('Patient not found', 404);
         }
+
+        return patient;
+    }
+
+    private async resolveUserId(
+        userId: string | null | undefined,
+        currentPatientId?: string,
+    ): Promise<string | null> {
+        if (userId === undefined || userId === null) {
+            return null;
+        }
+
+        const normalizedUserId = userId.trim();
+        const user = await this.patientRepository.findUserById(normalizedUserId);
+
+        if (!user) {
+            throw new AppError('User not found', 404);
+        }
+
+        const patientWithSameUser = await this.patientRepository.findByUserId(
+            normalizedUserId,
+        );
+
+        if (patientWithSameUser && patientWithSameUser.id !== currentPatientId) {
+            throw new AppError('Patient already exists for this user', 409);
+        }
+
+        return normalizedUserId;
     }
 }

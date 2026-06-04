@@ -887,6 +887,11 @@ export class AuthService {
                 description: 'Front desk and admission access',
             },
             {
+                name: 'Patient',
+                normalizedName: 'PATIENT',
+                description: 'Patient portal access',
+            },
+            {
                 name: 'User',
                 normalizedName: 'USER',
                 description: 'Limited access based on permissions',

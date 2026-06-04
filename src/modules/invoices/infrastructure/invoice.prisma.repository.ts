@@ -36,6 +36,8 @@ function toAmount(value: { toNumber: () => number } | number | string): number {
 function toInvoiceEntity(invoice: {
     id: string;
     patientId: string;
+    appointmentId: string | null;
+    admissionId: string | null;
     amount: { toNumber: () => number } | number | string;
     invoiceDate: Date;
     status: string;
@@ -98,6 +100,34 @@ export class InvoicePrismaRepository implements InvoiceRepository {
             },
             select: {
                 id: true,
+            },
+        });
+    }
+
+    async findAppointmentById(
+        appointmentId: string,
+    ): Promise<{ id: string; patientId: string } | null> {
+        return prisma.appointment.findUnique({
+            where: {
+                id: appointmentId,
+            },
+            select: {
+                id: true,
+                patientId: true,
+            },
+        });
+    }
+
+    async findAdmissionById(
+        admissionId: string,
+    ): Promise<{ id: string; patientId: string } | null> {
+        return prisma.admission.findUnique({
+            where: {
+                id: admissionId,
+            },
+            select: {
+                id: true,
+                patientId: true,
             },
         });
     }

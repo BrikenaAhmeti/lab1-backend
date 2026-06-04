@@ -22,6 +22,26 @@ export class PatientPrismaRepository implements PatientRepository {
         });
     }
 
+    async findByUserId(userId: string): Promise<PatientEntity | null> {
+        return prisma.patient.findFirst({
+            where: {
+                userId,
+                isDeleted: false,
+            },
+        });
+    }
+
+    async findUserById(userId: string): Promise<{ id: string } | null> {
+        return prisma.user.findUnique({
+            where: {
+                id: userId,
+            },
+            select: {
+                id: true,
+            },
+        });
+    }
+
     async findMany(): Promise<PatientEntity[]> {
         return prisma.patient.findMany({
             where: {

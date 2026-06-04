@@ -15,9 +15,11 @@ import {
 } from '../../../shared/core/pagination';
 import {
     IsDateOnlyString,
+    NormalizeNullableString,
     NormalizeString,
     NormalizeUppercaseString,
     OptionalField,
+    OptionalNullableField,
 } from '../../../shared/validation/decorators';
 import {
     assertAtLeastOneField,
@@ -48,6 +50,15 @@ function getValidationMessage(error: z.ZodError) {
 }
 
 export class CreatePatientDto {
+    @OptionalNullableField()
+    @IsString({ message: 'User id is required' })
+    @NormalizeNullableString()
+    @IsNotEmpty({ message: 'User id is required' })
+    @MaxLength(255, {
+        message: 'User id must not exceed 255 characters',
+    })
+    userId?: string | null;
+
     @IsDefined({ message: 'First name is required' })
     @IsString({ message: 'First name is required' })
     @NormalizeString()
@@ -122,6 +133,15 @@ export class CreatePatientDto {
 }
 
 export class UpdatePatientDto {
+    @OptionalNullableField()
+    @IsString({ message: 'User id is required' })
+    @NormalizeNullableString()
+    @IsNotEmpty({ message: 'User id is required' })
+    @MaxLength(255, {
+        message: 'User id must not exceed 255 characters',
+    })
+    userId?: string | null;
+
     @OptionalField()
     @IsString({ message: 'First name is required' })
     @NormalizeString()
@@ -241,6 +261,7 @@ export function validateUpdatePatientDto(input: unknown): UpdatePatientDto {
         dto,
         [
             'firstName',
+            'userId',
             'lastName',
             'dateOfBirth',
             'gender',

@@ -1,4 +1,5 @@
 import {
+    InvoiceCareEventReferenceEntity,
     InvoiceEntity,
     InvoiceReferenceEntity,
     InvoiceStatus,
@@ -6,6 +7,8 @@ import {
 
 export interface CreateInvoiceData {
     patientId: string;
+    appointmentId: string | null;
+    admissionId: string | null;
     amount: number;
     invoiceDate: Date;
     status: InvoiceStatus;
@@ -14,6 +17,8 @@ export interface CreateInvoiceData {
 
 export interface UpdateInvoiceData {
     patientId?: string;
+    appointmentId?: string | null;
+    admissionId?: string | null;
     amount?: number;
     invoiceDate?: Date;
     status?: InvoiceStatus;
@@ -30,6 +35,12 @@ export interface InvoiceRepository {
     findMany(params: FindInvoicesParams): Promise<InvoiceEntity[]>;
     findById(id: string): Promise<InvoiceEntity | null>;
     findPatientById(patientId: string): Promise<InvoiceReferenceEntity | null>;
+    findAppointmentById(
+        appointmentId: string,
+    ): Promise<InvoiceCareEventReferenceEntity | null>;
+    findAdmissionById(
+        admissionId: string,
+    ): Promise<InvoiceCareEventReferenceEntity | null>;
     update(id: string, data: UpdateInvoiceData): Promise<InvoiceEntity>;
     getPaidRevenueTotal(): Promise<number>;
 }

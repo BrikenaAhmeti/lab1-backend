@@ -49,7 +49,7 @@ const departments = [
 ] as const;
 
 type DepartmentKey = (typeof departments)[number]['key'];
-type RoleName = 'DOCTOR' | 'NURSE' | 'RECEPTIONIST' | 'USER';
+type RoleName = 'DOCTOR' | 'NURSE' | 'RECEPTIONIST' | 'PATIENT' | 'USER';
 
 const doctors = [
     {
@@ -398,7 +398,6 @@ const medicalRecords = [
         doctorKey: 'dr-mira',
         diagnosis: 'Acute respiratory infection',
         treatment: 'Observation, hydration, and follow-up if fever persists',
-        prescriptionsText: 'Paracetamol 500mg as needed',
         recordDate: atDateTime(today, '09:35'),
         prescriptions: [
             ['seed-prescription-001', 'Paracetamol', '500mg', '3 days', 'Take after meals if temperature is above 38 C'],
@@ -410,7 +409,6 @@ const medicalRecords = [
         doctorKey: 'dr-arben',
         diagnosis: 'Hypertension follow-up',
         treatment: 'Continue therapy and repeat blood pressure log in two weeks',
-        prescriptionsText: 'Amlodipine 5mg daily',
         recordDate: atDateTime(today, '10:05'),
         prescriptions: [
             ['seed-prescription-002', 'Amlodipine', '5mg', '30 days', 'Take once every morning'],
@@ -422,7 +420,6 @@ const medicalRecords = [
         doctorKey: 'dr-elira',
         diagnosis: 'Viral gastroenteritis',
         treatment: 'Oral rehydration and light diet',
-        prescriptionsText: 'Oral rehydration salts',
         recordDate: atDateTime(today, '12:05'),
         prescriptions: [
             ['seed-prescription-003', 'ORS', '1 sachet', '2 days', 'Dissolve in clean water after each loose stool'],
@@ -434,7 +431,6 @@ const medicalRecords = [
         doctorKey: 'dr-ilir',
         diagnosis: 'Ankle sprain',
         treatment: 'Compression, elevation, and limited weight bearing',
-        prescriptionsText: 'Ibuprofen 400mg as needed',
         recordDate: atDateTime(tomorrow, '14:40'),
         prescriptions: [
             ['seed-prescription-004', 'Ibuprofen', '400mg', '5 days', 'Take with food, maximum three times daily'],
@@ -514,7 +510,13 @@ function buildAppointments(
 }
 
 async function getRoleIds() {
-    const roleNames: RoleName[] = ['DOCTOR', 'NURSE', 'RECEPTIONIST', 'USER'];
+    const roleNames: RoleName[] = [
+        'DOCTOR',
+        'NURSE',
+        'RECEPTIONIST',
+        'PATIENT',
+        'USER',
+    ];
     const entries = await Promise.all(
         roleNames.map(async (name) => {
             const role = await prisma.role.findUnique({
@@ -814,8 +816,7 @@ async function seedHospitalData() {
             update: {
                 patientId: appointment.patientId,
                 doctorId,
-                appointmentDate: atDate(appointment.date),
-                appointmentTime: appointment.time,
+                appointmentDateTime: atDateTime(appointment.date, appointment.time),
                 status: 'Scheduled',
                 notes: appointment.notes,
             },
@@ -823,8 +824,7 @@ async function seedHospitalData() {
                 id: appointment.id,
                 patientId: appointment.patientId,
                 doctorId,
-                appointmentDate: atDate(appointment.date),
-                appointmentTime: appointment.time,
+                appointmentDateTime: atDateTime(appointment.date, appointment.time),
                 status: 'Scheduled',
                 notes: appointment.notes,
             },
@@ -876,7 +876,6 @@ async function seedHospitalData() {
                 doctorId,
                 diagnosis: record.diagnosis,
                 treatment: record.treatment,
-                prescriptionsText: record.prescriptionsText,
                 recordDate: record.recordDate,
             },
             create: {
@@ -885,7 +884,6 @@ async function seedHospitalData() {
                 doctorId,
                 diagnosis: record.diagnosis,
                 treatment: record.treatment,
-                prescriptionsText: record.prescriptionsText,
                 recordDate: record.recordDate,
             },
         });

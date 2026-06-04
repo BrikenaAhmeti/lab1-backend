@@ -10,7 +10,7 @@ export interface DoctorUserEntity {
 
 export interface DoctorEntity {
     id: string;
-    userId: string | null;
+    userId: string;
     firstName: string;
     lastName: string;
     specialization: string;

@@ -22,6 +22,7 @@ export interface AppointmentEntity {
     id: string;
     patientId: string;
     doctorId: string;
+    appointmentDateTime: Date;
     appointmentDate: Date;
     appointmentTime: string;
     status: string;

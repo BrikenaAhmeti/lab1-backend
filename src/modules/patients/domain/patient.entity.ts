@@ -2,6 +2,7 @@ import type { PaginatedResponse } from '../../../shared/core/pagination';
 
 export interface PatientEntity {
     id: string;
+    userId: string | null;
     firstName: string;
     lastName: string;
     dateOfBirth: Date;

@@ -16,6 +16,7 @@ import { PatientService } from '../../src/modules/patients/services/patient.serv
 function createPatient(overrides: Partial<PatientEntity> = {}): PatientEntity {
     return {
         id: overrides.id ?? 'patient-1',
+        userId: overrides.userId ?? null,
         firstName: overrides.firstName ?? 'Ana',
         lastName: overrides.lastName ?? 'Krasniqi',
         dateOfBirth: overrides.dateOfBirth ?? new Date('1998-03-10T00:00:00.000Z'),
@@ -33,6 +34,8 @@ describe('Patient handlers', () => {
     const repository: jest.Mocked<PatientRepository> = {
         create: jest.fn(),
         findById: jest.fn(),
+        findByUserId: jest.fn(),
+        findUserById: jest.fn(),
         findMany: jest.fn(),
         update: jest.fn(),
         softDelete: jest.fn(),

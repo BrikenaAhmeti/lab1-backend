@@ -17,7 +17,7 @@ import {
 
 const appointmentSortAccessors = {
     created_at: (appointment: AppointmentEntity) => appointment.createdAt,
-    date: (appointment: AppointmentEntity) => appointment.appointmentDate,
+    date: (appointment: AppointmentEntity) => appointment.appointmentDateTime,
     time: (appointment: AppointmentEntity) => appointment.appointmentTime,
     status: (appointment: AppointmentEntity) => appointment.status,
 } as const;
@@ -43,8 +43,7 @@ export class AppointmentService {
         return this.appointmentRepository.create({
             patientId,
             doctorId,
-            appointmentDate: this.toAppointmentDate(date),
-            appointmentTime: time,
+            appointmentDateTime: this.toAppointmentDateTime(date, time),
             status: 'Scheduled',
             notes: this.normalizeNotes(data.notes),
         });
@@ -155,7 +154,7 @@ export class AppointmentService {
 
         const patientId = data.patientId?.trim() ?? appointment.patientId;
         const doctorId = data.doctorId?.trim() ?? appointment.doctorId;
-        const date = data.date ?? this.toDateString(appointment.appointmentDate);
+        const date = data.date ?? this.toDateString(appointment.appointmentDateTime);
         const time = data.time?.trim() ?? appointment.appointmentTime;
 
         if (data.patientId !== undefined) {
@@ -174,11 +173,8 @@ export class AppointmentService {
         const updateData: UpdateAppointmentData = {
             ...(data.patientId !== undefined ? { patientId } : {}),
             ...(data.doctorId !== undefined ? { doctorId } : {}),
-            ...(data.date !== undefined
-                ? { appointmentDate: this.toAppointmentDate(date) }
-                : {}),
-            ...(data.time !== undefined
-                ? { appointmentTime: time }
+            ...(data.date !== undefined || data.time !== undefined
+                ? { appointmentDateTime: this.toAppointmentDateTime(date, time) }
                 : {}),
             ...(data.status !== undefined
                 ? { status: data.status }
@@ -249,8 +245,7 @@ export class AppointmentService {
     ): Promise<void> {
         const conflict = await this.appointmentRepository.findConflict({
             doctorId,
-            appointmentDate: this.toAppointmentDate(date),
-            appointmentTime: time,
+            appointmentDateTime: this.toAppointmentDateTime(date, time),
             excludeAppointmentId,
         });
 
@@ -294,10 +289,7 @@ export class AppointmentService {
     }
 
     private toAppointmentDateTime(date: string, time: string): Date {
-        const [year, month, day] = date.split('-').map(Number);
-        const [hours, minutes] = time.split(':').map(Number);
-
-        return new Date(year, month - 1, day, hours, minutes, 0, 0);
+        return new Date(`${date}T${time}:00.000Z`);
     }
 
     private toDateString(date: Date): string {

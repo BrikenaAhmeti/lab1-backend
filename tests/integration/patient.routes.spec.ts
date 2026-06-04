@@ -5,6 +5,7 @@ import { env } from '../../src/config/env';
 jest.mock('../../src/infrastructure/db/prisma', () => {
     interface MockPatient {
         id: string;
+        userId: string | null;
         firstName: string;
         lastName: string;
         dateOfBirth: Date;
@@ -32,6 +33,7 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
 
     function filterPatients(where?: {
         id?: string;
+        userId?: string;
         isDeleted?: boolean;
         OR?: Array<{
             firstName?: { contains?: string };
@@ -42,6 +44,10 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
 
         return patientStore.filter((patient) => {
             if (where?.id && patient.id !== where.id) {
+                return false;
+            }
+
+            if (where?.userId && patient.userId !== where.userId) {
                 return false;
             }
 
@@ -66,6 +72,7 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                     const patient: MockPatient = {
                         id: `patient-${patientCount}`,
                         ...data,
+                        userId: data.userId ?? null,
                         isDeleted: false,
                         createdAt: now,
                         updatedAt: now,
@@ -76,7 +83,7 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
 
                     return patient;
                 }),
-                findFirst: jest.fn(async ({ where }: { where: { id?: string; isDeleted?: boolean } }) => {
+                findFirst: jest.fn(async ({ where }: { where: { id?: string; userId?: string; isDeleted?: boolean } }) => {
                     return filterPatients(where)[0] ?? null;
                 }),
                 findMany: jest.fn(async ({
@@ -133,6 +140,17 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                     });
 
                     return patient;
+                }),
+            },
+            user: {
+                findUnique: jest.fn(async ({
+                    where,
+                }: {
+                    where: { id: string };
+                }) => {
+                    return {
+                        id: where.id,
+                    };
                 }),
             },
         },
