@@ -12,8 +12,9 @@ import {
 } from '../src/generated/prisma';
 
 const seedPassword = process.env.SEED_USER_PASSWORD || 'Password123!';
-const today = '2026-05-20';
-const tomorrow = '2026-05-21';
+const today = getDateValue();
+const tomorrow = getDateValue(1);
+const yesterday = getDateValue(-1);
 
 const departments = [
     {
@@ -389,6 +390,46 @@ const admissions = [
         dischargeDate: null,
         status: AdmissionStatus.ACTIVE,
     },
+    {
+        id: 'seed-admission-006',
+        patientId: 'seed-patient-002',
+        roomNumber: 'CARD-01',
+        admissionDate: atDateTime(yesterday, '07:45'),
+        dischargeDate: atDateTime(today, '12:10'),
+        status: AdmissionStatus.DISCHARGED,
+    },
+    {
+        id: 'seed-admission-007',
+        patientId: 'seed-patient-003',
+        roomNumber: 'ER-02',
+        admissionDate: atDateTime(yesterday, '10:15'),
+        dischargeDate: atDateTime(today, '16:20'),
+        status: AdmissionStatus.DISCHARGED,
+    },
+    {
+        id: 'seed-admission-008',
+        patientId: 'seed-patient-004',
+        roomNumber: 'PED-01',
+        admissionDate: atDateTime(yesterday, '12:30'),
+        dischargeDate: atDateTime(today, '11:30'),
+        status: AdmissionStatus.DISCHARGED,
+    },
+    {
+        id: 'seed-admission-009',
+        patientId: 'seed-patient-007',
+        roomNumber: 'SUR-01',
+        admissionDate: atDateTime(yesterday, '15:40'),
+        dischargeDate: atDateTime(today, '09:50'),
+        status: AdmissionStatus.DISCHARGED,
+    },
+    {
+        id: 'seed-admission-010',
+        patientId: 'seed-patient-008',
+        roomNumber: 'RAD-01',
+        admissionDate: atDateTime(yesterday, '16:25'),
+        dischargeDate: atDateTime(today, '13:05'),
+        status: AdmissionStatus.DISCHARGED,
+    },
 ] as const;
 
 const medicalRecords = [
@@ -402,6 +443,7 @@ const medicalRecords = [
         recordDate: atDateTime(today, '09:35'),
         prescriptions: [
             ['seed-prescription-001', 'Paracetamol', '500mg', '3 days', 'Take after meals if temperature is above 38 C'],
+            ['seed-prescription-002', 'Saline nasal spray', '2 sprays', '5 days', 'Use as needed for congestion'],
         ],
     },
     {
@@ -413,7 +455,7 @@ const medicalRecords = [
         prescriptionsText: 'Continue antihypertensive therapy as structured below',
         recordDate: atDateTime(today, '10:05'),
         prescriptions: [
-            ['seed-prescription-002', 'Amlodipine', '5mg', '30 days', 'Take once every morning'],
+            ['seed-prescription-003', 'Amlodipine', '5mg', '30 days', 'Take once every morning'],
         ],
     },
     {
@@ -425,7 +467,7 @@ const medicalRecords = [
         prescriptionsText: 'Hydration replacement summary',
         recordDate: atDateTime(today, '12:05'),
         prescriptions: [
-            ['seed-prescription-003', 'ORS', '1 sachet', '2 days', 'Dissolve in clean water after each loose stool'],
+            ['seed-prescription-004', 'ORS', '1 sachet', '2 days', 'Dissolve in clean water after each loose stool'],
         ],
     },
     {
@@ -437,7 +479,176 @@ const medicalRecords = [
         prescriptionsText: 'Pain management summary',
         recordDate: atDateTime(tomorrow, '14:40'),
         prescriptions: [
-            ['seed-prescription-004', 'Ibuprofen', '400mg', '5 days', 'Take with food, maximum three times daily'],
+            ['seed-prescription-005', 'Ibuprofen', '400mg', '5 days', 'Take with food, maximum three times daily'],
+        ],
+    },
+    {
+        id: 'seed-record-005',
+        patientId: 'seed-patient-003',
+        doctorKey: 'dr-nora',
+        diagnosis: 'Type 2 diabetes review',
+        treatment: 'Diet counseling, glucose monitoring, and follow-up lab panel',
+        prescriptionsText: 'Continue glucose control medication and monitoring',
+        recordDate: atDateTime(today, '11:20'),
+        prescriptions: [
+            ['seed-prescription-006', 'Metformin', '500mg', '30 days', 'Take twice daily with meals'],
+        ],
+    },
+    {
+        id: 'seed-record-006',
+        patientId: 'seed-patient-004',
+        doctorKey: 'dr-driton',
+        diagnosis: 'Appendectomy follow-up',
+        treatment: 'Incision check, wound care, and activity restriction guidance',
+        prescriptionsText: 'Short course pain control after post-op review',
+        recordDate: atDateTime(today, '11:55'),
+        prescriptions: [
+            ['seed-prescription-007', 'Acetaminophen', '500mg', '4 days', 'Take every 8 hours as needed for pain'],
+        ],
+    },
+    {
+        id: 'seed-record-007',
+        patientId: 'seed-patient-005',
+        doctorKey: 'dr-arben',
+        diagnosis: 'Chest pain observation',
+        treatment: 'ECG review, cardiac enzyme monitoring, and cardiology follow-up',
+        prescriptionsText: 'Antiplatelet and gastric protection summary',
+        recordDate: atDateTime(today, '13:10'),
+        prescriptions: [
+            ['seed-prescription-008', 'Aspirin', '81mg', '30 days', 'Take once daily unless bleeding occurs'],
+            ['seed-prescription-009', 'Pantoprazole', '20mg', '14 days', 'Take before breakfast'],
+        ],
+    },
+    {
+        id: 'seed-record-008',
+        patientId: 'seed-patient-007',
+        doctorKey: 'dr-hana',
+        diagnosis: 'Migraine without aura',
+        treatment: 'Trigger diary, hydration plan, and follow-up if frequency increases',
+        prescriptionsText: 'Acute migraine therapy summary',
+        recordDate: atDateTime(today, '14:05'),
+        prescriptions: [
+            ['seed-prescription-010', 'Sumatriptan', '50mg', 'As needed', 'Take at migraine onset, maximum two doses daily'],
+        ],
+    },
+    {
+        id: 'seed-record-009',
+        patientId: 'seed-patient-008',
+        doctorKey: 'dr-fisnik',
+        diagnosis: 'Abdominal ultrasound follow-up',
+        treatment: 'Imaging report reviewed; conservative care and primary care follow-up',
+        prescriptionsText: 'Symptom relief as needed',
+        recordDate: atDateTime(today, '15:15'),
+        prescriptions: [
+            ['seed-prescription-011', 'Simethicone', '80mg', '7 days', 'Take after meals as needed for bloating'],
+        ],
+    },
+    {
+        id: 'seed-record-010',
+        patientId: 'seed-patient-009',
+        doctorKey: 'dr-arben',
+        diagnosis: 'Heart failure medication review',
+        treatment: 'Fluid balance monitoring and medication adherence counseling',
+        prescriptionsText: 'Diuretic therapy and daily weight monitoring',
+        recordDate: atDateTime(today, '16:05'),
+        prescriptions: [
+            ['seed-prescription-012', 'Furosemide', '20mg', '14 days', 'Take every morning and track daily weight'],
+        ],
+    },
+    {
+        id: 'seed-record-011',
+        patientId: 'seed-patient-010',
+        doctorKey: 'dr-driton',
+        diagnosis: 'Pre-operative assessment',
+        treatment: 'Surgical risk review and routine pre-op instructions',
+        prescriptionsText: 'No long-term medicines started; pre-op antiseptic wash advised',
+        recordDate: atDateTime(today, '16:35'),
+        prescriptions: [
+            ['seed-prescription-013', 'Chlorhexidine wash', 'Topical', '2 days', 'Use the evening before and morning of surgery'],
+        ],
+    },
+    {
+        id: 'seed-record-012',
+        patientId: 'seed-patient-011',
+        doctorKey: 'dr-nora',
+        diagnosis: 'Seasonal allergic rhinitis',
+        treatment: 'Allergen avoidance counseling and symptom control',
+        prescriptionsText: 'Antihistamine plan for seasonal allergies',
+        recordDate: atDateTime(tomorrow, '09:10'),
+        prescriptions: [
+            ['seed-prescription-014', 'Loratadine', '10mg', '14 days', 'Take once daily during symptoms'],
+        ],
+    },
+    {
+        id: 'seed-record-013',
+        patientId: 'seed-patient-012',
+        doctorKey: 'dr-elira',
+        diagnosis: 'Asthma action plan review',
+        treatment: 'Inhaler technique check and symptom-zone plan updated',
+        prescriptionsText: 'Rescue inhaler instructions reinforced',
+        recordDate: atDateTime(tomorrow, '10:25'),
+        prescriptions: [
+            ['seed-prescription-015', 'Salbutamol inhaler', '100mcg', 'As needed', 'Use two puffs for wheeze or shortness of breath'],
+        ],
+    },
+    {
+        id: 'seed-record-014',
+        patientId: 'seed-patient-013',
+        doctorKey: 'dr-hana',
+        diagnosis: 'Vertigo evaluation',
+        treatment: 'Neurologic exam, positional maneuvers, and fall-prevention guidance',
+        prescriptionsText: 'Short symptomatic course for vertigo',
+        recordDate: atDateTime(tomorrow, '11:15'),
+        prescriptions: [
+            ['seed-prescription-016', 'Betahistine', '16mg', '10 days', 'Take twice daily after meals'],
+        ],
+    },
+    {
+        id: 'seed-record-015',
+        patientId: 'seed-patient-015',
+        doctorKey: 'dr-hana',
+        diagnosis: 'Tension headache',
+        treatment: 'Sleep hygiene, hydration, and neck stretching plan',
+        prescriptionsText: 'Simple analgesic plan for headache episodes',
+        recordDate: atDateTime(tomorrow, '13:20'),
+        prescriptions: [
+            ['seed-prescription-017', 'Naproxen', '250mg', '5 days', 'Take with food as needed for headache'],
+        ],
+    },
+    {
+        id: 'seed-record-016',
+        patientId: 'seed-patient-016',
+        doctorKey: 'dr-fisnik',
+        diagnosis: 'Thyroid ultrasound follow-up',
+        treatment: 'Imaging reviewed and endocrine follow-up recommended',
+        prescriptionsText: 'No medication change; continue existing therapy',
+        recordDate: atDateTime(tomorrow, '15:05'),
+        prescriptions: [
+            ['seed-prescription-018', 'Levothyroxine', '50mcg', '30 days', 'Continue once daily before breakfast'],
+        ],
+    },
+    {
+        id: 'seed-record-017',
+        patientId: 'seed-patient-017',
+        doctorKey: 'dr-mira',
+        diagnosis: 'Wound check after minor laceration',
+        treatment: 'Wound cleaned, dressing changed, and infection precautions reviewed',
+        prescriptionsText: 'Topical antibiotic dressing plan',
+        recordDate: atDateTime(tomorrow, '15:45'),
+        prescriptions: [
+            ['seed-prescription-019', 'Mupirocin ointment', 'Topical', '5 days', 'Apply a thin layer twice daily'],
+        ],
+    },
+    {
+        id: 'seed-record-018',
+        patientId: 'seed-patient-018',
+        doctorKey: 'dr-elira',
+        diagnosis: 'Routine pediatric wellness check',
+        treatment: 'Growth reviewed, vaccination status checked, and nutrition counseling',
+        prescriptionsText: 'Vitamin supplementation summary',
+        recordDate: atDateTime(tomorrow, '16:10'),
+        prescriptions: [
+            ['seed-prescription-020', 'Vitamin D drops', '400 IU', '30 days', 'Take once daily with food'],
         ],
     },
 ] as const;
@@ -475,7 +686,130 @@ const invoices = [
         status: InvoiceStatus.PENDING,
         description: 'Confirmed orthopedic review and X-ray',
     },
+    {
+        id: 'seed-invoice-005',
+        patientId: 'seed-patient-003',
+        amount: '120.00',
+        invoiceDate: atDateTime(today, '11:45'),
+        status: InvoiceStatus.PENDING,
+        description: 'Diabetes lab panel and internal medicine review',
+    },
+    {
+        id: 'seed-invoice-006',
+        patientId: 'seed-patient-004',
+        amount: '180.00',
+        invoiceDate: atDateTime(today, '12:15'),
+        status: InvoiceStatus.PAID,
+        description: 'Surgical follow-up and wound care supplies',
+    },
+    {
+        id: 'seed-invoice-007',
+        patientId: 'seed-patient-005',
+        amount: '260.00',
+        invoiceDate: atDateTime(today, '13:35'),
+        status: InvoiceStatus.PENDING,
+        description: 'ICU observation and cardiology monitoring',
+    },
+    {
+        id: 'seed-invoice-008',
+        patientId: 'seed-patient-007',
+        amount: '85.00',
+        invoiceDate: atDateTime(today, '14:25'),
+        status: InvoiceStatus.PAID,
+        description: 'Neurology follow-up visit',
+    },
+    {
+        id: 'seed-invoice-009',
+        patientId: 'seed-patient-008',
+        amount: '110.00',
+        invoiceDate: atDateTime(today, '15:35'),
+        status: InvoiceStatus.CANCELLED,
+        description: 'Cancelled duplicate imaging review invoice',
+    },
+    {
+        id: 'seed-invoice-010',
+        patientId: 'seed-patient-009',
+        amount: '210.00',
+        invoiceDate: atDateTime(today, '16:30'),
+        status: InvoiceStatus.PENDING,
+        description: 'Cardiology admission monitoring',
+    },
+    {
+        id: 'seed-invoice-011',
+        patientId: 'seed-patient-010',
+        amount: '150.00',
+        invoiceDate: atDateTime(today, '16:50'),
+        status: InvoiceStatus.PAID,
+        description: 'Pre-operative assessment',
+    },
+    {
+        id: 'seed-invoice-012',
+        patientId: 'seed-patient-011',
+        amount: '40.00',
+        invoiceDate: atDateTime(tomorrow, '09:40'),
+        status: InvoiceStatus.PENDING,
+        description: 'Allergy consultation',
+    },
+    {
+        id: 'seed-invoice-013',
+        patientId: 'seed-patient-012',
+        amount: '130.00',
+        invoiceDate: atDateTime(tomorrow, '10:55'),
+        status: InvoiceStatus.PAID,
+        description: 'Pediatric admission and asthma plan',
+    },
+    {
+        id: 'seed-invoice-014',
+        patientId: 'seed-patient-013',
+        amount: '90.00',
+        invoiceDate: atDateTime(tomorrow, '11:45'),
+        status: InvoiceStatus.PENDING,
+        description: 'Neurology vertigo evaluation',
+    },
+    {
+        id: 'seed-invoice-015',
+        patientId: 'seed-patient-015',
+        amount: '65.00',
+        invoiceDate: atDateTime(tomorrow, '13:50'),
+        status: InvoiceStatus.PAID,
+        description: 'Headache consultation',
+    },
+    {
+        id: 'seed-invoice-016',
+        patientId: 'seed-patient-016',
+        amount: '125.00',
+        invoiceDate: atDateTime(tomorrow, '15:35'),
+        status: InvoiceStatus.PENDING,
+        description: 'Ultrasound report review',
+    },
+    {
+        id: 'seed-invoice-017',
+        patientId: 'seed-patient-017',
+        amount: '35.00',
+        invoiceDate: atDateTime(tomorrow, '16:05'),
+        status: InvoiceStatus.PAID,
+        description: 'Wound care follow-up',
+    },
+    {
+        id: 'seed-invoice-018',
+        patientId: 'seed-patient-018',
+        amount: '50.00',
+        invoiceDate: atDateTime(tomorrow, '16:35'),
+        status: InvoiceStatus.PENDING,
+        description: 'Pediatric wellness check',
+    },
 ] as const;
+
+function getDateValue(offsetDays = 0) {
+    const date = new Date();
+    date.setDate(date.getDate() + offsetDays);
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
 
 function normalizeEmail(email: string) {
     return email.trim().toUpperCase();
@@ -937,6 +1271,8 @@ async function seedHospitalData() {
             },
             update: {
                 patientId: invoice.patientId,
+                appointmentId: null,
+                admissionId: null,
                 amount: invoice.amount,
                 invoiceDate: invoice.invoiceDate,
                 status: invoice.status,
@@ -945,6 +1281,8 @@ async function seedHospitalData() {
             create: {
                 id: invoice.id,
                 patientId: invoice.patientId,
+                appointmentId: null,
+                admissionId: null,
                 amount: invoice.amount,
                 invoiceDate: invoice.invoiceDate,
                 status: invoice.status,
@@ -964,6 +1302,10 @@ async function seedHospitalData() {
         appointmentsTomorrow: tomorrowAppointmentRows.length,
         admissions: admissions.length,
         medicalRecords: medicalRecords.length,
+        prescriptions: medicalRecords.reduce(
+            (count, record) => count + record.prescriptions.length,
+            0,
+        ),
         invoices: invoices.length,
     };
 }
@@ -1002,6 +1344,7 @@ async function main() {
             `${summary.appointmentsTomorrow} appointments tomorrow`,
             `${summary.admissions} admissions`,
             `${summary.medicalRecords} medical records`,
+            `${summary.prescriptions} prescriptions`,
             `${summary.invoices} invoices`,
         ].join(' '),
     );
