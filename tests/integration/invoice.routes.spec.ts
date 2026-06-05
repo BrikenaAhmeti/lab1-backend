@@ -62,6 +62,10 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
         id?: string;
         patientId?: string;
         status?: string;
+        invoiceDate?: {
+            gte?: Date;
+            lte?: Date;
+        };
     }) {
         return invoiceStore.filter((invoice) => {
             if (where?.id && invoice.id !== where.id) {
@@ -73,6 +77,20 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
             }
 
             if (where?.status && invoice.status !== where.status) {
+                return false;
+            }
+
+            if (
+                where?.invoiceDate?.gte
+                && invoice.invoiceDate.getTime() < where.invoiceDate.gte.getTime()
+            ) {
+                return false;
+            }
+
+            if (
+                where?.invoiceDate?.lte
+                && invoice.invoiceDate.getTime() > where.invoiceDate.lte.getTime()
+            ) {
                 return false;
             }
 
@@ -131,6 +149,10 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                     where?: {
                         patientId?: string;
                         status?: string;
+                        invoiceDate?: {
+                            gte?: Date;
+                            lte?: Date;
+                        };
                     };
                 }) => {
                     return sortInvoices(filterInvoices(where)).map(
@@ -327,6 +349,50 @@ describe('Invoice routes', () => {
 
         expect(response.status).toBe(404);
         expect(response.body.message).toBe('Patient not found');
+    });
+
+    it('should filter invoices by one date or date range', async () => {
+        const token = createAccessToken(['USER']);
+        const patientId = prismaMock.__seedPatient();
+        prismaMock.__seedInvoice({
+            patientId,
+            amount: 80,
+            invoiceDate: new Date('2026-05-06T09:30:00.000Z'),
+        });
+        prismaMock.__seedInvoice({
+            patientId,
+            amount: 120,
+            invoiceDate: new Date('2026-05-20T12:00:00.000Z'),
+        });
+        const juneInvoice = prismaMock.__seedInvoice({
+            patientId,
+            amount: 200,
+            invoiceDate: new Date('2026-06-02T08:00:00.000Z'),
+        });
+
+        const rangeResponse = await request(app)
+            .get('/api/invoices?from=2026-05-01&to=2026-05-31')
+            .set('Authorization', `Bearer ${token}`);
+
+        expect(rangeResponse.status).toBe(200);
+        expect(rangeResponse.body.data).toHaveLength(2);
+
+        const exactResponse = await request(app)
+            .get('/api/invoices?date=2026-06-02')
+            .set('Authorization', `Bearer ${token}`);
+
+        expect(exactResponse.status).toBe(200);
+        expect(exactResponse.body.data).toHaveLength(1);
+        expect(exactResponse.body.data[0].id).toBe(juneInvoice.id);
+
+        const invalidRangeResponse = await request(app)
+            .get('/api/invoices?from=2026-06-05&to=2026-05-01')
+            .set('Authorization', `Bearer ${token}`);
+
+        expect(invalidRangeResponse.status).toBe(400);
+        expect(invalidRangeResponse.body.message).toBe(
+            'from date cannot be after to date',
+        );
     });
 
     it('should complete the invoice flow', async () => {

@@ -68,6 +68,7 @@ export class InvoicePrismaRepository implements InvoiceRepository {
             where: {
                 ...(params.patientId ? { patientId: params.patientId } : {}),
                 ...(params.status ? { status: params.status } : {}),
+                ...(params.invoiceDate ? { invoiceDate: params.invoiceDate } : {}),
             },
             include: invoiceInclude,
             orderBy: [

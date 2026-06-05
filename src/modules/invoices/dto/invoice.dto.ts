@@ -77,6 +77,9 @@ function normalizeInvoiceQuery(input: unknown) {
         ...value,
         patientId: value.patientId ?? value.patient_id,
         status: value.status ?? value.statusi,
+        date: value.date ?? value.invoiceDate ?? value.invoice_date ?? value.data,
+        from: value.from,
+        to: value.to,
     };
 }
 
@@ -272,7 +275,25 @@ const getInvoicesQuerySchema = z.preprocess(
             normalizeOptionalString,
             invoiceStatusSchema.optional(),
         ),
-    }),
+        date: z.preprocess(
+            normalizeOptionalString,
+            invoiceDateSchema.optional(),
+        ),
+        from: z.preprocess(
+            normalizeOptionalString,
+            invoiceDateSchema.optional(),
+        ),
+        to: z.preprocess(
+            normalizeOptionalString,
+            invoiceDateSchema.optional(),
+        ),
+    }).refine(
+        (value) => !value.from || !value.to || value.from <= value.to,
+        {
+            message: 'from date cannot be after to date',
+            path: ['from'],
+        },
+    ),
 );
 
 export type GetInvoicesQueryDto = z.infer<typeof getInvoicesQuerySchema>;

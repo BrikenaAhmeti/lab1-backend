@@ -5,7 +5,11 @@ import {
     sortItems,
 } from '../../../shared/core/pagination';
 import { InvoiceEntity, InvoiceStatsEntity } from '../domain/invoice.entity';
-import { InvoiceRepository, UpdateInvoiceData } from '../domain/invoice.repository';
+import {
+    FindInvoicesParams,
+    InvoiceRepository,
+    UpdateInvoiceData,
+} from '../domain/invoice.repository';
 import {
     CreateInvoiceDto,
     GetInvoicesQueryDto,
@@ -57,10 +61,14 @@ export class InvoiceService {
             await this.ensurePatientExists(patientId);
         }
 
-        const invoices = await this.invoiceRepository.findMany({
+        const invoiceDate = this.buildInvoiceDateFilter(data);
+        const params: FindInvoicesParams = {
             ...(patientId ? { patientId } : {}),
             ...(data.status ? { status: data.status } : {}),
-        });
+            ...(invoiceDate ? { invoiceDate } : {}),
+        };
+
+        const invoices = await this.invoiceRepository.findMany(params);
 
         const sortedInvoices = sortItems(
             invoices,
@@ -256,6 +264,30 @@ export class InvoiceService {
 
     private toInvoiceDate(date: string): Date {
         return new Date(`${date}T00:00:00.000Z`);
+    }
+
+    private buildInvoiceDateFilter(
+        data: GetInvoicesQueryDto,
+    ): FindInvoicesParams['invoiceDate'] | undefined {
+        if (data.date) {
+            return {
+                gte: this.toInvoiceDate(data.date),
+                lte: this.toEndOfDay(data.date),
+            };
+        }
+
+        if (!data.from && !data.to) {
+            return undefined;
+        }
+
+        return {
+            ...(data.from ? { gte: this.toInvoiceDate(data.from) } : {}),
+            ...(data.to ? { lte: this.toEndOfDay(data.to) } : {}),
+        };
+    }
+
+    private toEndOfDay(value: string): Date {
+        return new Date(`${value}T23:59:59.999Z`);
     }
 
     private normalizeDescription(description?: string | null): string | null {

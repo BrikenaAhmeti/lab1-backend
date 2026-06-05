@@ -28,6 +28,10 @@ export interface UpdateInvoiceData {
 export interface FindInvoicesParams {
     patientId?: string;
     status?: InvoiceStatus;
+    invoiceDate?: {
+        gte?: Date;
+        lte?: Date;
+    };
 }
 
 export interface InvoiceRepository {

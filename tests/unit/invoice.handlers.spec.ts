@@ -5,9 +5,11 @@ import { PayInvoiceCommand } from '../../src/modules/invoices/application/comman
 import { UpdateInvoiceCommand } from '../../src/modules/invoices/application/commands/update-invoice.command';
 import { CreateInvoiceHandler } from '../../src/modules/invoices/application/handlers/create-invoice.handler';
 import { DeleteInvoiceHandler } from '../../src/modules/invoices/application/handlers/delete-invoice.handler';
+import { GetInvoicesHandler } from '../../src/modules/invoices/application/handlers/get-invoices.handler';
 import { GetInvoiceStatsHandler } from '../../src/modules/invoices/application/handlers/get-invoice-stats.handler';
 import { PayInvoiceHandler } from '../../src/modules/invoices/application/handlers/pay-invoice.handler';
 import { UpdateInvoiceHandler } from '../../src/modules/invoices/application/handlers/update-invoice.handler';
+import { GetInvoicesQuery } from '../../src/modules/invoices/application/queries/get-invoices.query';
 import { GetInvoiceStatsQuery } from '../../src/modules/invoices/application/queries/get-invoice-stats.query';
 import {
     InvoiceEntity,
@@ -213,6 +215,35 @@ describe('Invoice handlers', () => {
         expect(repository.update).toHaveBeenCalledWith('invoice-1', {
             status: 'CANCELLED',
         });
+    });
+
+    it('should pass invoice date range filters to the repository', async () => {
+        repository.findMany.mockResolvedValue([
+            createInvoice({
+                invoiceDate: new Date('2026-05-07T10:00:00.000Z'),
+            }),
+        ]);
+
+        const service = new InvoiceService(repository);
+        const handler = new GetInvoicesHandler(service);
+        const result = await handler.execute(
+            new GetInvoicesQuery({
+                page: 1,
+                limit: 10,
+                sortBy: 'date',
+                order: 'DESC',
+                from: '2026-05-01',
+                to: '2026-05-31',
+            }),
+        );
+
+        expect(repository.findMany).toHaveBeenCalledWith({
+            invoiceDate: {
+                gte: new Date('2026-05-01T00:00:00.000Z'),
+                lte: new Date('2026-05-31T23:59:59.999Z'),
+            },
+        });
+        expect(result.data).toHaveLength(1);
     });
 
     it('should return paid revenue stats', async () => {
