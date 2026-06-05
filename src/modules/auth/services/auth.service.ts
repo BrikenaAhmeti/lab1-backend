@@ -91,6 +91,13 @@ export interface UpdateUserInput {
     roleIds?: string[];
 }
 
+export interface UpdateProfileInput {
+    firstName?: string;
+    lastName?: string;
+    username?: string;
+    phoneNumber?: string | null;
+}
+
 export interface CreateRoleInput {
     name: string;
     description?: string;
@@ -118,7 +125,6 @@ export interface ProvisionDoctorUserInput {
     email?: string;
     username?: string;
     phoneNumber?: string;
-    password?: string;
 }
 
 export interface ProvisionNurseUserInput {
@@ -343,6 +349,55 @@ export class AuthService {
         const user = await this.getExistingUserById(userId);
 
         return this.mapUser(user);
+    }
+
+    async updateCurrentUser(
+        userId: string,
+        input: UpdateProfileInput,
+    ): Promise<AuthUserResponse> {
+        const existingUser = await this.getExistingUserById(userId);
+        const dataToUpdate: {
+            firstName?: string;
+            lastName?: string;
+            username?: string;
+            normalizedUsername?: string;
+            phoneNumber?: string | null;
+        } = {};
+
+        if (input.firstName !== undefined) {
+            dataToUpdate.firstName = input.firstName.trim();
+        }
+
+        if (input.lastName !== undefined) {
+            dataToUpdate.lastName = input.lastName.trim();
+        }
+
+        if (input.username !== undefined) {
+            const usernameData = this.normalizeUsername(input.username);
+
+            if (usernameData.normalizedUsername !== existingUser.normalizedUsername) {
+                const userWithSameUsername = await this.repository.findUserByNormalizedUsername(
+                    usernameData.normalizedUsername,
+                );
+
+                if (userWithSameUsername) {
+                    throw new AppError('Username already exists', 409);
+                }
+            }
+
+            dataToUpdate.username = usernameData.username;
+            dataToUpdate.normalizedUsername = usernameData.normalizedUsername;
+        }
+
+        if (input.phoneNumber !== undefined) {
+            dataToUpdate.phoneNumber = input.phoneNumber ? input.phoneNumber.trim() : null;
+        }
+
+        await this.repository.updateUser(userId, dataToUpdate);
+
+        const updatedUser = await this.getExistingUserById(userId);
+
+        return this.mapUser(updatedUser);
     }
 
     async listUsers(): Promise<AuthUserResponse[]> {
@@ -691,10 +746,13 @@ export class AuthService {
         }
 
         await this.updatePassword(user.id, newPassword);
+        await this.sendPasswordChangedEmail(user);
     }
 
-    async setUserPassword(userId: string, newPassword: string): Promise<void> {
+    async resetUserPassword(userId: string): Promise<void> {
         const user = await this.getExistingUserById(userId);
+        const newPassword = randomUUID();
+
         await this.updatePassword(userId, newPassword);
         await this.sendPasswordUpdatedEmail(user, newPassword);
     }
@@ -844,7 +902,6 @@ export class AuthService {
             email: input.email,
             username: input.username,
             phoneNumber: input.phoneNumber,
-            password: input.password,
             roleName: 'DOCTOR',
             emailLabel: 'doctor',
         });
@@ -1146,6 +1203,25 @@ export class AuthService {
         });
     }
 
+    private async sendPasswordChangedEmail(user: UserWithRoles): Promise<void> {
+        if (!this.mailService || !this.canSendAccountEmail(user.email)) {
+            return;
+        }
+
+        await this.mailService.send({
+            to: user.email,
+            subject: 'Your MedSphere password was changed',
+            text: [
+                `Hello ${user.firstName},`,
+                '',
+                'Your MedSphere password was changed successfully.',
+                '',
+                'If you did not make this change, contact an administrator immediately.',
+            ].join('\n'),
+            html: this.buildPasswordChangedEmailHtml(user),
+        });
+    }
+
     private async sendConfirmationEmail(user: UserWithRoles): Promise<void> {
         if (!this.mailService || !this.canSendAccountEmail(user.email)) {
             return;
@@ -1209,6 +1285,14 @@ export class AuthService {
             `<li><strong>Password:</strong> ${this.escapeHtml(password)}</li>`,
             '</ul>',
             confirmationLink ? `<p><a href="${confirmationLink}">Confirm email</a></p>` : '',
+        ].join('');
+    }
+
+    private buildPasswordChangedEmailHtml(user: UserWithRoles): string {
+        return [
+            `<p>Hello ${this.escapeHtml(user.firstName)},</p>`,
+            '<p>Your MedSphere password was changed successfully.</p>',
+            '<p>If you did not make this change, contact an administrator immediately.</p>',
         ].join('');
     }
 

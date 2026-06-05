@@ -636,7 +636,7 @@ describe('AuthService', () => {
         });
     });
 
-    it('should let admin set a user password and revoke refresh tokens', async () => {
+    it('should let admin reset a user password and revoke refresh tokens', async () => {
         const existingUser = createUser({
             id: 'target-user-id',
         });
@@ -646,7 +646,7 @@ describe('AuthService', () => {
 
         repository.findUserById.mockResolvedValue(existingUserWithRoles);
 
-        await service.setUserPassword('target-user-id', 'Doctor123!');
+        await service.resetUserPassword('target-user-id');
 
         expect(repository.updateUser).toHaveBeenCalledWith(
             'target-user-id',

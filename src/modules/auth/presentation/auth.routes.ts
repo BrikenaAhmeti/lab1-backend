@@ -29,6 +29,7 @@ authRoutes.post(
 );
 
 authRoutes.get('/me', authenticate, asyncHandler(controller.me.bind(controller)));
+authRoutes.patch('/me', authenticate, asyncHandler(controller.updateMe.bind(controller)));
 
 authRoutes.get(
     '/users',
@@ -76,7 +77,7 @@ authRoutes.patch(
     '/users/:id/password',
     authenticate,
     authorizeRoles('ADMIN'),
-    asyncHandler(controller.setUserPassword.bind(controller)),
+    asyncHandler(controller.resetUserPassword.bind(controller)),
 );
 
 authRoutes.get(

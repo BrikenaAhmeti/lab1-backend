@@ -287,6 +287,40 @@ export class UpdateUserDto {
     roleIds?: string[];
 }
 
+export class UpdateProfileDto {
+    @OptionalField()
+    @IsString({ message: 'First name is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'First name is required' })
+    @MinLength(2, { message: 'First name must be at least 2 characters' })
+    @MaxLength(100, { message: 'First name must not exceed 100 characters' })
+    firstName?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Last name is required' })
+    @NormalizeString()
+    @IsNotEmpty({ message: 'Last name is required' })
+    @MinLength(2, { message: 'Last name must be at least 2 characters' })
+    @MaxLength(100, { message: 'Last name must not exceed 100 characters' })
+    lastName?: string;
+
+    @OptionalField()
+    @IsString({ message: 'Username must be a string' })
+    @NormalizeString()
+    @MinLength(3, { message: 'Username must be at least 3 characters' })
+    @MaxLength(30, { message: 'Username must not exceed 30 characters' })
+    @Matches(usernameRegex, {
+        message: 'Username can contain only letters, numbers, dots, underscores, and hyphens',
+    })
+    username?: string;
+
+    @OptionalNullableField()
+    @IsString({ message: 'Phone number must be a string' })
+    @NormalizeNullableString()
+    @MaxLength(30, { message: 'Phone number must not exceed 30 characters' })
+    phoneNumber?: string | null;
+}
+
 export class SetUserStatusDto {
     @IsDefined({ message: 'isActive is required' })
     @IsBoolean({ message: 'isActive must be a boolean' })
@@ -305,14 +339,6 @@ export class ChangePasswordDto {
     @MinLength(6, { message: 'New password must be at least 6 characters' })
     @MaxLength(255, { message: 'New password must not exceed 255 characters' })
     newPassword!: string;
-}
-
-export class SetUserPasswordDto {
-    @IsDefined({ message: 'Password is required' })
-    @IsString({ message: 'Password is required' })
-    @MinLength(6, { message: 'Password must be at least 6 characters' })
-    @MaxLength(255, { message: 'Password must not exceed 255 characters' })
-    password!: string;
 }
 
 export class ConfirmEmailDto {
@@ -435,16 +461,28 @@ export function validateUpdateUserDto(input: unknown) {
     return dto;
 }
 
+export function validateUpdateProfileDto(input: unknown) {
+    const dto = validateDto(UpdateProfileDto, input);
+
+    assertAtLeastOneField(
+        dto,
+        [
+            'firstName',
+            'lastName',
+            'username',
+            'phoneNumber',
+        ],
+    );
+
+    return dto;
+}
+
 export function validateSetUserStatusDto(input: unknown) {
     return validateDto(SetUserStatusDto, input);
 }
 
 export function validateChangePasswordDto(input: unknown) {
     return validateDto(ChangePasswordDto, input);
-}
-
-export function validateSetUserPasswordDto(input: unknown) {
-    return validateDto(SetUserPasswordDto, input);
 }
 
 export function validateConfirmEmailDto(input: unknown) {

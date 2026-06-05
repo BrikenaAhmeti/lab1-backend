@@ -11,7 +11,7 @@ const expectedDocumentedRoutes: Record<string, string[]> = {
     '/api/auth/logout': ['post'],
     '/api/auth/change-password': ['post'],
     '/api/auth/logout-all': ['post'],
-    '/api/auth/me': ['get'],
+    '/api/auth/me': ['get', 'patch'],
     '/api/auth/users': ['get', 'post'],
     '/api/auth/users/receptionists': ['post'],
     '/api/auth/users/{id}': ['get', 'patch', 'delete'],

@@ -15,8 +15,8 @@ import {
     validateRegisterDto,
     validateReplaceRolesDto,
     validateResendConfirmationEmailDto,
-    validateSetUserPasswordDto,
     validateSetUserStatusDto,
+    validateUpdateProfileDto,
     validateUpdateRoleDto,
     validateUpdateUserDto,
 } from '../dto/auth.dto';
@@ -128,6 +128,17 @@ export class AuthController {
         return res.status(200).json(result);
     }
 
+    async updateMe(req: Request, res: Response) {
+        const requestWithUser = req as RequestWithUser;
+        const body = validateUpdateProfileDto(req.body);
+        const result = await this.service.updateCurrentUser(
+            requestWithUser.user.id,
+            body,
+        );
+
+        return res.status(200).json(result);
+    }
+
     async changePassword(req: Request, res: Response) {
         const requestWithUser = req as RequestWithUser;
         const body = validateChangePasswordDto(req.body);
@@ -193,11 +204,10 @@ export class AuthController {
         return res.status(200).json(result);
     }
 
-    async setUserPassword(req: Request, res: Response) {
+    async resetUserPassword(req: Request, res: Response) {
         const params = paramsWithIdSchema.parse(req.params);
-        const body = validateSetUserPasswordDto(req.body);
 
-        await this.service.setUserPassword(params.id, body.password);
+        await this.service.resetUserPassword(params.id);
 
         return res.status(204).send();
     }

@@ -608,7 +608,6 @@ describe('Doctor routes', () => {
                 phoneNumber: '+38344123456',
                 email: 'elira.dema@example.com',
                 username: 'elira.dema',
-                password: 'Doctor123!',
             });
 
         expect(response.status).toBe(201);

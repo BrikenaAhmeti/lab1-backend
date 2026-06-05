@@ -987,6 +987,37 @@ const swaggerDefinition = {
                     '500': errorResponse(500, 'Internal server error'),
                 },
             },
+            patch: {
+                tags: ['Auth'],
+                summary: 'Update current user profile',
+                description: 'Updates editable profile fields for the authenticated user.',
+                security: bearerSecurity,
+                requestBody: requestBody(
+                    'Profile payload',
+                    {
+                        type: 'object',
+                        properties: {
+                            firstName: { type: 'string', minLength: 2, maxLength: 100 },
+                            lastName: { type: 'string', minLength: 2, maxLength: 100 },
+                            username: { type: 'string', minLength: 3, maxLength: 30 },
+                            phoneNumber: { type: 'string', nullable: true, maxLength: 30 },
+                        },
+                    },
+                    {
+                        firstName: 'Ana',
+                        lastName: 'Krasniqi',
+                        username: 'ana.krasniqi',
+                        phoneNumber: '+38344111222',
+                    },
+                ),
+                responses: {
+                    '200': response('Profile updated successfully', { $ref: '#/components/schemas/AuthUser' }, authUserExample),
+                    '400': errorResponse(400, 'Validation failed'),
+                    '401': errorResponse(401, 'Unauthorized'),
+                    '409': errorResponse(409, 'Username already exists'),
+                    '500': errorResponse(500, 'Internal server error'),
+                },
+            },
         },
         '/api/auth/change-password': {
             post: {
@@ -1222,26 +1253,12 @@ const swaggerDefinition = {
         '/api/auth/users/{id}/password': {
             patch: {
                 tags: ['Auth'],
-                summary: 'Set user password',
-                description: 'Sets a user password from the admin panel and emails the updated credentials when mail is configured. Admin role required.',
+                summary: 'Reset user password',
+                description: 'Generates a new password for a user from the admin panel and emails the updated credentials when mail is configured. Admin role required.',
                 security: bearerSecurity,
                 parameters: [idPathParameter('id', 'User id')],
-                requestBody: requestBody(
-                    'Password payload',
-                    {
-                        type: 'object',
-                        required: ['password'],
-                        properties: {
-                            password: { type: 'string', minLength: 6, maxLength: 255 },
-                        },
-                    },
-                    {
-                        password: 'NewSecret123!',
-                    },
-                ),
                 responses: {
-                    '204': noContentResponse('Password updated successfully'),
-                    '400': errorResponse(400, 'Validation failed'),
+                    '204': noContentResponse('Password reset email sent when applicable'),
                     '401': errorResponse(401, 'Unauthorized'),
                     '403': errorResponse(403, 'Forbidden'),
                     '404': errorResponse(404, 'User not found'),
@@ -1814,10 +1831,6 @@ const swaggerDefinition = {
                                 type: 'string',
                                 description: 'Optional username for the auto-created linked user.',
                             },
-                            password: {
-                                type: 'string',
-                                description: 'Optional initial password for the auto-created linked user.',
-                            },
                         },
                     },
                     {
@@ -1828,7 +1841,6 @@ const swaggerDefinition = {
                         phoneNumber: '+38344123456',
                         email: 'arben.hoxha@example.com',
                         username: 'arben.hoxha',
-                        password: 'Doctor123!',
                     },
                 ),
                 responses: {

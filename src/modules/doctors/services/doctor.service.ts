@@ -20,7 +20,6 @@ export interface DoctorUserProvisioningService {
         email?: string;
         username?: string;
         phoneNumber?: string;
-        password?: string;
     }): Promise<AuthUserResponse>;
     ensureUserHasRole(userId: string, roleName: string): Promise<void>;
     removeRoleFromUserByName(userId: string, roleName: string): Promise<void>;
@@ -49,7 +48,6 @@ export class DoctorService {
         const phoneNumber = data.phoneNumber.trim();
         const email = data.email?.trim();
         const username = data.username?.trim();
-        const password = data.password?.trim();
 
         await this.ensureDepartmentExists(departmentId);
 
@@ -57,9 +55,9 @@ export class DoctorService {
         let shouldCleanupProvisionedUser = false;
 
         if (userId) {
-            if (email || username || password) {
+            if (email || username) {
                 throw new AppError(
-                    'Email, username, and password can only be provided when creating a new linked user',
+                    'Email and username can only be provided when creating a new linked user',
                     400,
                 );
             }
@@ -80,7 +78,6 @@ export class DoctorService {
                 email,
                 username,
                 phoneNumber,
-                password,
             });
 
             userId = provisionedUser.id;

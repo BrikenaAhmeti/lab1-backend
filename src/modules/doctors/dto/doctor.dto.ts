@@ -125,12 +125,6 @@ export class CreateDoctorDto {
         message: 'Username can contain only letters, numbers, dots, underscores, and hyphens',
     })
     username?: string;
-
-    @OptionalField()
-    @IsString({ message: 'Password must be a string' })
-    @MinLength(6, { message: 'Password must be at least 6 characters' })
-    @MaxLength(255, { message: 'Password must not exceed 255 characters' })
-    password?: string;
 }
 
 export class UpdateDoctorDto {
