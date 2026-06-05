@@ -3,8 +3,10 @@ import { CreateAdmissionCommand } from '../../src/modules/admissions/application
 import { DischargeAdmissionCommand } from '../../src/modules/admissions/application/commands/discharge-admission.command';
 import { CreateAdmissionHandler } from '../../src/modules/admissions/application/handlers/create-admission.handler';
 import { DischargeAdmissionHandler } from '../../src/modules/admissions/application/handlers/discharge-admission.handler';
+import { GetAdmissionsHandler } from '../../src/modules/admissions/application/handlers/get-admissions.handler';
 import { GetAdmissionByIdHandler } from '../../src/modules/admissions/application/handlers/get-admission-by-id.handler';
 import { GetAdmissionByIdQuery } from '../../src/modules/admissions/application/queries/get-admission-by-id.query';
+import { GetAdmissionsQuery } from '../../src/modules/admissions/application/queries/get-admissions.query';
 import {
     AdmissionEntity,
     AdmissionReferenceEntity,
@@ -200,6 +202,35 @@ describe('Admission handlers', () => {
             id: 'admission-1',
             status: 'ACTIVE',
         });
+    });
+
+    it('should pass admission date range filters to the repository', async () => {
+        repository.findMany.mockResolvedValue([
+            createAdmission({
+                admissionDate: new Date('2026-05-07T10:00:00.000Z'),
+            }),
+        ]);
+
+        const service = new AdmissionService(repository);
+        const handler = new GetAdmissionsHandler(service);
+        const result = await handler.execute(
+            new GetAdmissionsQuery({
+                page: 1,
+                limit: 10,
+                sortBy: 'admission_date',
+                order: 'DESC',
+                from: '2026-05-01',
+                to: '2026-05-31',
+            }),
+        );
+
+        expect(repository.findMany).toHaveBeenCalledWith({
+            admissionDate: {
+                gte: new Date('2026-05-01T00:00:00.000Z'),
+                lte: new Date('2026-05-31T23:59:59.999Z'),
+            },
+        });
+        expect(result.data).toHaveLength(1);
     });
 
     it('should discharge an active admission and free the room capacity', async () => {

@@ -98,6 +98,7 @@ export class AdmissionPrismaRepository implements AdmissionRepository {
                 ...(params.status ? { status: params.status } : {}),
                 ...(params.patientId ? { patientId: params.patientId } : {}),
                 ...(params.roomId ? { roomId: params.roomId } : {}),
+                ...(params.admissionDate ? { admissionDate: params.admissionDate } : {}),
             },
             include: admissionInclude,
             orderBy: {

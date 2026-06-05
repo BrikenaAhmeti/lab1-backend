@@ -22,6 +22,7 @@ const admissionSortAccessors = {
     created_at: (admission: AdmissionEntity) => admission.createdAt,
     admission_date: (admission: AdmissionEntity) => admission.admissionDate,
     discharge_date: (admission: AdmissionEntity) => admission.dischargeDate,
+    status: (admission: AdmissionEntity) => admission.status,
 } as const;
 
 export class AdmissionService {
@@ -87,10 +88,12 @@ export class AdmissionService {
             await this.ensureRoomExists(roomId);
         }
 
+        const admissionDate = this.buildAdmissionDateFilter(data);
         const params: FindAdmissionsParams = {
             ...(data.status !== undefined ? { status: data.status } : {}),
             ...(patientId !== undefined ? { patientId } : {}),
             ...(roomId !== undefined ? { roomId } : {}),
+            ...(admissionDate !== undefined ? { admissionDate } : {}),
         };
 
         const admissions = await this.admissionRepository.findMany(params);
@@ -208,5 +211,33 @@ export class AdmissionService {
         }
 
         return date;
+    }
+
+    private buildAdmissionDateFilter(
+        data: GetAdmissionsQueryDto,
+    ): FindAdmissionsParams['admissionDate'] | undefined {
+        if (data.date) {
+            return {
+                gte: this.toStartOfDay(data.date),
+                lte: this.toEndOfDay(data.date),
+            };
+        }
+
+        if (!data.from && !data.to) {
+            return undefined;
+        }
+
+        return {
+            ...(data.from ? { gte: this.toStartOfDay(data.from) } : {}),
+            ...(data.to ? { lte: this.toEndOfDay(data.to) } : {}),
+        };
+    }
+
+    private toStartOfDay(value: string): Date {
+        return new Date(`${value}T00:00:00.000Z`);
+    }
+
+    private toEndOfDay(value: string): Date {
+        return new Date(`${value}T23:59:59.999Z`);
     }
 }

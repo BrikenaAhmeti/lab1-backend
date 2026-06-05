@@ -23,7 +23,9 @@ const admissionSortByValues = [
     'created_at',
     'admission_date',
     'discharge_date',
+    'status',
 ] as const;
+const admissionDateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
 function getValidationMessage(error: z.ZodError) {
     return error.issues[0]?.message ?? 'Validation failed';
@@ -47,6 +49,23 @@ function optionalDateString(fieldName: string) {
             .optional(),
     );
 }
+
+function isValidAdmissionDate(value: string) {
+    if (!admissionDateRegex.test(value)) {
+        return false;
+    }
+
+    return !Number.isNaN(new Date(`${value}T00:00:00.000Z`).getTime());
+}
+
+const admissionDateSchema = z.preprocess(
+    (value) => (typeof value === 'string' ? value.trim() : ''),
+    z.string()
+        .min(1, 'Date is required')
+        .refine(isValidAdmissionDate, {
+            message: 'Date must be in YYYY-MM-DD format',
+        }),
+);
 
 const admissionStatusSchema = z.preprocess(
     (value) => (typeof value === 'string' ? value.trim().toUpperCase() : ''),
@@ -119,7 +138,25 @@ const getAdmissionsQuerySchema = createPaginationQuerySchema(
         normalizeOptionalString,
         z.string().max(255).optional(),
     ),
-});
+    date: z.preprocess(
+        normalizeOptionalString,
+        admissionDateSchema.optional(),
+    ),
+    from: z.preprocess(
+        normalizeOptionalString,
+        admissionDateSchema.optional(),
+    ),
+    to: z.preprocess(
+        normalizeOptionalString,
+        admissionDateSchema.optional(),
+    ),
+}).refine(
+    (value) => !value.from || !value.to || value.from <= value.to,
+    {
+        message: 'from date cannot be after to date',
+        path: ['from'],
+    },
+);
 
 export type GetAdmissionsQueryDto = z.infer<typeof getAdmissionsQuerySchema>;
 

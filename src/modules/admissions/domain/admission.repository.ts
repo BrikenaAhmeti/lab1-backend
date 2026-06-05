@@ -22,6 +22,10 @@ export interface FindAdmissionsParams {
     status?: AdmissionStatus;
     patientId?: string;
     roomId?: string;
+    admissionDate?: {
+        gte?: Date;
+        lte?: Date;
+    };
 }
 
 export interface AdmissionRepository {

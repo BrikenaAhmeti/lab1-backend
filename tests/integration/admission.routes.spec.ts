@@ -90,6 +90,10 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
         patientId?: string;
         roomId?: string;
         status?: string;
+        admissionDate?: {
+            gte?: Date;
+            lte?: Date;
+        };
     }) {
         return admissionStore.filter((admission) => {
             if (where?.id && admission.id !== where.id) {
@@ -105,6 +109,20 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
             }
 
             if (where?.status && admission.status !== where.status) {
+                return false;
+            }
+
+            if (
+                where?.admissionDate?.gte
+                && admission.admissionDate.getTime() < where.admissionDate.gte.getTime()
+            ) {
+                return false;
+            }
+
+            if (
+                where?.admissionDate?.lte
+                && admission.admissionDate.getTime() > where.admissionDate.lte.getTime()
+            ) {
                 return false;
             }
 
@@ -213,6 +231,10 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                         status?: string;
                         patientId?: string;
                         roomId?: string;
+                        admissionDate?: {
+                            gte?: Date;
+                            lte?: Date;
+                        };
                     };
                 }) => {
                     return sortAdmissions(filterAdmissions(where)).map(
@@ -505,6 +527,65 @@ describe('Admission routes', () => {
 
         expect(finalActiveResponse.status).toBe(200);
         expect(finalActiveResponse.body.data).toHaveLength(0);
+    });
+
+    it('should filter admissions by exact admission date and date range', async () => {
+        const adminToken = createAccessToken(['ADMIN']);
+        const departmentId = prismaMock.__seedDepartment('Observation');
+        const firstPatientId = prismaMock.__seedPatient({
+            firstName: 'Lira',
+            lastName: 'Gashi',
+        });
+        const secondPatientId = prismaMock.__seedPatient({
+            firstName: 'Nora',
+            lastName: 'Hoxha',
+        });
+        const thirdPatientId = prismaMock.__seedPatient({
+            firstName: 'Elira',
+            lastName: 'Bytyqi',
+        });
+        const roomId = prismaMock.__seedRoom({
+            roomNumber: '505',
+            departmentId,
+            capacity: 3,
+        });
+        prismaMock.__seedAdmission({
+            patientId: firstPatientId,
+            roomId,
+            admissionDate: new Date('2026-05-06T09:30:00.000Z'),
+        });
+        prismaMock.__seedAdmission({
+            patientId: secondPatientId,
+            roomId,
+            admissionDate: new Date('2026-05-20T12:00:00.000Z'),
+        });
+        const juneAdmissionId = prismaMock.__seedAdmission({
+            patientId: thirdPatientId,
+            roomId,
+            admissionDate: new Date('2026-06-02T08:00:00.000Z'),
+        });
+
+        const rangeResponse = await request(app)
+            .get('/api/admissions?from=2026-05-01&to=2026-05-31')
+            .set('Authorization', `Bearer ${adminToken}`);
+
+        expect(rangeResponse.status).toBe(200);
+        expect(rangeResponse.body.data).toHaveLength(2);
+
+        const exactResponse = await request(app)
+            .get('/api/admissions?date=2026-06-02')
+            .set('Authorization', `Bearer ${adminToken}`);
+
+        expect(exactResponse.status).toBe(200);
+        expect(exactResponse.body.data).toHaveLength(1);
+        expect(exactResponse.body.data[0].id).toBe(juneAdmissionId);
+
+        const invalidRangeResponse = await request(app)
+            .get('/api/admissions?from=2026-06-05&to=2026-05-01')
+            .set('Authorization', `Bearer ${adminToken}`);
+
+        expect(invalidRangeResponse.status).toBe(400);
+        expect(invalidRangeResponse.body.message).toBe('from date cannot be after to date');
     });
 
     it('should reject a second active admission for the same patient', async () => {
