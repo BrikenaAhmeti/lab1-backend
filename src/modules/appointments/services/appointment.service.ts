@@ -14,6 +14,10 @@ import {
     GetAppointmentsQueryDto,
     UpdateAppointmentDto,
 } from '../dto/appointment.dto';
+import {
+    AuthenticatedUser,
+    isDoctorScopedUser,
+} from '../../../shared/core/types/request-with-user';
 
 const appointmentSortAccessors = {
     created_at: (appointment: AppointmentEntity) => appointment.createdAt,
@@ -29,11 +33,18 @@ export class AppointmentService {
 
     async createAppointment(
         data: CreateAppointmentDto,
+        user?: AuthenticatedUser,
     ): Promise<AppointmentEntity> {
         const patientId = data.patientId.trim();
-        const doctorId = data.doctorId.trim();
+        const doctorScopeId = await this.resolveDoctorScopeId(user);
+        const requestedDoctorId = data.doctorId.trim();
+        const doctorId = doctorScopeId ?? requestedDoctorId;
         const date = data.date;
         const time = data.time.trim();
+
+        if (doctorScopeId && requestedDoctorId !== doctorScopeId) {
+            throw new AppError('Forbidden', 403);
+        }
 
         await this.ensurePatientExists(patientId);
         await this.ensureDoctorExists(doctorId);
@@ -52,11 +63,13 @@ export class AppointmentService {
 
     async getAppointments(
         data: GetAppointmentsQueryDto,
+        user?: AuthenticatedUser,
     ): Promise<PaginatedResponse<AppointmentEntity>> {
-        const doctorId = data.doctorId?.trim();
+        const doctorScopeId = await this.resolveDoctorScopeId(user);
+        const doctorId = doctorScopeId ?? data.doctorId?.trim();
         const patientId = data.patientId?.trim();
 
-        if (doctorId) {
+        if (doctorId && !doctorScopeId) {
             await this.ensureDoctorExists(doctorId);
         }
 
@@ -110,23 +123,34 @@ export class AppointmentService {
 
     async getTodayAppointments(
         data: GetAppointmentsQueryDto,
+        user?: AuthenticatedUser,
     ): Promise<PaginatedResponse<AppointmentEntity>> {
         return this.getAppointments({
             ...data,
             date: this.getTodayDate(),
             from: undefined,
             to: undefined,
-        });
+        }, user);
     }
 
-    async getAppointmentById(id: string): Promise<AppointmentEntity> {
-        return this.ensureAppointmentExists(id);
+    async getAppointmentById(
+        id: string,
+        user?: AuthenticatedUser,
+    ): Promise<AppointmentEntity> {
+        const doctorScopeId = await this.resolveDoctorScopeId(user);
+        const appointment = await this.ensureAppointmentExists(id);
+
+        this.ensureDoctorCanAccessAppointment(appointment, doctorScopeId);
+
+        return appointment;
     }
 
     async updateAppointment(
         id: string,
         data: UpdateAppointmentDto,
+        user?: AuthenticatedUser,
     ): Promise<AppointmentEntity> {
+        const doctorScopeId = await this.resolveDoctorScopeId(user);
         const appointment = await this.ensureAppointmentExists(id);
         const isScheduleChange =
             data.patientId !== undefined
@@ -134,6 +158,12 @@ export class AppointmentService {
             || data.date !== undefined
             || data.time !== undefined;
         const nextStatus = (data.status ?? appointment.status) as AppointmentStatus;
+
+        this.ensureDoctorCanAccessAppointment(appointment, doctorScopeId);
+
+        if (doctorScopeId && isScheduleChange) {
+            throw new AppError('Forbidden', 403);
+        }
 
         if (isScheduleChange && appointment.status !== 'Scheduled') {
             throw new AppError('Only scheduled appointments can be rescheduled', 400);
@@ -191,8 +221,14 @@ export class AppointmentService {
         return this.appointmentRepository.update(id, updateData);
     }
 
-    async cancelAppointment(id: string): Promise<void> {
+    async cancelAppointment(
+        id: string,
+        user?: AuthenticatedUser,
+    ): Promise<void> {
+        const doctorScopeId = await this.resolveDoctorScopeId(user);
         const appointment = await this.ensureAppointmentExists(id);
+
+        this.ensureDoctorCanAccessAppointment(appointment, doctorScopeId);
 
         if (appointment.status === 'Completed') {
             throw new AppError('Completed appointment cannot be cancelled', 400);
@@ -215,6 +251,35 @@ export class AppointmentService {
         }
 
         return appointment;
+    }
+
+    private async resolveDoctorScopeId(
+        user?: AuthenticatedUser,
+    ): Promise<string | undefined> {
+        if (!user || !isDoctorScopedUser(user)) {
+            return undefined;
+        }
+
+        const doctor = await this.appointmentRepository.findDoctorByUserId(
+            user.id,
+        );
+
+        if (!doctor || doctor.isActive === false) {
+            throw new AppError('Forbidden', 403);
+        }
+
+        return doctor.id;
+    }
+
+    private ensureDoctorCanAccessAppointment(
+        appointment: AppointmentEntity,
+        doctorScopeId?: string,
+    ): void {
+        if (!doctorScopeId || appointment.doctorId === doctorScopeId) {
+            return;
+        }
+
+        throw new AppError('Forbidden', 403);
     }
 
     private async ensurePatientExists(patientId: string): Promise<void> {

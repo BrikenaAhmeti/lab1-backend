@@ -10,6 +10,10 @@ import {
     GetPatientsQueryDto,
     UpdatePatientDto,
 } from '../dto/patient.dto';
+import {
+    AuthenticatedUser,
+    isDoctorScopedUser,
+} from '../../../shared/core/types/request-with-user';
 
 const patientSortAccessors = {
     created_at: (patient: PatientEntity) => patient.createdAt,
@@ -42,8 +46,17 @@ export class PatientService {
         });
     }
 
-    async getPatient(id: string): Promise<PatientEntity> {
-        const patient = await this.patientRepository.findById(id);
+    async getPatient(
+        id: string,
+        user?: AuthenticatedUser,
+    ): Promise<PatientEntity> {
+        const doctorScopeId = await this.resolveDoctorScopeId(user);
+        const patient = doctorScopeId
+            ? await this.patientRepository.findByIdForDoctorAppointments(
+                id,
+                doctorScopeId,
+            )
+            : await this.patientRepository.findById(id);
 
         if (!patient) {
             throw new AppError('Patient not found', 404);
@@ -52,8 +65,16 @@ export class PatientService {
         return patient;
     }
 
-    async getPatients(data: GetPatientsQueryDto): Promise<PatientListResponse> {
-        const patients = await this.patientRepository.findMany();
+    async getPatients(
+        data: GetPatientsQueryDto,
+        user?: AuthenticatedUser,
+    ): Promise<PatientListResponse> {
+        const doctorScopeId = await this.resolveDoctorScopeId(user);
+        const patients = doctorScopeId
+            ? await this.patientRepository.findManyForDoctorAppointments(
+                doctorScopeId,
+            )
+            : await this.patientRepository.findMany();
         const normalizedSearch = data.search?.trim().toLowerCase();
 
         const filteredPatients = patients.filter((patient) => {
@@ -126,6 +147,22 @@ export class PatientService {
     async deletePatient(id: string): Promise<void> {
         await this.ensurePatientExists(id);
         await this.patientRepository.softDelete(id);
+    }
+
+    private async resolveDoctorScopeId(
+        user?: AuthenticatedUser,
+    ): Promise<string | undefined> {
+        if (!user || !isDoctorScopedUser(user)) {
+            return undefined;
+        }
+
+        const doctor = await this.patientRepository.findDoctorByUserId(user.id);
+
+        if (!doctor || doctor.isActive === false) {
+            throw new AppError('Forbidden', 403);
+        }
+
+        return doctor.id;
     }
 
     private async ensurePatientExists(id: string): Promise<PatientEntity> {

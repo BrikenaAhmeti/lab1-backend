@@ -22,6 +22,26 @@ export class PatientPrismaRepository implements PatientRepository {
         });
     }
 
+    async findByIdForDoctorAppointments(
+        id: string,
+        doctorId: string,
+    ): Promise<PatientEntity | null> {
+        return prisma.patient.findFirst({
+            where: {
+                id,
+                isDeleted: false,
+                appointments: {
+                    some: {
+                        doctorId,
+                        status: {
+                            in: ['Scheduled', 'Completed'],
+                        },
+                    },
+                },
+            },
+        });
+    }
+
     async findByUserId(userId: string): Promise<PatientEntity | null> {
         return prisma.patient.findFirst({
             where: {
@@ -42,10 +62,40 @@ export class PatientPrismaRepository implements PatientRepository {
         });
     }
 
+    async findDoctorByUserId(
+        userId: string,
+    ): Promise<{ id: string; isActive: boolean } | null> {
+        return prisma.doctor.findUnique({
+            where: {
+                userId,
+            },
+            select: {
+                id: true,
+                isActive: true,
+            },
+        });
+    }
+
     async findMany(): Promise<PatientEntity[]> {
         return prisma.patient.findMany({
             where: {
                 isDeleted: false,
+            },
+        });
+    }
+
+    async findManyForDoctorAppointments(doctorId: string): Promise<PatientEntity[]> {
+        return prisma.patient.findMany({
+            where: {
+                isDeleted: false,
+                appointments: {
+                    some: {
+                        doctorId,
+                        status: {
+                            in: ['Scheduled', 'Completed'],
+                        },
+                    },
+                },
             },
         });
     }

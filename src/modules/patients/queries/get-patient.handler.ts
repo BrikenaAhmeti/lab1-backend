@@ -8,6 +8,6 @@ export class GetPatientHandler
     constructor(private readonly patientService: PatientService) { }
 
     async execute(query: GetPatientQuery): Promise<PatientEntity> {
-        return this.patientService.getPatient(query.id);
+        return this.patientService.getPatient(query.id, query.user);
     }
 }

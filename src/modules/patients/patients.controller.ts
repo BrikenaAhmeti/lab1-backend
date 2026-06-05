@@ -19,6 +19,7 @@ import { UpdatePatientHandler } from './commands/update-patient.handler';
 import { UpdatePatientCommand } from './commands/update-patient.command';
 import { DeletePatientHandler } from './commands/delete-patient.handler';
 import { DeletePatientCommand } from './commands/delete-patient.command';
+import { RequestWithUser } from '../../shared/core/types/request-with-user';
 
 export class PatientsController {
     private readonly commandBus = new CommandBus();
@@ -38,7 +39,10 @@ export class PatientsController {
     async getAll(req: Request, res: Response) {
         const queryData = validateGetPatientsQueryDto(req.query);
         const handler = new GetPatientsHandler(this.service);
-        const query = new GetPatientsQuery(queryData);
+        const query = new GetPatientsQuery(
+            queryData,
+            (req as RequestWithUser).user,
+        );
         const result = await this.queryBus.execute(handler, query);
 
         return res.status(200).json(result);
@@ -47,7 +51,10 @@ export class PatientsController {
     async getById(req: Request, res: Response) {
         const id = validatePatientId(req.params.id);
         const handler = new GetPatientHandler(this.service);
-        const query = new GetPatientQuery(id);
+        const query = new GetPatientQuery(
+            id,
+            (req as RequestWithUser).user,
+        );
         const result = await this.queryBus.execute(handler, query);
 
         return res.status(200).json(result);

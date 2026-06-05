@@ -30,13 +30,24 @@ function createPatient(overrides: Partial<PatientEntity> = {}): PatientEntity {
     };
 }
 
+function createDoctorUser() {
+    return {
+        id: 'doctor-user-1',
+        email: 'doctor@example.com',
+        roles: ['DOCTOR'],
+    };
+}
+
 describe('Patient handlers', () => {
     const repository: jest.Mocked<PatientRepository> = {
         create: jest.fn(),
         findById: jest.fn(),
+        findByIdForDoctorAppointments: jest.fn(),
         findByUserId: jest.fn(),
         findUserById: jest.fn(),
+        findDoctorByUserId: jest.fn(),
         findMany: jest.fn(),
+        findManyForDoctorAppointments: jest.fn(),
         update: jest.fn(),
         softDelete: jest.fn(),
     };
@@ -169,6 +180,63 @@ describe('Patient handlers', () => {
             total: 1,
             totalPages: 1,
         });
+    });
+
+    it('should scope patient lists to patients with doctor appointments', async () => {
+        const patient = createPatient();
+        const otherPatient = createPatient({
+            id: 'patient-2',
+            firstName: 'Blerim',
+            gender: 'MALE',
+        });
+
+        repository.findDoctorByUserId.mockResolvedValue({
+            id: 'doctor-1',
+            isActive: true,
+        });
+        repository.findManyForDoctorAppointments.mockResolvedValue([
+            patient,
+            otherPatient,
+        ]);
+
+        const service = new PatientService(repository);
+        const handler = new GetPatientsHandler(service);
+        const result = await handler.execute(new GetPatientsQuery({
+            page: 1,
+            limit: 10,
+            sortBy: 'created_at',
+            order: 'DESC',
+            gender: 'FEMALE',
+        }, createDoctorUser()));
+
+        expect(repository.findDoctorByUserId).toHaveBeenCalledWith('doctor-user-1');
+        expect(repository.findManyForDoctorAppointments).toHaveBeenCalledWith('doctor-1');
+        expect(repository.findMany).not.toHaveBeenCalled();
+        expect(result.data).toEqual([patient]);
+    });
+
+    it('should hide patients without appointments for the doctor', async () => {
+        repository.findDoctorByUserId.mockResolvedValue({
+            id: 'doctor-1',
+            isActive: true,
+        });
+        repository.findByIdForDoctorAppointments.mockResolvedValue(null);
+
+        const service = new PatientService(repository);
+        const handler = new GetPatientHandler(service);
+
+        await expect(
+            handler.execute(new GetPatientQuery('patient-2', createDoctorUser())),
+        ).rejects.toMatchObject({
+            message: 'Patient not found',
+            statusCode: 404,
+        });
+
+        expect(repository.findByIdForDoctorAppointments).toHaveBeenCalledWith(
+            'patient-2',
+            'doctor-1',
+        );
+        expect(repository.findById).not.toHaveBeenCalled();
     });
 
     it('should throw when deleting a missing patient', async () => {

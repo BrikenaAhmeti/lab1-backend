@@ -42,6 +42,7 @@ export interface AppointmentRepository {
     findById(id: string): Promise<AppointmentEntity | null>;
     findPatientById(id: string): Promise<AppointmentReferenceEntity | null>;
     findDoctorById(id: string): Promise<AppointmentReferenceEntity | null>;
+    findDoctorByUserId(userId: string): Promise<AppointmentReferenceEntity | null>;
     findConflict(
         params: FindAppointmentConflictParams,
     ): Promise<AppointmentEntity | null>;

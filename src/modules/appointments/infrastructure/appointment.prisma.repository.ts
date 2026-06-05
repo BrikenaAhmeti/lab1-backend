@@ -108,6 +108,16 @@ export class AppointmentPrismaRepository implements AppointmentRepository {
         });
     }
 
+    async findDoctorByUserId(userId: string): Promise<AppointmentReferenceEntity | null> {
+        return prisma.doctor.findUnique({
+            where: { userId },
+            select: {
+                id: true,
+                isActive: true,
+            },
+        });
+    }
+
     async findConflict(
         params: FindAppointmentConflictParams,
     ): Promise<AppointmentEntity | null> {

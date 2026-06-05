@@ -8,6 +8,9 @@ export class CreateAppointmentHandler
     constructor(private readonly appointmentService: AppointmentService) { }
 
     async execute(command: CreateAppointmentCommand): Promise<AppointmentEntity> {
-        return this.appointmentService.createAppointment(command.data);
+        return this.appointmentService.createAppointment(
+            command.data,
+            command.user,
+        );
     }
 }

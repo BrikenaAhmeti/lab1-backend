@@ -14,6 +14,6 @@ export class GetAppointmentsHandler
     async execute(
         query: GetAppointmentsQuery,
     ): Promise<PaginatedResponse<AppointmentEntity>> {
-        return this.appointmentService.getAppointments(query.data);
+        return this.appointmentService.getAppointments(query.data, query.user);
     }
 }

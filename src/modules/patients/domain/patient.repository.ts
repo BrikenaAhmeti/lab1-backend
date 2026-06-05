@@ -26,12 +26,23 @@ export interface PatientUserEntity {
     id: string;
 }
 
+export interface PatientDoctorReferenceEntity {
+    id: string;
+    isActive: boolean;
+}
+
 export interface PatientRepository {
     create(data: CreatePatientData): Promise<PatientEntity>;
     findById(id: string): Promise<PatientEntity | null>;
+    findByIdForDoctorAppointments(
+        id: string,
+        doctorId: string,
+    ): Promise<PatientEntity | null>;
     findByUserId(userId: string): Promise<PatientEntity | null>;
     findUserById(userId: string): Promise<PatientUserEntity | null>;
+    findDoctorByUserId(userId: string): Promise<PatientDoctorReferenceEntity | null>;
     findMany(): Promise<PatientEntity[]>;
+    findManyForDoctorAppointments(doctorId: string): Promise<PatientEntity[]>;
     update(id: string, data: UpdatePatientData): Promise<PatientEntity>;
     softDelete(id: string): Promise<PatientEntity>;
 }

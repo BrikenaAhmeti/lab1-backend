@@ -21,6 +21,7 @@ import { AppointmentService } from '../services/appointment.service';
 import { GetAppointmentByIdQuery } from '../application/queries/get-appointment-by-id.query';
 import { GetAppointmentsQuery } from '../application/queries/get-appointments.query';
 import { GetTodayAppointmentsQuery } from '../application/queries/get-today-appointments.query';
+import { RequestWithUser } from '../../../shared/core/types/request-with-user';
 
 export class AppointmentController {
     private readonly commandBus = new CommandBus();
@@ -31,7 +32,10 @@ export class AppointmentController {
     async create(req: Request, res: Response) {
         const body = validateCreateAppointmentDto(req.body);
         const handler = new CreateAppointmentHandler(this.service);
-        const command = new CreateAppointmentCommand(body);
+        const command = new CreateAppointmentCommand(
+            body,
+            (req as RequestWithUser).user,
+        );
         const result = await this.commandBus.execute(handler, command);
 
         return res.status(201).json(result);
@@ -40,7 +44,10 @@ export class AppointmentController {
     async getAll(req: Request, res: Response) {
         const queryData = validateGetAppointmentsQueryDto(req.query);
         const handler = new GetAppointmentsHandler(this.service);
-        const query = new GetAppointmentsQuery(queryData);
+        const query = new GetAppointmentsQuery(
+            queryData,
+            (req as RequestWithUser).user,
+        );
         const result = await this.queryBus.execute(handler, query);
 
         return res.status(200).json(result);
@@ -49,7 +56,10 @@ export class AppointmentController {
     async getToday(req: Request, res: Response) {
         const queryData = validateGetAppointmentsQueryDto(req.query);
         const handler = new GetTodayAppointmentsHandler(this.service);
-        const query = new GetTodayAppointmentsQuery(queryData);
+        const query = new GetTodayAppointmentsQuery(
+            queryData,
+            (req as RequestWithUser).user,
+        );
         const result = await this.queryBus.execute(handler, query);
 
         return res.status(200).json(result);
@@ -58,7 +68,10 @@ export class AppointmentController {
     async getById(req: Request, res: Response) {
         const id = validateAppointmentId(req.params.id);
         const handler = new GetAppointmentByIdHandler(this.service);
-        const query = new GetAppointmentByIdQuery(id);
+        const query = new GetAppointmentByIdQuery(
+            id,
+            (req as RequestWithUser).user,
+        );
         const result = await this.queryBus.execute(handler, query);
 
         return res.status(200).json(result);
@@ -68,7 +81,11 @@ export class AppointmentController {
         const id = validateAppointmentId(req.params.id);
         const body = validateUpdateAppointmentDto(req.body);
         const handler = new UpdateAppointmentHandler(this.service);
-        const command = new UpdateAppointmentCommand(id, body);
+        const command = new UpdateAppointmentCommand(
+            id,
+            body,
+            (req as RequestWithUser).user,
+        );
         const result = await this.commandBus.execute(handler, command);
 
         return res.status(200).json(result);
@@ -77,7 +94,10 @@ export class AppointmentController {
     async delete(req: Request, res: Response) {
         const id = validateAppointmentId(req.params.id);
         const handler = new DeleteAppointmentHandler(this.service);
-        const command = new DeleteAppointmentCommand(id);
+        const command = new DeleteAppointmentCommand(
+            id,
+            (req as RequestWithUser).user,
+        );
 
         await this.commandBus.execute(handler, command);
 

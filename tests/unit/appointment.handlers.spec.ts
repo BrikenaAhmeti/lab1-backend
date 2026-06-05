@@ -4,9 +4,11 @@ import { DeleteAppointmentCommand } from '../../src/modules/appointments/applica
 import { UpdateAppointmentCommand } from '../../src/modules/appointments/application/commands/update-appointment.command';
 import { CreateAppointmentHandler } from '../../src/modules/appointments/application/handlers/create-appointment.handler';
 import { DeleteAppointmentHandler } from '../../src/modules/appointments/application/handlers/delete-appointment.handler';
+import { GetAppointmentByIdHandler } from '../../src/modules/appointments/application/handlers/get-appointment-by-id.handler';
 import { GetAppointmentsHandler } from '../../src/modules/appointments/application/handlers/get-appointments.handler';
 import { GetTodayAppointmentsHandler } from '../../src/modules/appointments/application/handlers/get-today-appointments.handler';
 import { UpdateAppointmentHandler } from '../../src/modules/appointments/application/handlers/update-appointment.handler';
+import { GetAppointmentByIdQuery } from '../../src/modules/appointments/application/queries/get-appointment-by-id.query';
 import { GetAppointmentsQuery } from '../../src/modules/appointments/application/queries/get-appointments.query';
 import { GetTodayAppointmentsQuery } from '../../src/modules/appointments/application/queries/get-today-appointments.query';
 import {
@@ -67,6 +69,14 @@ function createAppointment(
     };
 }
 
+function createDoctorUser() {
+    return {
+        id: 'doctor-user-1',
+        email: 'doctor@example.com',
+        roles: ['DOCTOR'],
+    };
+}
+
 describe('Appointment handlers', () => {
     const repository: jest.Mocked<AppointmentRepository> = {
         create: jest.fn(),
@@ -74,6 +84,7 @@ describe('Appointment handlers', () => {
         findById: jest.fn(),
         findPatientById: jest.fn(),
         findDoctorById: jest.fn(),
+        findDoctorByUserId: jest.fn(),
         findConflict: jest.fn(),
         update: jest.fn(),
     };
@@ -334,6 +345,87 @@ describe('Appointment handlers', () => {
             limit: 10,
             totalPages: 1,
         });
+    });
+
+    it('should scope appointment lists to the doctor linked to the access token', async () => {
+        const appointments = [
+            createAppointment({
+                doctorId: 'doctor-1',
+            }),
+        ];
+
+        repository.findDoctorByUserId.mockResolvedValue(createReference({
+            id: 'doctor-1',
+            isActive: true,
+        }));
+        repository.findMany.mockResolvedValue(appointments);
+
+        const service = new AppointmentService(repository);
+        const handler = new GetAppointmentsHandler(service);
+        const result = await handler.execute(new GetAppointmentsQuery({
+            page: 1,
+            limit: 10,
+            sortBy: 'date',
+            order: 'ASC',
+            doctorId: 'doctor-2',
+        }, createDoctorUser()));
+
+        expect(repository.findDoctorByUserId).toHaveBeenCalledWith('doctor-user-1');
+        expect(repository.findMany).toHaveBeenCalledWith({
+            appointmentDate: undefined,
+            doctorId: 'doctor-1',
+            patientId: undefined,
+            status: undefined,
+        });
+        expect(result.data).toEqual(appointments);
+    });
+
+    it('should forbid doctors from opening appointments owned by another doctor', async () => {
+        repository.findDoctorByUserId.mockResolvedValue(createReference({
+            id: 'doctor-1',
+            isActive: true,
+        }));
+        repository.findById.mockResolvedValue(createAppointment({
+            doctorId: 'doctor-2',
+        }));
+
+        const service = new AppointmentService(repository);
+        const handler = new GetAppointmentByIdHandler(service);
+
+        await expect(
+            handler.execute(
+                new GetAppointmentByIdQuery('appointment-1', createDoctorUser()),
+            ),
+        ).rejects.toMatchObject({
+            message: 'Forbidden',
+            statusCode: 403,
+        });
+    });
+
+    it('should forbid doctors from rescheduling appointments', async () => {
+        repository.findDoctorByUserId.mockResolvedValue(createReference({
+            id: 'doctor-1',
+            isActive: true,
+        }));
+        repository.findById.mockResolvedValue(createAppointment({
+            doctorId: 'doctor-1',
+        }));
+
+        const service = new AppointmentService(repository);
+        const handler = new UpdateAppointmentHandler(service);
+
+        await expect(
+            handler.execute(
+                new UpdateAppointmentCommand('appointment-1', {
+                    date: '2026-05-06',
+                }, createDoctorUser()),
+            ),
+        ).rejects.toMatchObject({
+            message: 'Forbidden',
+            statusCode: 403,
+        });
+
+        expect(repository.update).not.toHaveBeenCalled();
     });
 
     it('should return today appointments', async () => {

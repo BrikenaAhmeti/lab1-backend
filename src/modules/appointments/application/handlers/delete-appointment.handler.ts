@@ -7,6 +7,9 @@ export class DeleteAppointmentHandler
     constructor(private readonly appointmentService: AppointmentService) { }
 
     async execute(command: DeleteAppointmentCommand): Promise<void> {
-        await this.appointmentService.cancelAppointment(command.id);
+        await this.appointmentService.cancelAppointment(
+            command.id,
+            command.user,
+        );
     }
 }

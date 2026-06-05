@@ -8,6 +8,9 @@ export class GetAppointmentByIdHandler
     constructor(private readonly appointmentService: AppointmentService) { }
 
     async execute(query: GetAppointmentByIdQuery): Promise<AppointmentEntity> {
-        return this.appointmentService.getAppointmentById(query.id);
+        return this.appointmentService.getAppointmentById(
+            query.id,
+            query.user,
+        );
     }
 }

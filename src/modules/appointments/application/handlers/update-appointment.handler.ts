@@ -8,6 +8,10 @@ export class UpdateAppointmentHandler
     constructor(private readonly appointmentService: AppointmentService) { }
 
     async execute(command: UpdateAppointmentCommand): Promise<AppointmentEntity> {
-        return this.appointmentService.updateAppointment(command.id, command.data);
+        return this.appointmentService.updateAppointment(
+            command.id,
+            command.data,
+            command.user,
+        );
     }
 }
