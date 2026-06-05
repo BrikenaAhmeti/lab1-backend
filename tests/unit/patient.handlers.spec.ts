@@ -77,7 +77,9 @@ describe('Patient handlers', () => {
     });
 
     it('should update a patient', async () => {
-        const patient = createPatient();
+        const patient = createPatient({
+            gender: 'Female',
+        });
         const updatedPatient = createPatient({
             firstName: 'Anila',
             address: 'Peje',

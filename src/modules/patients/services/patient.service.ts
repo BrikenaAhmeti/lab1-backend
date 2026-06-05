@@ -18,6 +18,10 @@ const patientSortAccessors = {
     date_of_birth: (patient: PatientEntity) => patient.dateOfBirth,
 } as const;
 
+function normalizePatientGender(value: string) {
+    return value.trim().toUpperCase();
+}
+
 export class PatientService {
     constructor(private readonly patientRepository: PatientRepository) { }
 
@@ -57,7 +61,7 @@ export class PatientService {
                 return false;
             }
 
-            if (data.gender && patient.gender !== data.gender) {
+            if (data.gender && normalizePatientGender(patient.gender) !== data.gender) {
                 return false;
             }
 
