@@ -83,6 +83,7 @@ export class RoomService {
 
     private async findRooms(data: GetRoomsQueryDto): Promise<RoomEntity[]> {
         const departmentId = data.departmentId?.trim();
+        const search = data.search?.trim();
 
         if (departmentId) {
             await this.ensureDepartmentExists(departmentId);
@@ -91,6 +92,7 @@ export class RoomService {
         const rooms = await this.roomRepository.findMany({
             departmentId,
             type: data.type,
+            ...(search ? { search } : {}),
         });
 
         return this.decorateRooms(rooms);

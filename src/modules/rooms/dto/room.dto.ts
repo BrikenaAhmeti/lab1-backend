@@ -185,6 +185,10 @@ export class UpdateRoomDto {
 }
 
 const getRoomsQuerySchema = createPaginationQuerySchema(roomSortByValues).extend({
+    search: z.preprocess(
+        normalizeOptionalString,
+        z.string().max(100).optional(),
+    ),
     departmentId: z.preprocess(
         normalizeOptionalString,
         z.string().max(255).optional(),

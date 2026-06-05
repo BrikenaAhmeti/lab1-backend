@@ -94,9 +94,38 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
         };
     }
 
+    type RoomNumberWhere =
+        | string
+        | {
+            contains: string;
+            mode?: string;
+        };
+
+    function roomNumberMatches(
+        roomNumber: string,
+        where?: RoomNumberWhere,
+    ): boolean {
+        if (!where) {
+            return true;
+        }
+
+        if (typeof where === 'string') {
+            return roomNumber === where;
+        }
+
+        const haystack = where.mode === 'insensitive'
+            ? roomNumber.toLowerCase()
+            : roomNumber;
+        const needle = where.mode === 'insensitive'
+            ? where.contains.toLowerCase()
+            : where.contains;
+
+        return haystack.includes(needle);
+    }
+
     function filterRooms(where?: {
         id?: string;
-        roomNumber?: string;
+        roomNumber?: RoomNumberWhere;
         departmentId?: string;
         type?: string;
     }) {
@@ -105,7 +134,7 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                 return false;
             }
 
-            if (where?.roomNumber && room.roomNumber !== where.roomNumber) {
+            if (!roomNumberMatches(room.roomNumber, where?.roomNumber)) {
                 return false;
             }
 
@@ -155,6 +184,7 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                     where,
                 }: {
                     where?: {
+                        roomNumber?: RoomNumberWhere;
                         departmentId?: string;
                         type?: string;
                     };
@@ -479,6 +509,31 @@ describe('Room routes', () => {
 
         expect(finalListResponse.status).toBe(200);
         expect(finalListResponse.body.data).toHaveLength(0);
+    });
+
+    it('should filter rooms by partial case-insensitive room search', async () => {
+        const departmentId = prismaMock.__seedDepartment({
+            name: 'General Ward',
+        });
+        const matchedRoomId = prismaMock.__seedRoom({
+            roomNumber: 'A101',
+            departmentId,
+        });
+        prismaMock.__seedRoom({
+            roomNumber: 'B202',
+            departmentId,
+        });
+
+        const response = await request(app)
+            .get('/api/rooms?search=a1')
+            .set('Authorization', `Bearer ${adminToken}`);
+
+        expect(response.status).toBe(200);
+        expect(response.body.data).toHaveLength(1);
+        expect(response.body.data[0]).toMatchObject({
+            id: matchedRoomId,
+            roomNumber: 'A101',
+        });
     });
 
     it('should return only rooms with available capacity', async () => {

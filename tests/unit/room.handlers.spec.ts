@@ -214,6 +214,37 @@ describe('Room handlers', () => {
         });
     });
 
+    it('should pass trimmed room search filters to the repository', async () => {
+        repository.findMany.mockResolvedValue([
+            createRoom({
+                roomNumber: 'A101',
+            }),
+        ]);
+        repository.countActiveAdmissionsByRoomIds.mockResolvedValue({
+            'room-1': 0,
+        });
+
+        const service = new RoomService(repository);
+        const handler = new GetRoomsHandler(service);
+        const result = await handler.execute(
+            new GetRoomsQuery({
+                page: 1,
+                limit: 10,
+                sortBy: 'room_number',
+                order: 'ASC',
+                search: ' a1 ',
+            }),
+        );
+
+        expect(repository.findMany).toHaveBeenCalledWith({
+            departmentId: undefined,
+            type: undefined,
+            search: 'a1',
+        });
+        expect(result.data).toHaveLength(1);
+        expect(result.data[0].roomNumber).toBe('A101');
+    });
+
     it('should return room details with current admissions', async () => {
         repository.findById.mockResolvedValue(createRoom());
         repository.countActiveAdmissionsByRoomIds.mockResolvedValue({

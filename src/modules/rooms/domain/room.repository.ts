@@ -23,6 +23,7 @@ export interface UpdateRoomData {
 }
 
 export interface FindRoomsParams {
+    search?: string;
     departmentId?: string;
     type?: RoomType;
 }

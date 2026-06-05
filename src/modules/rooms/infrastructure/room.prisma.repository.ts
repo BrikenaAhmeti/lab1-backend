@@ -75,12 +75,22 @@ export class RoomPrismaRepository implements RoomRepository {
     }
 
     async findMany(params: FindRoomsParams): Promise<RoomStoredEntity[]> {
+        const search = params.search?.trim();
+
         const rooms = await prisma.room.findMany({
             where: {
                 ...(params.departmentId
                     ? { departmentId: params.departmentId }
                     : {}),
                 ...(params.type ? { type: params.type } : {}),
+                ...(search
+                    ? {
+                        roomNumber: {
+                            contains: search,
+                            mode: 'insensitive',
+                        },
+                    }
+                    : {}),
             },
             include: roomInclude,
             orderBy: {
