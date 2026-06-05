@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { randomUUID } from 'crypto';
+import { randomInt, randomUUID } from 'crypto';
 import { env } from '../../../config/env';
 import { AppError } from '../../../shared/core/errors/app-error';
 import { MailService } from '../../../shared/mail/mail.service';
@@ -144,6 +144,9 @@ interface EmailConfirmationTokenPayload extends jwt.JwtPayload {
     sub: string;
     type: 'email-confirmation';
 }
+
+const GENERATED_PASSWORD_LENGTH = 10;
+const GENERATED_PASSWORD_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
 
 export class AuthService {
     constructor(
@@ -751,7 +754,7 @@ export class AuthService {
 
     async resetUserPassword(userId: string): Promise<void> {
         const user = await this.getExistingUserById(userId);
-        const newPassword = randomUUID();
+        const newPassword = this.generateTemporaryPassword();
 
         await this.updatePassword(userId, newPassword);
         await this.sendPasswordUpdatedEmail(user, newPassword);
@@ -1000,7 +1003,7 @@ export class AuthService {
             input.username,
             email,
         );
-        const rawPassword = input.password?.trim() || randomUUID();
+        const rawPassword = input.password?.trim() || this.generateTemporaryPassword();
         const passwordHash = await this.hashValue(rawPassword);
 
         const user = await this.repository.createUser({
@@ -1248,9 +1251,9 @@ export class AuthService {
 
     private buildConfirmationLink(userId: string): string {
         const token = this.generateEmailConfirmationToken(userId);
-        const appUrl = env.appUrl.replace(/\/$/, '');
+        const frontendUrl = env.frontendUrl.replace(/\/$/, '');
 
-        return `${appUrl}/confirm-email?token=${encodeURIComponent(token)}`;
+        return `${frontendUrl}/confirm-email?token=${encodeURIComponent(token)}`;
     }
 
     private buildWelcomeEmailHtml(
@@ -1556,6 +1559,13 @@ export class AuthService {
 
     private async hashValue(value: string): Promise<string> {
         return bcrypt.hash(value, env.bcryptSaltRounds);
+    }
+
+    private generateTemporaryPassword(): string {
+        return Array.from(
+            { length: GENERATED_PASSWORD_LENGTH },
+            () => GENERATED_PASSWORD_ALPHABET[randomInt(GENERATED_PASSWORD_ALPHABET.length)],
+        ).join('');
     }
 
     private async updatePassword(userId: string, newPassword: string): Promise<void> {

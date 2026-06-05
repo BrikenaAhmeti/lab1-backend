@@ -31,5 +31,6 @@ export const env = {
     smtpUser: process.env.SMTP_USER || '',
     smtpPass: process.env.SMTP_PASS || '',
     mailFrom: process.env.MAIL_FROM || process.env.SMTP_USER || '',
-    appUrl: process.env.APP_URL || 'http://localhost:3000',
+    frontendUrl: process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3001',
+    appUrl: process.env.APP_URL || 'http://localhost:3001',
 };

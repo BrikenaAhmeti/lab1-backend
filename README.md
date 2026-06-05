@@ -80,12 +80,13 @@ SMTP_PORT=
 SMTP_USER=
 SMTP_PASS=
 MAIL_FROM=
+FRONTEND_URL=
 APP_URL=
 SEED_USER_PASSWORD=
 MAIL_TEST_TO=
 ```
 
-`ADMIN_EMAIL` and `ADMIN_PASSWORD` are required before running the seed. `SEED_USER_PASSWORD` is optional and controls the demo staff user password created by the seed script. `MAIL_TEST_TO` is only used by the test mail script.
+`ADMIN_EMAIL` and `ADMIN_PASSWORD` are required before running the seed. `FRONTEND_URL` controls email confirmation links and defaults to `http://localhost:3001`; `APP_URL` is still accepted as a fallback for older env files. `SEED_USER_PASSWORD` is optional and controls the demo staff user password created by the seed script. `MAIL_TEST_TO` is only used by the test mail script.
 
 ## Commands
 ### Create local env

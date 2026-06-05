@@ -140,6 +140,9 @@ function createUserClaim(overrides: Partial<UserClaim> = {}): UserClaim {
 describe('AuthService', () => {
     const repository = createRepositoryMock();
     const service = new AuthService(repository);
+    const mailService = {
+        send: jest.fn(),
+    };
 
     const adminRole = createRole({
         id: 'role-admin-id',
@@ -162,6 +165,13 @@ describe('AuthService', () => {
         description: 'Nurse access',
     });
 
+    const doctorRole = createRole({
+        id: 'role-doctor-id',
+        name: 'Doctor',
+        normalizedName: 'DOCTOR',
+        description: 'Doctor access',
+    });
+
     const userRole = createRole({
         id: 'role-user-id',
         name: 'User',
@@ -178,6 +188,8 @@ describe('AuthService', () => {
         env.jwtRefreshExpiresIn = '7d';
         env.bcryptSaltRounds = 12;
         env.maxAccessFailedCount = 5;
+        env.frontendUrl = 'http://localhost:3001';
+        env.appUrl = 'http://localhost:3001';
 
         repository.listUsers.mockResolvedValue([]);
         repository.findUserByEmail.mockResolvedValue(null);
@@ -186,6 +198,7 @@ describe('AuthService', () => {
         repository.updateUser.mockResolvedValue(createUser());
         repository.listRoles.mockResolvedValue([
             adminRole,
+            doctorRole,
             receptionistRole,
             nurseRole,
             userRole,
@@ -219,6 +232,10 @@ describe('AuthService', () => {
 
             if (name === 'RECEPTIONIST') {
                 return receptionistRole;
+            }
+
+            if (name === 'DOCTOR') {
+                return doctorRole;
             }
 
             if (name === 'NURSE') {
@@ -566,6 +583,33 @@ describe('AuthService', () => {
         );
     });
 
+    it('should send confirmation emails with the configured frontend URL', async () => {
+        const unconfirmedUser = createUserWithRoles(
+            createUser({
+                id: 'unconfirmed-user-id',
+                email: 'unconfirmed@example.com',
+                normalizedEmail: 'UNCONFIRMED@EXAMPLE.COM',
+                emailConfirmed: false,
+            }),
+            [createUserRoleWithRole('unconfirmed-user-id', userRole)],
+        );
+        const serviceWithMail = new AuthService(repository, mailService);
+
+        env.frontendUrl = 'https://frontend.example/app/';
+        repository.findUserByNormalizedEmail.mockResolvedValue(unconfirmedUser);
+
+        await serviceWithMail.resendConfirmationEmail('unconfirmed@example.com');
+
+        expect(mailService.send).toHaveBeenCalledWith(
+            expect.objectContaining({
+                to: 'unconfirmed@example.com',
+                text: expect.stringContaining(
+                    'https://frontend.example/app/confirm-email?token=',
+                ),
+            }),
+        );
+    });
+
     it('should create a receptionist user with the receptionist role', async () => {
         const createdUser = createUser({
             id: 'receptionist-user-id',
@@ -659,5 +703,77 @@ describe('AuthService', () => {
             'target-user-id',
             expect.any(Date),
         );
+    });
+
+    it('should email a 10 character generated password when admin resets a user password', async () => {
+        const existingUser = createUser({
+            id: 'target-user-id',
+            emailConfirmed: false,
+        });
+        const existingUserWithRoles = createUserWithRoles(existingUser, [
+            createUserRoleWithRole(existingUser.id, userRole),
+        ]);
+        const serviceWithMail = new AuthService(repository, mailService);
+
+        repository.findUserById.mockResolvedValue(existingUserWithRoles);
+
+        await serviceWithMail.resetUserPassword('target-user-id');
+
+        const updatedUserData = repository.updateUser.mock.calls[0][1];
+        const sentMessage = mailService.send.mock.calls[0][0];
+        const passwordMatch = sentMessage.text.match(/Password: ([A-Za-z0-9]{10})/);
+
+        expect(passwordMatch).not.toBeNull();
+        expect(passwordMatch?.[1]).toHaveLength(10);
+        expect(passwordMatch?.[1]).not.toContain('-');
+        expect(sentMessage.text).toContain('http://localhost:3001/confirm-email?token=');
+        expect(
+            await bcrypt.compare(passwordMatch?.[1] ?? '', updatedUserData.passwordHash!),
+        ).toBe(true);
+        expect(repository.revokeUserRefreshTokens).toHaveBeenCalledWith(
+            'target-user-id',
+            expect.any(Date),
+        );
+    });
+
+    it('should auto-provision doctors with a 10 character generated password', async () => {
+        const createdUser = createUser({
+            id: 'doctor-user-id',
+            firstName: 'Leo',
+            lastName: 'Doe',
+            email: 'leo@example.com',
+            normalizedEmail: 'LEO@EXAMPLE.COM',
+            username: 'leo',
+            normalizedUsername: 'LEO',
+            emailConfirmed: false,
+        });
+        const createdUserWithRoles = createUserWithRoles(createdUser, [
+            createUserRoleWithRole(createdUser.id, doctorRole),
+        ]);
+        const serviceWithMail = new AuthService(repository, mailService);
+
+        repository.findUserByNormalizedEmail.mockResolvedValue(null);
+        repository.findUserByNormalizedUsername.mockResolvedValue(null);
+        repository.createUser.mockResolvedValue(createdUser);
+        repository.findUserById.mockResolvedValue(createdUserWithRoles);
+
+        await serviceWithMail.provisionDoctorUser({
+            firstName: 'Leo',
+            lastName: 'Doe',
+            email: 'leo@example.com',
+            username: 'leo',
+        });
+
+        const createdUserData = repository.createUser.mock.calls[0][0];
+        const sentMessage = mailService.send.mock.calls[0][0];
+        const passwordMatch = sentMessage.text.match(/Password: ([A-Za-z0-9]{10})/);
+
+        expect(passwordMatch).not.toBeNull();
+        expect(passwordMatch?.[1]).toHaveLength(10);
+        expect(passwordMatch?.[1]).not.toContain('-');
+        expect(sentMessage.text).toContain('http://localhost:3001/confirm-email?token=');
+        expect(
+            await bcrypt.compare(passwordMatch?.[1] ?? '', createdUserData.passwordHash),
+        ).toBe(true);
     });
 });
