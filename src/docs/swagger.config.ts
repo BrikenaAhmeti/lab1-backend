@@ -1107,22 +1107,19 @@ const swaggerDefinition = {
             post: {
                 tags: ['Auth'],
                 summary: 'Create receptionist',
-                description: 'Creates a receptionist user and automatically assigns the RECEPTIONIST role. Admin role required.',
+                description: 'Creates a receptionist user, generates a temporary password, sends a welcome email with a confirmation link, and automatically assigns the RECEPTIONIST role. Admin role required.',
                 security: bearerSecurity,
                 requestBody: requestBody(
                     'Receptionist payload',
                     {
                         type: 'object',
-                        required: ['firstName', 'lastName', 'email', 'password'],
+                        required: ['firstName', 'lastName', 'email'],
                         properties: {
                             firstName: { type: 'string' },
                             lastName: { type: 'string' },
                             email: { type: 'string', format: 'email' },
                             username: { type: 'string' },
-                            password: { type: 'string' },
                             phoneNumber: { type: 'string' },
-                            emailConfirmed: { type: 'boolean' },
-                            lockoutEnabled: { type: 'boolean' },
                             isActive: { type: 'boolean' },
                         },
                     },
@@ -1131,7 +1128,6 @@ const swaggerDefinition = {
                         lastName: 'Gashi',
                         email: 'lira@example.com',
                         username: 'lira.gashi',
-                        password: 'Reception123!',
                         phoneNumber: '+38344111222',
                     },
                 ),
@@ -2233,7 +2229,7 @@ const swaggerDefinition = {
             get: {
                 tags: ['Medical Records'],
                 summary: 'List medical records',
-                description: 'Returns medical records for a patient ordered through pagination and sorting.',
+                description: 'Returns medical records for a patient ordered through pagination and sorting. Receptionists have read-only access.',
                 security: bearerSecurity,
                 parameters: [
                     ...paginationParameters,
@@ -2249,6 +2245,7 @@ const swaggerDefinition = {
                     }),
                     '400': errorResponse(400, 'Validation failed'),
                     '401': errorResponse(401, 'Unauthorized'),
+                    '403': errorResponse(403, 'Forbidden'),
                     '404': errorResponse(404, 'Patient not found'),
                     '500': errorResponse(500, 'Internal server error'),
                 },
@@ -2299,12 +2296,13 @@ const swaggerDefinition = {
             get: {
                 tags: ['Medical Records'],
                 summary: 'Get medical record by id',
-                description: 'Returns one medical record.',
+                description: 'Returns one medical record. Receptionists have read-only access.',
                 security: bearerSecurity,
                 parameters: [idPathParameter('id', 'Medical record id')],
                 responses: {
                     '200': response('Medical record retrieved successfully', { $ref: '#/components/schemas/MedicalRecord' }, medicalRecordExample),
                     '401': errorResponse(401, 'Unauthorized'),
+                    '403': errorResponse(403, 'Forbidden'),
                     '404': errorResponse(404, 'Medical record not found'),
                     '500': errorResponse(500, 'Internal server error'),
                 },
@@ -2364,12 +2362,13 @@ const swaggerDefinition = {
             get: {
                 tags: ['Medical Records'],
                 summary: 'List medical record prescriptions',
-                description: 'Returns prescriptions linked to a medical record.',
+                description: 'Returns prescriptions linked to a medical record. Receptionists have read-only access.',
                 security: bearerSecurity,
                 parameters: [idPathParameter('id', 'Medical record id')],
                 responses: {
                     '200': response('Medical record prescriptions retrieved successfully', { type: 'array', items: { $ref: '#/components/schemas/Prescription' } }, [prescriptionExample]),
                     '401': errorResponse(401, 'Unauthorized'),
+                    '403': errorResponse(403, 'Forbidden'),
                     '404': errorResponse(404, 'Medical record not found'),
                     '500': errorResponse(500, 'Internal server error'),
                 },
@@ -2379,7 +2378,7 @@ const swaggerDefinition = {
             get: {
                 tags: ['Prescriptions'],
                 summary: 'List prescriptions',
-                description: 'Returns prescriptions for a medical record.',
+                description: 'Returns prescriptions for a medical record. Receptionists have read-only access.',
                 security: bearerSecurity,
                 parameters: [
                     ...paginationParameters,
@@ -2395,6 +2394,7 @@ const swaggerDefinition = {
                     }),
                     '400': errorResponse(400, 'Validation failed'),
                     '401': errorResponse(401, 'Unauthorized'),
+                    '403': errorResponse(403, 'Forbidden'),
                     '404': errorResponse(404, 'Medical record not found'),
                     '500': errorResponse(500, 'Internal server error'),
                 },
@@ -2439,12 +2439,13 @@ const swaggerDefinition = {
             get: {
                 tags: ['Prescriptions'],
                 summary: 'Get prescription by id',
-                description: 'Returns one prescription.',
+                description: 'Returns one prescription. Receptionists have read-only access.',
                 security: bearerSecurity,
                 parameters: [idPathParameter('id', 'Prescription id')],
                 responses: {
                     '200': response('Prescription retrieved successfully', { $ref: '#/components/schemas/Prescription' }, prescriptionExample),
                     '401': errorResponse(401, 'Unauthorized'),
+                    '403': errorResponse(403, 'Forbidden'),
                     '404': errorResponse(404, 'Prescription not found'),
                     '500': errorResponse(500, 'Internal server error'),
                 },

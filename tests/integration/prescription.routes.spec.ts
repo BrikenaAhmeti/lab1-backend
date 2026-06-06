@@ -264,8 +264,70 @@ describe('Prescription routes', () => {
         expect(response.body.message).toBe('Medical record not found');
     });
 
+    it('should allow receptionists to read prescriptions without write access', async () => {
+        const receptionistToken = createAccessToken(['RECEPTIONIST']);
+        const userToken = createAccessToken(['USER']);
+        const medicalRecord = prismaMock.__seedMedicalRecord();
+        const prescription = prismaMock.__seedPrescription({
+            medicalRecordId: medicalRecord.id,
+            medicine: 'Amlodipine',
+            dosage: '5mg',
+            duration: '30 days',
+            instructions: 'Morning',
+        });
+
+        const listResponse = await request(app)
+            .get(`/api/prescriptions?medicalRecordId=${medicalRecord.id}`)
+            .set('Authorization', `Bearer ${receptionistToken}`);
+
+        expect(listResponse.status).toBe(200);
+        expect(listResponse.body.data).toHaveLength(1);
+        expect(listResponse.body.data[0].id).toBe(prescription.id);
+
+        const forbiddenUserReadResponse = await request(app)
+            .get(`/api/prescriptions?medicalRecordId=${medicalRecord.id}`)
+            .set('Authorization', `Bearer ${userToken}`);
+
+        expect(forbiddenUserReadResponse.status).toBe(403);
+
+        const detailResponse = await request(app)
+            .get(`/api/prescriptions/${prescription.id}`)
+            .set('Authorization', `Bearer ${receptionistToken}`);
+
+        expect(detailResponse.status).toBe(200);
+        expect(detailResponse.body.id).toBe(prescription.id);
+
+        const createResponse = await request(app)
+            .post('/api/prescriptions')
+            .set('Authorization', `Bearer ${receptionistToken}`)
+            .send({
+                medical_record_id: medicalRecord.id,
+                bari: 'Blocked',
+                dozimi: '1 pill',
+                kohezgjatja: '1 day',
+            });
+
+        expect(createResponse.status).toBe(403);
+
+        const updateResponse = await request(app)
+            .put(`/api/prescriptions/${prescription.id}`)
+            .set('Authorization', `Bearer ${receptionistToken}`)
+            .send({
+                bari: 'Blocked',
+            });
+
+        expect(updateResponse.status).toBe(403);
+
+        const deleteResponse = await request(app)
+            .delete(`/api/prescriptions/${prescription.id}`)
+            .set('Authorization', `Bearer ${receptionistToken}`);
+
+        expect(deleteResponse.status).toBe(403);
+    });
+
     it('should complete the prescription CRUD flow', async () => {
         const userToken = createAccessToken(['USER']);
+        const nurseToken = createAccessToken(['NURSE']);
         const doctorToken = createAccessToken(['DOCTOR']);
         const adminToken = createAccessToken(['ADMIN']);
         const medicalRecord = prismaMock.__seedMedicalRecord();
@@ -311,7 +373,7 @@ describe('Prescription routes', () => {
 
         const listResponse = await request(app)
             .get(`/api/prescriptions?medicalRecordId=${medicalRecord.id}`)
-            .set('Authorization', `Bearer ${userToken}`);
+            .set('Authorization', `Bearer ${nurseToken}`);
 
         expect(listResponse.status).toBe(200);
         expect(listResponse.body.data).toHaveLength(2);
@@ -319,7 +381,7 @@ describe('Prescription routes', () => {
 
         const getByIdResponse = await request(app)
             .get(`/api/prescriptions/${prescriptionId}`)
-            .set('Authorization', `Bearer ${userToken}`);
+            .set('Authorization', `Bearer ${nurseToken}`);
 
         expect(getByIdResponse.status).toBe(200);
         expect(getByIdResponse.body.id).toBe(prescriptionId);
@@ -361,7 +423,7 @@ describe('Prescription routes', () => {
 
         const missingResponse = await request(app)
             .get(`/api/prescriptions/${prescriptionId}`)
-            .set('Authorization', `Bearer ${userToken}`);
+            .set('Authorization', `Bearer ${nurseToken}`);
 
         expect(missingResponse.status).toBe(404);
         expect(missingResponse.body.message).toBe('Prescription not found');

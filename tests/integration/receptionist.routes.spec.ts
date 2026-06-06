@@ -322,7 +322,6 @@ describe('Receptionist routes', () => {
                 firstName: 'Lira',
                 lastName: 'Gashi',
                 email: 'lira@example.com',
-                password: 'Reception123!',
             });
 
         expect(response.status).toBe(403);
@@ -340,13 +339,13 @@ describe('Receptionist routes', () => {
                 lastName: 'Gashi',
                 email: 'lira@example.com',
                 username: 'lira.gashi',
-                password: 'Reception123!',
                 phoneNumber: '+38344111222',
             });
 
         expect(response.status).toBe(201);
         expect(response.body.email).toBe('lira@example.com');
         expect(response.body.username).toBe('lira.gashi');
+        expect(response.body.emailConfirmed).toBe(false);
         expect(response.body.roles).toEqual(['RECEPTIONIST']);
     });
 });

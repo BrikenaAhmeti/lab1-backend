@@ -634,7 +634,6 @@ describe('AuthService', () => {
             lastName: 'Gashi',
             email: 'lira@example.com',
             username: 'lira.gashi',
-            password: 'Reception123!',
             phoneNumber: '+38344111222',
         });
 
@@ -646,7 +645,11 @@ describe('AuthService', () => {
                 normalizedEmail: 'LIRA@EXAMPLE.COM',
                 username: 'lira.gashi',
                 normalizedUsername: 'LIRA.GASHI',
+                passwordHash: expect.any(String),
                 phoneNumber: '+38344111222',
+                emailConfirmed: false,
+                lockoutEnabled: true,
+                isActive: true,
             }),
         );
         expect(repository.assignRoleToUser).toHaveBeenCalledWith(
@@ -654,6 +657,53 @@ describe('AuthService', () => {
             receptionistRole.id,
         );
         expect(result.roles).toEqual(['RECEPTIONIST']);
+    });
+
+    it('should create receptionists with a generated password and confirmation email', async () => {
+        const createdUser = createUser({
+            id: 'receptionist-user-id',
+            firstName: 'Lira',
+            lastName: 'Gashi',
+            email: 'lira@example.com',
+            normalizedEmail: 'LIRA@EXAMPLE.COM',
+            username: 'lira.gashi',
+            normalizedUsername: 'LIRA.GASHI',
+            emailConfirmed: false,
+        });
+        const createdUserWithRoles = createUserWithRoles(createdUser, [
+            createUserRoleWithRole(createdUser.id, receptionistRole),
+        ]);
+        const serviceWithMail = new AuthService(repository, mailService);
+
+        repository.findUserByNormalizedEmail.mockResolvedValue(null);
+        repository.findUserByNormalizedUsername.mockResolvedValue(null);
+        repository.createUser.mockResolvedValue(createdUser);
+        repository.findUserById.mockResolvedValue(createdUserWithRoles);
+
+        await serviceWithMail.createReceptionist({
+            firstName: 'Lira',
+            lastName: 'Gashi',
+            email: 'lira@example.com',
+            username: 'lira.gashi',
+            phoneNumber: '+38344111222',
+        });
+
+        const createdUserData = repository.createUser.mock.calls[0][0];
+        const sentMessage = mailService.send.mock.calls[0][0];
+        const passwordMatch = sentMessage.text.match(/Password: ([A-Za-z0-9]{10})/);
+
+        expect(passwordMatch).not.toBeNull();
+        expect(passwordMatch?.[1]).toHaveLength(10);
+        expect(sentMessage.to).toBe('lira@example.com');
+        expect(sentMessage.text).toContain('http://localhost:3001/confirm-email?token=');
+        expect(
+            await bcrypt.compare(passwordMatch?.[1] ?? '', createdUserData.passwordHash),
+        ).toBe(true);
+        expect(createdUserData.emailConfirmed).toBe(false);
+        expect(repository.assignRoleToUser).toHaveBeenCalledWith(
+            'receptionist-user-id',
+            receptionistRole.id,
+        );
     });
 
     it('should reject password change when current password is wrong', async () => {

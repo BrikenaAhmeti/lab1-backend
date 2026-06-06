@@ -71,10 +71,7 @@ export interface CreateReceptionistInput {
     lastName: string;
     email: string;
     username?: string;
-    password: string;
     phoneNumber?: string;
-    emailConfirmed?: boolean;
-    lockoutEnabled?: boolean;
     isActive?: boolean;
 }
 
@@ -472,19 +469,15 @@ export class AuthService {
     async createReceptionist(
         input: CreateReceptionistInput,
     ): Promise<AuthUserResponse> {
-        await this.ensureBaseRoles();
-
-        const receptionistRole = await this.repository.findRoleByNormalizedName(
-            'RECEPTIONIST',
-        );
-
-        if (!receptionistRole) {
-            throw new AppError('Receptionist role not found', 500);
-        }
-
-        return this.createUser({
-            ...input,
-            roleIds: [receptionistRole.id],
+        return this.provisionRoleBoundUser({
+            firstName: input.firstName,
+            lastName: input.lastName,
+            email: input.email,
+            username: input.username,
+            phoneNumber: input.phoneNumber,
+            isActive: input.isActive,
+            roleName: 'RECEPTIONIST',
+            emailLabel: 'receptionist',
         });
     }
 
@@ -981,7 +974,8 @@ export class AuthService {
         username?: string;
         phoneNumber?: string;
         password?: string;
-        roleName: 'DOCTOR' | 'NURSE';
+        isActive?: boolean;
+        roleName: 'DOCTOR' | 'NURSE' | 'RECEPTIONIST';
         emailLabel: string;
     }): Promise<AuthUserResponse> {
         await this.ensureBaseRoles();
@@ -1018,7 +1012,7 @@ export class AuthService {
             emailConfirmed: false,
             lockoutEnabled: true,
             accessFailedCount: 0,
-            isActive: true,
+            isActive: input.isActive ?? true,
         });
 
         const role = await this.repository.findRoleByNormalizedName(input.roleName);

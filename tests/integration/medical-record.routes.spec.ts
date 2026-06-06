@@ -420,8 +420,88 @@ describe('Medical record routes', () => {
         expect(response.body.message).toBe('Diagnosis is required');
     });
 
+    it('should allow receptionists to read medical records and prescriptions without write access', async () => {
+        const receptionistToken = createAccessToken(['RECEPTIONIST']);
+        const userToken = createAccessToken(['USER']);
+        const patient = prismaMock.__seedPatient('Ana', 'Krasniqi');
+        const doctor = prismaMock.__seedDoctor('Arben', 'Hoxha', 'Cardiology');
+        const medicalRecord = prismaMock.__seedMedicalRecord({
+            patientId: patient.id,
+            doctorId: doctor.id,
+            diagnosis: 'Follow-up',
+            treatment: 'Observation',
+            prescriptionsText: 'Continue current medication',
+            recordDate: new Date('2026-05-03T00:00:00.000Z'),
+        });
+
+        prismaMock.__seedPrescription({
+            medicalRecordId: medicalRecord.id,
+            medicine: 'Vitamin D',
+            dosage: '1000 IU',
+            duration: '30 days',
+            instructions: 'Morning',
+        });
+
+        const listResponse = await request(app)
+            .get(`/api/medical-records?patientId=${patient.id}`)
+            .set('Authorization', `Bearer ${receptionistToken}`);
+
+        expect(listResponse.status).toBe(200);
+        expect(listResponse.body.data).toHaveLength(1);
+        expect(listResponse.body.data[0].id).toBe(medicalRecord.id);
+
+        const forbiddenUserReadResponse = await request(app)
+            .get(`/api/medical-records?patientId=${patient.id}`)
+            .set('Authorization', `Bearer ${userToken}`);
+
+        expect(forbiddenUserReadResponse.status).toBe(403);
+
+        const detailResponse = await request(app)
+            .get(`/api/medical-records/${medicalRecord.id}`)
+            .set('Authorization', `Bearer ${receptionistToken}`);
+
+        expect(detailResponse.status).toBe(200);
+        expect(detailResponse.body.id).toBe(medicalRecord.id);
+
+        const prescriptionsResponse = await request(app)
+            .get(`/api/medical-records/${medicalRecord.id}/prescriptions`)
+            .set('Authorization', `Bearer ${receptionistToken}`);
+
+        expect(prescriptionsResponse.status).toBe(200);
+        expect(prescriptionsResponse.body).toHaveLength(1);
+
+        const createResponse = await request(app)
+            .post('/api/medical-records')
+            .set('Authorization', `Bearer ${receptionistToken}`)
+            .send({
+                patient_id: patient.id,
+                doctor_id: doctor.id,
+                diagnoza: 'Blocked',
+                trajtimi: 'Blocked',
+                data: '2026-05-04',
+            });
+
+        expect(createResponse.status).toBe(403);
+
+        const updateResponse = await request(app)
+            .put(`/api/medical-records/${medicalRecord.id}`)
+            .set('Authorization', `Bearer ${receptionistToken}`)
+            .send({
+                treatment: 'Blocked',
+            });
+
+        expect(updateResponse.status).toBe(403);
+
+        const deleteResponse = await request(app)
+            .delete(`/api/medical-records/${medicalRecord.id}`)
+            .set('Authorization', `Bearer ${receptionistToken}`);
+
+        expect(deleteResponse.status).toBe(403);
+    });
+
     it('should complete the medical record CRUD flow', async () => {
         const userToken = createAccessToken(['USER']);
+        const nurseToken = createAccessToken(['NURSE']);
         const doctorToken = createAccessToken(['DOCTOR']);
         const adminToken = createAccessToken(['ADMIN']);
         const patient = prismaMock.__seedPatient('Ana', 'Krasniqi');
@@ -473,7 +553,7 @@ describe('Medical record routes', () => {
 
         const listResponse = await request(app)
             .get(`/api/medical-records?patientId=${patient.id}`)
-            .set('Authorization', `Bearer ${userToken}`);
+            .set('Authorization', `Bearer ${nurseToken}`);
 
         expect(listResponse.status).toBe(200);
         expect(listResponse.body.data).toHaveLength(2);
@@ -481,7 +561,7 @@ describe('Medical record routes', () => {
 
         const getByIdResponse = await request(app)
             .get(`/api/medical-records/${medicalRecordId}`)
-            .set('Authorization', `Bearer ${userToken}`);
+            .set('Authorization', `Bearer ${nurseToken}`);
 
         expect(getByIdResponse.status).toBe(200);
         expect(getByIdResponse.body.id).toBe(medicalRecordId);
@@ -525,7 +605,7 @@ describe('Medical record routes', () => {
 
         const prescriptionsResponse = await request(app)
             .get(`/api/medical-records/${medicalRecordId}/prescriptions`)
-            .set('Authorization', `Bearer ${userToken}`);
+            .set('Authorization', `Bearer ${nurseToken}`);
 
         expect(prescriptionsResponse.status).toBe(200);
         expect(prescriptionsResponse.body).toHaveLength(2);
@@ -539,7 +619,7 @@ describe('Medical record routes', () => {
 
         const getDeletedResponse = await request(app)
             .get(`/api/medical-records/${medicalRecordId}`)
-            .set('Authorization', `Bearer ${userToken}`);
+            .set('Authorization', `Bearer ${nurseToken}`);
 
         expect(getDeletedResponse.status).toBe(404);
         expect(getDeletedResponse.body.message).toBe('Medical record not found');

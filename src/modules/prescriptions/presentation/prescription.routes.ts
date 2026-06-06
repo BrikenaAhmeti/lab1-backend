@@ -5,14 +5,20 @@ import { asyncHandler } from '../../../shared/utils/async-handler';
 import { PrescriptionController } from './prescription.controller';
 
 const controller = new PrescriptionController();
+const readRoles = ['DOCTOR', 'ADMIN', 'NURSE', 'RECEPTIONIST'];
 
 export const prescriptionRoutes = Router();
 
 prescriptionRoutes.use(authenticate);
 
-prescriptionRoutes.get('/', asyncHandler(controller.getAll.bind(controller)));
+prescriptionRoutes.get(
+    '/',
+    authorizeRoles(...readRoles),
+    asyncHandler(controller.getAll.bind(controller)),
+);
 prescriptionRoutes.get(
     '/:id',
+    authorizeRoles(...readRoles),
     asyncHandler(controller.getById.bind(controller)),
 );
 prescriptionRoutes.post(

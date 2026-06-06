@@ -5,18 +5,25 @@ import { asyncHandler } from '../../../shared/utils/async-handler';
 import { MedicalRecordController } from './medical-record.controller';
 
 const controller = new MedicalRecordController();
+const readRoles = ['DOCTOR', 'ADMIN', 'NURSE', 'RECEPTIONIST'];
 
 export const medicalRecordRoutes = Router();
 
 medicalRecordRoutes.use(authenticate);
 
-medicalRecordRoutes.get('/', asyncHandler(controller.getAll.bind(controller)));
+medicalRecordRoutes.get(
+    '/',
+    authorizeRoles(...readRoles),
+    asyncHandler(controller.getAll.bind(controller)),
+);
 medicalRecordRoutes.get(
     '/:id/prescriptions',
+    authorizeRoles(...readRoles),
     asyncHandler(controller.getPrescriptions.bind(controller)),
 );
 medicalRecordRoutes.get(
     '/:id',
+    authorizeRoles(...readRoles),
     asyncHandler(controller.getById.bind(controller)),
 );
 medicalRecordRoutes.post(

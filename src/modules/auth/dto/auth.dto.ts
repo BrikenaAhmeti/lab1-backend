@@ -197,25 +197,11 @@ export class CreateReceptionistDto {
     })
     username?: string;
 
-    @IsDefined({ message: 'Password is required' })
-    @IsString({ message: 'Password is required' })
-    @MinLength(6, { message: 'Password must be at least 6 characters' })
-    @MaxLength(255, { message: 'Password must not exceed 255 characters' })
-    password!: string;
-
     @OptionalField()
     @IsString({ message: 'Phone number must be a string' })
     @NormalizeString()
     @MaxLength(30, { message: 'Phone number must not exceed 30 characters' })
     phoneNumber?: string;
-
-    @OptionalField()
-    @IsBoolean({ message: 'emailConfirmed must be a boolean' })
-    emailConfirmed?: boolean;
-
-    @OptionalField()
-    @IsBoolean({ message: 'lockoutEnabled must be a boolean' })
-    lockoutEnabled?: boolean;
 
     @OptionalField()
     @IsBoolean({ message: 'isActive must be a boolean' })
