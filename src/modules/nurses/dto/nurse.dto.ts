@@ -184,6 +184,14 @@ const getNursesQuerySchema = createPaginationQuerySchema(
         normalizeOptionalString,
         z.string().max(255).optional(),
     ),
+    search: z.preprocess(
+        normalizeOptionalString,
+        z.string().max(100).optional(),
+    ),
+    shift: z.preprocess(
+        normalizeOptionalString,
+        z.enum(nurseShiftValues).optional(),
+    ),
 });
 
 export type GetNursesQueryDto = z.infer<typeof getNursesQuerySchema>;

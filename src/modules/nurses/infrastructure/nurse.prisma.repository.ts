@@ -1,6 +1,8 @@
 import { prisma } from '../../../infrastructure/db/prisma';
+import { Prisma } from '../../../generated/prisma';
 import {
     CreateNurseData,
+    NurseListFilters,
     NurseRepository,
     UpdateNurseData,
 } from '../domain/nurse.repository';
@@ -12,6 +14,13 @@ const nurseInclude = {
             id: true,
             name: true,
             location: true,
+        },
+    },
+    user: {
+        select: {
+            id: true,
+            email: true,
+            username: true,
         },
     },
 } as const;
@@ -37,13 +46,69 @@ export class NursePrismaRepository implements NurseRepository {
         return mapNurseEntity(nurse);
     }
 
-    async findMany(departmentId?: string): Promise<NurseEntity[]> {
-        const nurses = await prisma.nurse.findMany({
-            where: departmentId
+    async findMany(filters: NurseListFilters = {}): Promise<NurseEntity[]> {
+        const search = filters.search?.trim();
+        const searchFieldFilter = search
+            ? {
+                contains: search,
+                mode: 'insensitive' as const,
+            }
+            : undefined;
+        const where: Prisma.NurseWhereInput = {
+            ...(filters.departmentId
                 ? {
-                    departmentId,
+                    departmentId: filters.departmentId,
                 }
-                : undefined,
+                : {}),
+            ...(filters.shift
+                ? {
+                    shift: filters.shift,
+                }
+                : {}),
+            ...(searchFieldFilter
+                ? {
+                    OR: [
+                        {
+                            firstName: searchFieldFilter,
+                        },
+                        {
+                            lastName: searchFieldFilter,
+                        },
+                        {
+                            department: {
+                                is: {
+                                    name: searchFieldFilter,
+                                },
+                            },
+                        },
+                        {
+                            department: {
+                                is: {
+                                    location: searchFieldFilter,
+                                },
+                            },
+                        },
+                        {
+                            user: {
+                                is: {
+                                    email: searchFieldFilter,
+                                },
+                            },
+                        },
+                        {
+                            user: {
+                                is: {
+                                    username: searchFieldFilter,
+                                },
+                            },
+                        },
+                    ],
+                }
+                : {}),
+        };
+
+        const nurses = await prisma.nurse.findMany({
+            where,
             include: nurseInclude,
             orderBy: [
                 {

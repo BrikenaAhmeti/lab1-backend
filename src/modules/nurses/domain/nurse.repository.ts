@@ -20,13 +20,19 @@ export interface UpdateNurseData {
     shift?: NurseShift;
 }
 
+export interface NurseListFilters {
+    departmentId?: string;
+    search?: string;
+    shift?: NurseShift;
+}
+
 export interface NurseUserEntity {
     id: string;
 }
 
 export interface NurseRepository {
     create(data: CreateNurseData): Promise<NurseEntity>;
-    findMany(departmentId?: string): Promise<NurseEntity[]>;
+    findMany(filters?: NurseListFilters): Promise<NurseEntity[]>;
     findById(id: string): Promise<NurseEntity | null>;
     findByUserId(userId: string): Promise<NurseEntity | null>;
     findUserById(userId: string): Promise<NurseUserEntity | null>;

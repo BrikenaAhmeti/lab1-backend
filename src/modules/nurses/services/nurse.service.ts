@@ -47,7 +47,7 @@ export class NurseService {
         const email = data.email?.trim();
         const username = data.username?.trim();
         const password = data.password?.trim();
-        const shouldProvisionUser = !providedUserId && Boolean(email || username || password);
+        const shouldProvisionUser = !providedUserId;
 
         await this.ensureDepartmentExists(departmentId);
 
@@ -72,12 +72,19 @@ export class NurseService {
 
             await this.userProvisioningService.ensureUserHasRole(userId, 'NURSE');
         } else if (shouldProvisionUser) {
+            if (!email || !username) {
+                throw new AppError(
+                    'Email and username are required when creating a nurse user',
+                    400,
+                );
+            }
+
             const provisionedUser = await this.userProvisioningService.provisionNurseUser({
                 firstName,
                 lastName,
                 email,
                 username,
-                password,
+                ...(password ? { password } : {}),
             });
 
             userId = provisionedUser.id;
@@ -105,12 +112,18 @@ export class NurseService {
         data: GetNursesQueryDto,
     ): Promise<PaginatedResponse<NurseEntity>> {
         const departmentId = data.departmentId?.trim();
+        const search = data.search?.trim();
+        const shift = data.shift;
 
         if (departmentId) {
             await this.ensureDepartmentExists(departmentId);
         }
 
-        const nurses = await this.nurseRepository.findMany(departmentId);
+        const nurses = await this.nurseRepository.findMany({
+            ...(departmentId ? { departmentId } : {}),
+            ...(search ? { search } : {}),
+            ...(shift ? { shift } : {}),
+        });
         const sortedNurses = sortItems(
             nurses,
             data.sortBy,

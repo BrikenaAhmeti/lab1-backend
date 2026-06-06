@@ -1950,11 +1950,13 @@ const swaggerDefinition = {
             get: {
                 tags: ['Nurses'],
                 summary: 'List nurses',
-                description: 'Returns nurses with optional department filtering.',
+                description: 'Returns nurses with optional department, shift, and search filtering.',
                 security: bearerSecurity,
                 parameters: [
                     ...paginationParameters,
                     { name: 'departmentId', in: 'query', schema: { type: 'string' }, description: 'Filter by department id' },
+                    { name: 'shift', in: 'query', schema: { type: 'string', enum: ['Morning', 'Evening', 'Night'] }, description: 'Filter by nurse shift' },
+                    { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Search nurse name, department, email, or username' },
                 ],
                 responses: {
                     '200': response('Nurses retrieved successfully', paginatedSchema('#/components/schemas/Nurse'), {
@@ -1982,7 +1984,7 @@ const swaggerDefinition = {
                             userId: {
                                 type: 'string',
                                 nullable: true,
-                                description: 'Optional existing user id when the nurse needs portal login.',
+                                description: 'Optional existing user id. Omit to auto-create a linked nurse user.',
                             },
                             firstName: { type: 'string' },
                             lastName: { type: 'string' },
@@ -1991,15 +1993,15 @@ const swaggerDefinition = {
                             email: {
                                 type: 'string',
                                 format: 'email',
-                                description: 'Optional email when creating a new linked nurse user.',
+                                description: 'Required when creating a new linked nurse user.',
                             },
                             username: {
                                 type: 'string',
-                                description: 'Optional username for the auto-created linked user.',
+                                description: 'Required when creating a new linked nurse user.',
                             },
                             password: {
                                 type: 'string',
-                                description: 'Optional initial password for the auto-created linked user.',
+                                description: 'Optional initial password for the auto-created linked user. If omitted, a 10-character password is generated and emailed with the confirmation link.',
                             },
                         },
                     },

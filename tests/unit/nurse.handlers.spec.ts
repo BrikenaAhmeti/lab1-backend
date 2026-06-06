@@ -136,7 +136,7 @@ describe('Nurse handlers', () => {
         expect(repository.create).not.toHaveBeenCalled();
     });
 
-    it('should return nurses filtered by department', async () => {
+    it('should return nurses filtered by department, search, and shift', async () => {
         const department = createDepartment();
         const nurses = [createNurse()];
 
@@ -151,10 +151,16 @@ describe('Nurse handlers', () => {
             sortBy: 'created_at',
             order: 'DESC',
             departmentId: 'department-1',
+            search: 'Sara',
+            shift: 'Morning',
         }));
 
         expect(repository.findDepartmentById).toHaveBeenCalledWith('department-1');
-        expect(repository.findMany).toHaveBeenCalledWith('department-1');
+        expect(repository.findMany).toHaveBeenCalledWith({
+            departmentId: 'department-1',
+            search: 'Sara',
+            shift: 'Morning',
+        });
         expect(result).toEqual({
             data: nurses,
             total: 1,
@@ -301,7 +307,6 @@ describe('Nurse handlers', () => {
             shift: 'Morning',
             email: 'sara.krasniqi@example.com',
             username: 'sara.krasniqi',
-            password: 'Nurse123!',
         });
 
         expect(userProvisioningService.provisionNurseUser).toHaveBeenCalledWith({
@@ -309,7 +314,6 @@ describe('Nurse handlers', () => {
             lastName: 'Krasniqi',
             email: 'sara.krasniqi@example.com',
             username: 'sara.krasniqi',
-            password: 'Nurse123!',
         });
         expect(repository.create).toHaveBeenCalledWith({
             userId: 'generated-user-1',
@@ -319,6 +323,27 @@ describe('Nurse handlers', () => {
             shift: 'Morning',
         });
         expect(result.userId).toBe('generated-user-1');
+    });
+
+    it('should require email and username when provisioning a nurse user', async () => {
+        const department = createDepartment();
+        repository.findDepartmentById.mockResolvedValue(department);
+
+        const service = new NurseService(repository, userProvisioningService);
+
+        await expect(
+            service.createNurse({
+                firstName: 'Sara',
+                lastName: 'Krasniqi',
+                departmentId: department.id,
+                shift: 'Morning',
+            }),
+        ).rejects.toMatchObject({
+            message: 'Email and username are required when creating a nurse user',
+            statusCode: 400,
+        });
+        expect(userProvisioningService.provisionNurseUser).not.toHaveBeenCalled();
+        expect(repository.create).not.toHaveBeenCalled();
     });
 
     it('should reject password when linking an existing user to a nurse', async () => {

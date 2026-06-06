@@ -57,6 +57,34 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
         updatedAt: Date;
     }
 
+    interface MockStringFilter {
+        contains: string;
+        mode?: string;
+    }
+
+    interface MockNurseSearchCondition {
+        firstName?: MockStringFilter;
+        lastName?: MockStringFilter;
+        department?: {
+            is?: {
+                name?: MockStringFilter;
+                location?: MockStringFilter;
+            };
+        };
+        user?: {
+            is?: {
+                email?: MockStringFilter;
+                username?: MockStringFilter;
+            };
+        };
+    }
+
+    interface MockNurseWhere {
+        departmentId?: string;
+        shift?: MockNurse['shift'];
+        OR?: MockNurseSearchCondition[];
+    }
+
     const nurseRole: MockRole = {
         id: 'role-nurse-id',
         name: 'Nurse',
@@ -115,6 +143,9 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
         const department = departmentStore.find(
             (item) => item.id === nurse.departmentId,
         );
+        const user = nurse.userId
+            ? userStore.find((item) => item.id === nurse.userId)
+            : undefined;
 
         if (!department) {
             throw new Error('Department not found');
@@ -127,6 +158,13 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                 name: department.name,
                 location: department.location,
             },
+            user: user
+                ? {
+                    id: user.id,
+                    email: user.email,
+                    username: user.username,
+                }
+                : null,
         };
     }
 
@@ -140,6 +178,36 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
 
             return a.firstName.localeCompare(b.firstName);
         });
+    }
+
+    function matchesTextFilter(value: string | undefined, filter?: MockStringFilter) {
+        if (!filter) {
+            return false;
+        }
+
+        return value?.toLowerCase().includes(filter.contains.toLowerCase()) ?? false;
+    }
+
+    function matchesSearchCondition(
+        nurse: MockNurse,
+        condition: MockNurseSearchCondition,
+    ) {
+        const department = departmentStore.find(
+            (item) => item.id === nurse.departmentId,
+        );
+        const user = nurse.userId
+            ? userStore.find((item) => item.id === nurse.userId)
+            : undefined;
+
+        return matchesTextFilter(nurse.firstName, condition.firstName)
+            || matchesTextFilter(nurse.lastName, condition.lastName)
+            || matchesTextFilter(department?.name, condition.department?.is?.name)
+            || matchesTextFilter(
+                department?.location,
+                condition.department?.is?.location,
+            )
+            || matchesTextFilter(user?.email, condition.user?.is?.email)
+            || matchesTextFilter(user?.username, condition.user?.is?.username);
     }
 
     return {
@@ -319,13 +387,25 @@ jest.mock('../../src/infrastructure/db/prisma', () => {
                 findMany: jest.fn(async ({
                     where,
                 }: {
-                    where?: { departmentId: string };
+                    where?: MockNurseWhere;
                 } = {}) => {
-                    const nurses = where?.departmentId
-                        ? nurseStore.filter(
-                            (item) => item.departmentId === where.departmentId,
-                        )
-                        : nurseStore;
+                    const nurses = nurseStore.filter((item) => {
+                        if (where?.departmentId && item.departmentId !== where.departmentId) {
+                            return false;
+                        }
+
+                        if (where?.shift && item.shift !== where.shift) {
+                            return false;
+                        }
+
+                        if (where?.OR?.length) {
+                            return where.OR.some((condition) =>
+                                matchesSearchCondition(item, condition),
+                            );
+                        }
+
+                        return true;
+                    });
 
                     return sortNurses(nurses).map(buildNurseEntity);
                 }),
@@ -521,6 +601,19 @@ describe('Nurse routes', () => {
         expect(filterResponse.body.data).toHaveLength(1);
         expect(filterResponse.body.data[0].departmentId).toBe(cardiology.id);
 
+        const searchFilterResponse = await request(app)
+            .get(`/api/nurses?departmentId=${cardiology.id}&shift=Morning&search=existing.nurse`)
+            .set('Authorization', `Bearer ${userToken}`);
+
+        expect(searchFilterResponse.status).toBe(200);
+        expect(searchFilterResponse.body.data).toHaveLength(1);
+        expect(searchFilterResponse.body.data[0].id).toBe(nurseId);
+        expect(searchFilterResponse.body.data[0].user).toEqual({
+            id: 'user-2',
+            email: 'existing.nurse@example.com',
+            username: 'existing.nurse',
+        });
+
         const getResponse = await request(app)
             .get(`/api/nurses/${nurseId}`)
             .set('Authorization', `Bearer ${userToken}`);
@@ -564,7 +657,7 @@ describe('Nurse routes', () => {
         expect(getDeletedResponse.body.message).toBe('Nurse not found');
     });
 
-    it('should auto-provision a nurse user when userId is not provided', async () => {
+    it('should require email and username when auto-provisioning a nurse user', async () => {
         const adminToken = createAccessToken(['ADMIN']);
         const department = prismaMock.__seedDepartment('Cardiology');
 
@@ -576,13 +669,12 @@ describe('Nurse routes', () => {
                 lastName: 'Berisha',
                 departmentId: department.id,
                 shift: 'Evening',
-                password: 'Nurse123!',
             });
 
-        expect(response.status).toBe(201);
-        expect(response.body.userId).toBeTruthy();
-        expect(response.body.firstName).toBe('Lina');
-        expect(response.body.shift).toBe('Evening');
+        expect(response.status).toBe(400);
+        expect(response.body.message).toBe(
+            'Email and username are required when creating a nurse user',
+        );
     });
 
     it('should auto-provision a nurse user with email and username', async () => {
@@ -599,12 +691,16 @@ describe('Nurse routes', () => {
                 shift: 'Night',
                 email: 'lina.berisha@example.com',
                 username: 'lina.berisha',
-                password: 'Nurse123!',
             });
 
         expect(response.status).toBe(201);
         expect(response.body.userId).toBe('user-3');
         expect(response.body.firstName).toBe('Lina');
         expect(response.body.shift).toBe('Night');
+        expect(response.body.user).toEqual({
+            id: 'user-3',
+            email: 'lina.berisha@example.com',
+            username: 'lina.berisha',
+        });
     });
 });
