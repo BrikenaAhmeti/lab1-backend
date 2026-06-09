@@ -217,6 +217,55 @@ const receptionists = [
     },
 ] as const;
 
+const presentationDoctor = {
+    firstName: 'Adrian',
+    lastName: 'Krasniqi',
+    username: 'doctor',
+    email: 'doctor@medsphere.local',
+    specialization: 'Family Medicine',
+    departmentKey: 'emergency',
+    phoneNumber: '+38344113001',
+} as const;
+
+const presentationNurse = {
+    firstName: 'Lira',
+    lastName: 'Demiri',
+    username: 'nurse',
+    email: 'nurse@medsphere.local',
+    departmentKey: 'emergency',
+    shift: 'Morning',
+    phoneNumber: '+38344113002',
+} as const;
+
+const presentationReceptionist = {
+    firstName: 'Era',
+    lastName: 'Bytyqi',
+    username: 'receptionist',
+    email: 'receptionist@medsphere.local',
+    phoneNumber: '+38344113003',
+} as const;
+
+const presentationPatient = {
+    id: 'presentation-patient',
+    firstName: 'Ariana',
+    lastName: 'Maliqi',
+    username: 'patient',
+    email: 'patient@medsphere.local',
+    dateOfBirth: '1994-03-15',
+    gender: 'FEMALE',
+    phoneNumber: '+38345102001',
+    address: 'Rr. Nene Tereza 24, Pristina',
+    bloodType: 'A+',
+} as const;
+
+const presentationUser = {
+    firstName: 'Blendi',
+    lastName: 'Morina',
+    username: 'user',
+    email: 'user@medsphere.local',
+    phoneNumber: '+38344113004',
+} as const;
+
 const rooms = [
     {
         roomNumber: 'ER-01',
@@ -898,13 +947,14 @@ async function upsertConfirmedUser(input: {
     firstName: string;
     lastName: string;
     username: string;
+    email?: string;
     roleName: RoleName;
     passwordHash: string;
     roleIds: Map<RoleName, string>;
     phoneNumber?: string;
 }) {
     const username = normalizeUsername(input.username);
-    const email = seedEmail(username);
+    const email = input.email?.trim().toLowerCase() ?? seedEmail(username);
     const normalizedEmail = normalizeEmail(email);
     const normalizedUsername = username.toUpperCase();
 
@@ -1023,6 +1073,49 @@ async function seedHospitalData() {
         doctorIds.set(doctor.key, savedDoctor.id);
     }
 
+    const presentationDoctorUser = await upsertConfirmedUser({
+        firstName: presentationDoctor.firstName,
+        lastName: presentationDoctor.lastName,
+        username: presentationDoctor.username,
+        email: presentationDoctor.email,
+        roleName: 'DOCTOR',
+        passwordHash,
+        roleIds,
+        phoneNumber: presentationDoctor.phoneNumber,
+    });
+    const presentationDoctorDepartmentId = departmentIds.get(
+        presentationDoctor.departmentKey,
+    );
+
+    if (!presentationDoctorDepartmentId) {
+        throw new Error(
+            `Department missing for ${presentationDoctor.departmentKey}`,
+        );
+    }
+
+    const savedPresentationDoctor = await prisma.doctor.upsert({
+        where: {
+            userId: presentationDoctorUser.id,
+        },
+        update: {
+            firstName: presentationDoctor.firstName,
+            lastName: presentationDoctor.lastName,
+            specialization: presentationDoctor.specialization,
+            departmentId: presentationDoctorDepartmentId,
+            phoneNumber: presentationDoctor.phoneNumber,
+            isActive: true,
+        },
+        create: {
+            userId: presentationDoctorUser.id,
+            firstName: presentationDoctor.firstName,
+            lastName: presentationDoctor.lastName,
+            specialization: presentationDoctor.specialization,
+            departmentId: presentationDoctorDepartmentId,
+            phoneNumber: presentationDoctor.phoneNumber,
+            isActive: true,
+        },
+    });
+
     for (const nurse of nurses) {
         const user = await upsertConfirmedUser({
             firstName: nurse.firstName,
@@ -1058,6 +1151,45 @@ async function seedHospitalData() {
         });
     }
 
+    const presentationNurseUser = await upsertConfirmedUser({
+        firstName: presentationNurse.firstName,
+        lastName: presentationNurse.lastName,
+        username: presentationNurse.username,
+        email: presentationNurse.email,
+        roleName: 'NURSE',
+        passwordHash,
+        roleIds,
+        phoneNumber: presentationNurse.phoneNumber,
+    });
+    const presentationNurseDepartmentId = departmentIds.get(
+        presentationNurse.departmentKey,
+    );
+
+    if (!presentationNurseDepartmentId) {
+        throw new Error(
+            `Department missing for ${presentationNurse.departmentKey}`,
+        );
+    }
+
+    await prisma.nurse.upsert({
+        where: {
+            userId: presentationNurseUser.id,
+        },
+        update: {
+            firstName: presentationNurse.firstName,
+            lastName: presentationNurse.lastName,
+            departmentId: presentationNurseDepartmentId,
+            shift: presentationNurse.shift,
+        },
+        create: {
+            userId: presentationNurseUser.id,
+            firstName: presentationNurse.firstName,
+            lastName: presentationNurse.lastName,
+            departmentId: presentationNurseDepartmentId,
+            shift: presentationNurse.shift,
+        },
+    });
+
     for (const receptionist of receptionists) {
         await upsertConfirmedUser({
             firstName: receptionist.firstName,
@@ -1069,6 +1201,39 @@ async function seedHospitalData() {
             phoneNumber: receptionist.phoneNumber,
         });
     }
+
+    await upsertConfirmedUser({
+        firstName: presentationReceptionist.firstName,
+        lastName: presentationReceptionist.lastName,
+        username: presentationReceptionist.username,
+        email: presentationReceptionist.email,
+        roleName: 'RECEPTIONIST',
+        passwordHash,
+        roleIds,
+        phoneNumber: presentationReceptionist.phoneNumber,
+    });
+
+    const presentationPatientUser = await upsertConfirmedUser({
+        firstName: presentationPatient.firstName,
+        lastName: presentationPatient.lastName,
+        username: presentationPatient.username,
+        email: presentationPatient.email,
+        roleName: 'PATIENT',
+        passwordHash,
+        roleIds,
+        phoneNumber: presentationPatient.phoneNumber,
+    });
+
+    await upsertConfirmedUser({
+        firstName: presentationUser.firstName,
+        lastName: presentationUser.lastName,
+        username: presentationUser.username,
+        email: presentationUser.email,
+        roleName: 'USER',
+        passwordHash,
+        roleIds,
+        phoneNumber: presentationUser.phoneNumber,
+    });
 
     const roomIds = new Map<string, string>();
 
@@ -1139,6 +1304,35 @@ async function seedHospitalData() {
         });
     }
 
+    await prisma.patient.upsert({
+        where: {
+            id: presentationPatient.id,
+        },
+        update: {
+            userId: presentationPatientUser.id,
+            firstName: presentationPatient.firstName,
+            lastName: presentationPatient.lastName,
+            dateOfBirth: atDate(presentationPatient.dateOfBirth),
+            gender: presentationPatient.gender,
+            phoneNumber: presentationPatient.phoneNumber,
+            address: presentationPatient.address,
+            bloodType: presentationPatient.bloodType,
+            isDeleted: false,
+        },
+        create: {
+            id: presentationPatient.id,
+            userId: presentationPatientUser.id,
+            firstName: presentationPatient.firstName,
+            lastName: presentationPatient.lastName,
+            dateOfBirth: atDate(presentationPatient.dateOfBirth),
+            gender: presentationPatient.gender,
+            phoneNumber: presentationPatient.phoneNumber,
+            address: presentationPatient.address,
+            bloodType: presentationPatient.bloodType,
+            isDeleted: false,
+        },
+    });
+
     const appointments = [
         ...buildAppointments(today, todayAppointmentRows),
         ...buildAppointments(tomorrow, tomorrowAppointmentRows),
@@ -1174,6 +1368,29 @@ async function seedHospitalData() {
             },
         });
     }
+
+    await prisma.appointment.upsert({
+        where: {
+            id: 'presentation-appointment',
+        },
+        update: {
+            patientId: presentationPatient.id,
+            doctorId: savedPresentationDoctor.id,
+            appointmentDate: atDate(tomorrow),
+            appointmentTime: atTime('10:30'),
+            status: 'Scheduled',
+            notes: 'Presentation appointment for a family medicine visit',
+        },
+        create: {
+            id: 'presentation-appointment',
+            patientId: presentationPatient.id,
+            doctorId: savedPresentationDoctor.id,
+            appointmentDate: atDate(tomorrow),
+            appointmentTime: atTime('10:30'),
+            status: 'Scheduled',
+            notes: 'Presentation appointment for a family medicine visit',
+        },
+    });
 
     for (const admission of admissions) {
         const roomId = roomIds.get(admission.roomNumber);
@@ -1264,6 +1481,50 @@ async function seedHospitalData() {
         }
     }
 
+    await prisma.medicalRecord.upsert({
+        where: {
+            id: 'presentation-record',
+        },
+        update: {
+            patientId: presentationPatient.id,
+            doctorId: savedPresentationDoctor.id,
+            diagnosis: 'Annual wellness visit',
+            treatment: 'Routine exam, blood pressure review, and preventive counseling',
+            prescriptionsText: 'Daily vitamin supplement and follow-up lab panel',
+            recordDate: atDateTime(today, '16:45'),
+        },
+        create: {
+            id: 'presentation-record',
+            patientId: presentationPatient.id,
+            doctorId: savedPresentationDoctor.id,
+            diagnosis: 'Annual wellness visit',
+            treatment: 'Routine exam, blood pressure review, and preventive counseling',
+            prescriptionsText: 'Daily vitamin supplement and follow-up lab panel',
+            recordDate: atDateTime(today, '16:45'),
+        },
+    });
+
+    await prisma.prescription.upsert({
+        where: {
+            id: 'presentation-prescription',
+        },
+        update: {
+            medicalRecordId: 'presentation-record',
+            medicine: 'Vitamin D',
+            dosage: '1000 IU',
+            duration: '30 days',
+            instructions: 'Take once daily with breakfast',
+        },
+        create: {
+            id: 'presentation-prescription',
+            medicalRecordId: 'presentation-record',
+            medicine: 'Vitamin D',
+            dosage: '1000 IU',
+            duration: '30 days',
+            instructions: 'Take once daily with breakfast',
+        },
+    });
+
     for (const invoice of invoices) {
         await prisma.invoice.upsert({
             where: {
@@ -1291,22 +1552,47 @@ async function seedHospitalData() {
         });
     }
 
+    await prisma.invoice.upsert({
+        where: {
+            id: 'presentation-invoice',
+        },
+        update: {
+            patientId: presentationPatient.id,
+            appointmentId: 'presentation-appointment',
+            admissionId: null,
+            amount: '75.00',
+            invoiceDate: atDateTime(tomorrow, '11:00'),
+            status: InvoiceStatus.PENDING,
+            description: 'Presentation family medicine visit',
+        },
+        create: {
+            id: 'presentation-invoice',
+            patientId: presentationPatient.id,
+            appointmentId: 'presentation-appointment',
+            admissionId: null,
+            amount: '75.00',
+            invoiceDate: atDateTime(tomorrow, '11:00'),
+            status: InvoiceStatus.PENDING,
+            description: 'Presentation family medicine visit',
+        },
+    });
+
     return {
         departments: departments.length,
-        doctors: doctors.length,
-        nurses: nurses.length,
-        receptionists: receptionists.length,
+        doctors: doctors.length + 1,
+        nurses: nurses.length + 1,
+        receptionists: receptionists.length + 1,
         rooms: rooms.length,
-        patients: patients.length,
+        patients: patients.length + 1,
         appointmentsToday: todayAppointmentRows.length,
-        appointmentsTomorrow: tomorrowAppointmentRows.length,
+        appointmentsTomorrow: tomorrowAppointmentRows.length + 1,
         admissions: admissions.length,
-        medicalRecords: medicalRecords.length,
+        medicalRecords: medicalRecords.length + 1,
         prescriptions: medicalRecords.reduce(
             (count, record) => count + record.prescriptions.length,
-            0,
+            1,
         ),
-        invoices: invoices.length,
+        invoices: invoices.length + 1,
     };
 }
 
